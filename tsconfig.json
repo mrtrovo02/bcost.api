@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    /* 1. Infraestrutura de Módulos (ESM / NodeNext) */
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023",
+    "lib": ["ES2023", "DOM"], 
+    "baseUrl": "./",
+    "outDir": "./dist",
+
+    /* 2. Suporte a DTOs e Classes (Flexível mas Seguro) */
+    "strictPropertyInitialization": false, 
+    "strictNullChecks": true,
+    "noImplicitAny": false,
+
+    /* 3. Arquitetura de Caminhos (Aliases Oficiais Node ESM) */
+    /* Substituído @ por # para compatibilidade nativa com package.json imports */
+    "paths": {
+      "#/*": ["src/*"],
+      "@prisma/client": ["node_modules/@prisma/client"],
+      "#shared/*": ["src/shared/*"]
+    },
+
+    /* 4. Funcionalidades NestJS & Decorators (Obrigatório) */
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* 5. Performance e Compilação em Lote */
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "incremental": true, 
+    "isolatedModules": true,
+    "resolvePackageJsonExports": true,
+
+    /* 6. Robustez de Código */
+    "forceConsistentCasingInFileNames": true,
+    "removeComments": true,
+    "declaration": true, 
+    "pretty": true, 
+    
+    /* 7. Novas Funções de Verificação */
+    "noUnusedLocals": false, 
+    "noUnusedParameters": false,
+    "allowJs": true 
+  },
+  "include": ["src/**/*", "prisma/**/*"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
+}

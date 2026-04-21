@@ -1,0 +1,44 @@
+# Dependências
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Build
+dist
+coverage
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+README.md
+
+# Testes
+test
+__tests__
+*.spec.ts
+*.e2e-spec.ts
+
+# Prisma (apenas o schema e migrations são necessários)
+prisma/*.db
+prisma/*.db-journal
