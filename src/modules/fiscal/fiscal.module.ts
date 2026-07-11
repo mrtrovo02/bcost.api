@@ -20,38 +20,62 @@ import { DfeProcessorService } from './dfe/dfe-processor.service.js';
 import { FiscalCronService } from './fiscal-cron.service.js';
 import { ReportService } from './reports/report.service.js';
 
+import { XmlProcessor } from './processors/xml.processor.js';
+import { DigitalCertificatesModule } from './digital-certificates/digital-certificates.module';
+
 /**
  * FiscalModule — Motor tributário bCost
  *
- * FIXES APLICADOS:
+ * Objetivo:
+ * - Centralizar todo o domínio fiscal/tributário do bCost.
+ * - Preservar integração com BullMQ, DFe, XML, notas, compliance,
+ *   certificados digitais, folha, cálculo tributário e relatórios.
+ * - Servir como base para o Copilot Tributário / Fiscal Intelligence.
+ *
+ * FIXES JÁ PRESERVADOS:
  * 1. forwardRef(() => NotificationModule) REMOVIDO.
  *    NotificationModule é @Global() — disponível automaticamente.
- *    Importar @Global() via forwardRef() causa deadlock no bootstrap.
+ *    Importar @Global() via forwardRef() pode causar deadlock no bootstrap.
  *
  * 2. PrismaService REMOVIDO dos providers.
  *    PrismaModule é @Global() — instância única para toda a aplicação.
  *
  * 3. XmlExtractionProcessor REMOVIDO dos providers.
- *    Havia 5 processors na mesma fila 'xml-extraction' — o BullMQ
- *    tentava criar 5 workers simultâneos, causando deadlock na inicialização.
- *    Apenas XmlProcessor (o mais completo) foi mantido.
+ *    Havia múltiplos processors na mesma fila 'xml-extraction'. Isso podia
+ *    criar workers simultâneos e instabilidade. Apenas XmlProcessor foi mantido.
+ *
+ * 4. DigitalCertificatesModule preservado.
+ *    Necessário para o fluxo fiscal real: certificado A1, DFe, NF-e/NFS-e e integrações.
+ *
+ * 5. Exports ampliados de forma segura.
+ *    Serviços fiscais principais continuam disponíveis para outros módulos SaaS:
+ *    Dashboard, Insights, Automation, Finance, Business Rules e Billing futuro.
  */
-import { XmlProcessor } from './processors/xml.processor.js';
-
 @Module({
   imports: [
     BullModule.registerQueue({
       name: 'xml-extraction',
       defaultJobOptions: {
         attempts: 5,
-        backoff: { type: 'exponential', delay: 2_000 },
-        removeOnComplete: { age: 3_600 },
+        backoff: {
+          type: 'exponential',
+          delay: 2_000,
+        },
+        removeOnComplete: {
+          age: 3_600,
+        },
         removeOnFail: false,
       },
     }),
+
+    DigitalCertificatesModule,
   ],
 
-  controllers: [FiscalController, TaxController, PayrollController],
+  controllers: [
+    FiscalController,
+    TaxController,
+    PayrollController,
+  ],
 
   providers: [
     FiscalService,
@@ -66,7 +90,12 @@ import { XmlProcessor } from './processors/xml.processor.js';
     DfeService,
     DfeProcessorService,
     ReportService,
-    XmlProcessor, // único processor ativo na fila xml-extraction
+
+    /**
+     * Único processor ativo na fila xml-extraction.
+     * Mantido para evitar duplicidade de workers BullMQ.
+     */
+    XmlProcessor,
   ],
 
   exports: [
@@ -74,11 +103,15 @@ import { XmlProcessor } from './processors/xml.processor.js';
     TaxService,
     TaxCalculationService,
     PayrollService,
+    XmlService,
     ComplianceService,
     InvoiceService,
+    FiscalSeedService,
     ReportService,
     DfeService,
+    DfeProcessorService,
     BullModule,
+    DigitalCertificatesModule,
   ],
 })
 export class FiscalModule {}

@@ -1,0 +1,1039 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content injectable">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Injectables</li>
+  <li class="breadcrumb-item" >TaxService</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/fiscal/tax/tax.service.ts</code>
+        </p>
+
+
+
+
+
+            <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Properties</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#logger" >logger</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#calculateMonthlyTax" >calculateMonthlyTax</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Private</span>
+                                <a href="#getEffectiveRate" >getEffectiveRate</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getYearlyPerformance" >getYearlyPerformance</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#simulateTaxScenario" >simulateTaxScenario</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#validateHistoryIntegrity" >validateHistoryIntegrity</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+            <section data-compodoc="block-constructor">
+    <h3 id="constructor">Constructor</h3>
+        <table class="table table-sm table-bordered">
+            <tbody>
+                <tr>
+                    <td class="col-md-4">
+<code>constructor(prisma: <a href="../injectables/PrismaService.html" target="_self">PrismaService</a>)</code>
+                    </td>
+                </tr>
+                        <tr>
+                            <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="35" class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:35</a></div>
+                            </td>
+                        </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                            <div>
+                                    <b>Parameters :</b>
+                                    <table class="params">
+                                        <thead>
+                                            <tr>
+                                                <td>Name</td>
+                                                    <td>Type</td>
+                                                <td>Optional</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                <tr>
+                                                        <td>prisma</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/PrismaService.html" target="_self" >PrismaService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+</section>
+
+            <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="calculateMonthlyTax"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>calculateMonthlyTax</b></span>
+                        <a href="#calculateMonthlyTax"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>calculateMonthlyTax(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, month: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>, year: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="43"
+                                    class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:43</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>📉 CALCULAR IMPOSTO MENSAL (CÁLCULO REAL)
+Executa a apuração completa baseada em notas fiscais e folha.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>month</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>year</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getEffectiveRate"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                        <span ><b>getEffectiveRate</b></span>
+                        <a href="#getEffectiveRate"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getEffectiveRate(rbt12: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>, anexo: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="217"
+                                    class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:217</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🧮 MOTOR DE CÁLCULO DE ALÍQUOTA (EFETIVA)</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>rbt12</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>anexo</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>{ aliqEfetiva: any; faixa: any; }</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getYearlyPerformance"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getYearlyPerformance</b></span>
+                        <a href="#getYearlyPerformance"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getYearlyPerformance(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, year: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="180"
+                                    class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:180</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>📊 HISTÓRICO ANUAL</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>year</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="simulateTaxScenario"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>simulateTaxScenario</b></span>
+                        <a href="#simulateTaxScenario"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>simulateTaxScenario(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, projectedRevenue: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="151"
+                                    class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:151</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🚀 SIMULAR CENÁRIO (RESOLVE O ERRO TS2339)
+Permite projetar impostos baseados em um faturamento hipotético.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>projectedRevenue</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="validateHistoryIntegrity"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>validateHistoryIntegrity</b></span>
+                        <a href="#validateHistoryIntegrity"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>validateHistoryIntegrity(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="202"
+                                    class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:202</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🛡️ AUDITORIA DE INTEGRIDADE</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+            <section data-compodoc="block-properties">
+    
+    <h3 id="inputs">
+        Properties
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="logger"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Readonly</span>
+                        <span ><b>logger</b></span>
+                        <a href="#logger"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Type : </i>    <code>unknown</code>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Default value : </i><code>new Logger(TaxService.name)</code>
+                    </td>
+                </tr>
+                    <tr>
+                        <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="35" class="link-to-prism">src/modules/fiscal/tax/tax.service.ts:35</a></div>
+                        </td>
+                    </tr>
+
+
+        </tbody>
+    </table>
+</section>
+
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import {
+  Injectable,
+  NotFoundException,
+  Logger,
+  BadRequestException,
+} from &#x27;@nestjs/common&#x27;;
+import { PrismaService } from &#x27;../../../database/prisma.service.js&#x27;;
+import { InvoiceStatus, TransactionType } from &#x27;@prisma/client&#x27;;
+
+/**
+ * Tabelas Oficiais do Simples Nacional (2026)
+ */
+const ANEXO_III &#x3D; [
+  { limite: 180000, aliq: 0.06, deducao: 0 },
+  { limite: 360000, aliq: 0.112, deducao: 9360 },
+  { limite: 720000, aliq: 0.135, deducao: 17640 },
+  { limite: 1800000, aliq: 0.16, deducao: 35640 },
+  { limite: 3600000, aliq: 0.21, deducao: 125640 },
+  { limite: 4800000, aliq: 0.33, deducao: 648000 },
+];
+
+const ANEXO_V &#x3D; [
+  { limite: 180000, aliq: 0.155, deducao: 0 },
+  { limite: 360000, aliq: 0.18, deducao: 4500 },
+  { limite: 720000, aliq: 0.195, deducao: 9900 },
+  { limite: 1800000, aliq: 0.205, deducao: 17100 },
+  { limite: 3600000, aliq: 0.23, deducao: 62100 },
+  { limite: 4800000, aliq: 0.305, deducao: 540000 },
+];
+
+@Injectable()
+export class TaxService {
+  private readonly logger &#x3D; new Logger(TaxService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 📉 CALCULAR IMPOSTO MENSAL (CÁLCULO REAL)
+   * Executa a apuração completa baseada em notas fiscais e folha.
+   */
+  async calculateMonthlyTax(companyId: string, month: number, year: number) {
+    try {
+      const company &#x3D; await this.prisma.company.findUnique({
+        where: { id: companyId },
+      });
+      if (!company) throw new NotFoundException(&#x27;Empresa não localizada.&#x27;);
+
+      const integrity &#x3D; await this.validateHistoryIntegrity(companyId);
+
+      const startDate &#x3D; new Date(Date.UTC(year, month - 1, 1));
+      const endDate &#x3D; new Date(Date.UTC(year, month, 0, 23, 59, 59));
+      const past12Start &#x3D; new Date(Date.UTC(year, month - 13, 1));
+      const past12End &#x3D; new Date(Date.UTC(year, month - 1, 0, 23, 59, 59));
+
+      const [monthlyInvoices, rbt12Result, folha12Result, bankSum] &#x3D;
+        await Promise.all([
+          this.prisma.invoice.aggregate({
+            where: {
+              companyId,
+              status: InvoiceStatus.NORMAL,
+              issuedAt: { gte: startDate, lte: endDate },
+            },
+            _sum: { amount: true },
+          }),
+          this.prisma.invoice.aggregate({
+            where: {
+              companyId,
+              status: InvoiceStatus.NORMAL,
+              issuedAt: { gte: past12Start, lte: past12End },
+            },
+            _sum: { amount: true },
+          }),
+          this.prisma.payroll.aggregate({
+            where: {
+              companyId,
+              OR: [
+                { year: year, month: { lte: month } },
+                { year: year - 1, month: { gte: month } },
+              ],
+            },
+            _sum: { totalAmount: true },
+          }),
+          this.prisma.bankTransaction.aggregate({
+            where: {
+              companyId,
+              occurredAt: { gte: startDate, lte: endDate },
+              type: TransactionType.CREDIT,
+            },
+            _sum: { amount: true },
+          }),
+        ]);
+
+      const totalRevenue &#x3D; Number(monthlyInvoices._sum?.amount || 0);
+      const bankRevenue &#x3D; Number(bankSum._sum?.amount || 0);
+      let rbt12 &#x3D; Number(rbt12Result._sum?.amount || 0);
+      let folha12 &#x3D; Number(folha12Result._sum?.totalAmount || 0);
+
+      // Normalização para empresas com menos de 12 meses (Regra da média ponderada)
+      if (integrity.isNewCompany &amp;&amp; integrity.monthsFound &lt; 12) {
+        const activeMonths &#x3D; Math.max(integrity.monthsFound, 1);
+        rbt12 &#x3D; (rbt12 / activeMonths) * 12;
+        folha12 &#x3D; (folha12 / activeMonths) * 12;
+      }
+
+      const fatorRPercent &#x3D; rbt12 &gt; 0 ? (folha12 / rbt12) * 100 : 0;
+      const anexoEfetivo &#x3D; fatorRPercent &gt;&#x3D; 28 ? 3 : 5;
+      const { aliqEfetiva, faixa } &#x3D; this.getEffectiveRate(rbt12, anexoEfetivo);
+      const taxAmount &#x3D; totalRevenue * aliqEfetiva;
+
+      return {
+        month,
+        year,
+        metrics: {
+          faturamentoMes: totalRevenue,
+          rbt12: Number(rbt12.toFixed(2)),
+          fatorR: Number(fatorRPercent.toFixed(2)),
+          aliqEfetiva: Number((aliqEfetiva * 100).toFixed(4)),
+          anexoUtilizado: &#x60;Anexo ${anexoEfetivo &#x3D;&#x3D;&#x3D; 3 ? &#x27;III&#x27; : &#x27;V&#x27;}&#x60;,
+          faixaSugerida: faixa,
+        },
+        compliance: {
+          divergenciaBancaria: bankRevenue &gt; totalRevenue * 1.05,
+          bankRevenue: bankRevenue,
+          valorEmAberto: Math.max(bankRevenue - totalRevenue, 0),
+        },
+        financial: {
+          impostoAPagar: Number(taxAmount.toFixed(2)),
+          taxPayable: Number(taxAmount.toFixed(2)),
+          gapFolhaMensal: Number(
+            (Math.max(rbt12 * 0.28 - folha12, 0) / 12).toFixed(2),
+          ),
+          economiaFatorR:
+            anexoEfetivo &#x3D;&#x3D;&#x3D; 5
+              ? totalRevenue * aliqEfetiva - totalRevenue * 0.06
+              : 0,
+        },
+        audit: integrity,
+      };
+    } catch (error: any) {
+      this.logger.error(&#x60;[TaxEngine Fail] ${month}/${year}: ${error.message}&#x60;);
+      throw error;
+    }
+  }
+
+  /**
+   * 🚀 SIMULAR CENÁRIO (RESOLVE O ERRO TS2339)
+   * Permite projetar impostos baseados em um faturamento hipotético.
+   */
+  async simulateTaxScenario(companyId: string, projectedRevenue: number) {
+    if (projectedRevenue &lt; 0)
+      throw new BadRequestException(
+        &#x27;A receita projetada não pode ser negativa.&#x27;,
+      );
+
+    // Busca o RBT12 atual para simular com a alíquota correta do cliente
+    const rbt12Data &#x3D; await this.prisma.invoice.aggregate({
+      where: { companyId, status: InvoiceStatus.NORMAL },
+      _sum: { amount: true },
+    });
+
+    const rbt12 &#x3D; Number(rbt12Data._sum?.amount || 0);
+    // Simula no Anexo III (padrão bCost para serviços)
+    const { aliqEfetiva, faixa } &#x3D; this.getEffectiveRate(rbt12, 3);
+
+    return {
+      projectedRevenue: Number(projectedRevenue.toFixed(2)),
+      estimatedTax: Number((projectedRevenue * aliqEfetiva).toFixed(2)),
+      effectiveRate: Number((aliqEfetiva * 100).toFixed(2)),
+      taxBracket: faixa,
+      message:
+        &#x27;Projeção baseada no faturamento histórico dos últimos 12 meses.&#x27;,
+    };
+  }
+
+  /**
+   * 📊 HISTÓRICO ANUAL
+   */
+  async getYearlyPerformance(companyId: string, year: number) {
+    const data &#x3D; await this.prisma.financialSnapshot.findMany({
+      where: { companyId, year },
+      orderBy: { month: &#x27;asc&#x27; },
+    });
+
+    return data.map((d) &#x3D;&gt; ({
+      month: d.month,
+      revenue: Number(d.revenue),
+      tax: Number(d.taxPayable),
+      status: &#x27;ok&#x27;,
+      profitMargin:
+        Number(d.revenue) &gt; 0
+          ? ((Number(d.revenue) - Number(d.taxPayable)) / Number(d.revenue)) *
+            100
+          : 0,
+    }));
+  }
+
+  /**
+   * 🛡️ AUDITORIA DE INTEGRIDADE
+   */
+  async validateHistoryIntegrity(companyId: string) {
+    const count &#x3D; await this.prisma.financialSnapshot.count({
+      where: { companyId },
+    });
+    return {
+      isNewCompany: count &lt; 12,
+      monthsFound: count,
+      isComplete: count &gt;&#x3D; 12,
+      status: count &gt;&#x3D; 12 ? &#x27;AUDIT_READY&#x27; : &#x27;INCOMPLETE_DATA&#x27;,
+    };
+  }
+
+  /**
+   * 🧮 MOTOR DE CÁLCULO DE ALÍQUOTA (EFETIVA)
+   */
+  private getEffectiveRate(rbt12: number, anexo: number) {
+    const tabela &#x3D; anexo &#x3D;&#x3D;&#x3D; 3 ? ANEXO_III : ANEXO_V;
+    const faixaIdx &#x3D; tabela.findIndex((f) &#x3D;&gt; rbt12 &lt;&#x3D; f.limite);
+    const faixa &#x3D;
+      faixaIdx &#x3D;&#x3D;&#x3D; -1 ? tabela[tabela.length - 1] : tabela[faixaIdx];
+
+    // Fórmula oficial do Simples Nacional: (RBT12 * Alíquota - Dedução) / RBT12
+    const aliqEfetiva &#x3D;
+      rbt12 &gt; 0 ? (rbt12 * faixa.aliq - faixa.deducao) / rbt12 : tabela[0].aliq;
+
+    return {
+      aliqEfetiva: Math.max(aliqEfetiva, 0.06), // Mínimo de 6% no Anexo III
+      faixa: faixaIdx &#x3D;&#x3D;&#x3D; -1 ? 6 : faixaIdx + 1,
+    };
+  }
+}
+</code></pre>
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'injectable';
+            var COMPODOC_CURRENT_PAGE_URL = 'TaxService.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

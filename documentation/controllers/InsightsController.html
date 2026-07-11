@@ -1,0 +1,1314 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content controller">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Controllers</li>
+  <li class="breadcrumb-item" >InsightsController</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/insights/insights.controller.ts</code>
+        </p>
+            <p class="comment">
+                <h3>Prefix</h3>
+            </p>
+            <p class="comment">
+                <code>insights</code>
+            </p>
+
+
+            <p class="comment">
+                <h3>Description</h3>
+            </p>
+            <p class="comment">
+                <h2>InsightsController | bCost AI Engine</h2>
+<p>Camada de orquestração para inteligência financeira e preditiva.
+Este controller fornece diagnósticos de alto nível para o Cockpit bCost.</p>
+
+            </p>
+
+
+
+
+            <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#getAnomalies" >getAnomalies</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#getCashFlow" >getCashFlow</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#getExecutiveSummary" >getExecutiveSummary</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#getFinancialHealth" >getFinancialHealth</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#getHistoricalTrends" >getHistoricalTrends</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#getTaxCompliance" >getTaxCompliance</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#refreshInsights" >refreshInsights</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#semanticSearch" >semanticSearch</a>
+                            </li>
+                            <li>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier"></span>
+                                    <span class="modifier">Async</span>
+                                <a href="#triggerManualBatch" >triggerManualBatch</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+            <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getAnomalies"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>getAnomalies</b></span>
+                        <a href="#getAnomalies"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getAnomalies(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;anomalies/:companyId&#x27;)<br />@UseInterceptors(CompanyCacheInterceptor)<br />@ApiOperation({summary: &#x27;Listar Anomalias Estatísticas&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiResponse({status: 200, type: undefined})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="94"
+                                    class="link-to-prism">src/insights/insights.controller.ts:94</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🚨 DETECÇÃO DE ANOMALIAS</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>        <code><a href="../interfaces/AnomalyReport.html" target="_self" >Promise&lt;AnomalyReportDto[]&gt;</a></code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getCashFlow"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>getCashFlow</b></span>
+                        <a href="#getCashFlow"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getCashFlow(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;cash-flow/:companyId&#x27;)<br />@UseInterceptors(CompanyCacheInterceptor)<br />@ApiOperation({summary: &#x27;Projeção Preditiva (90 dias)&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiResponse({status: 200, description: &#x27;Time-series de projeção financeira.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="111"
+                                    class="link-to-prism">src/insights/insights.controller.ts:111</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>📈 PROJEÇÃO DE FLUXO DE CAIXA</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>        <code><a href="../miscellaneous/typealiases.html#ProjectionItem" target="_self" >Promise&lt;ProjectionItem[]&gt;</a></code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getExecutiveSummary"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>getExecutiveSummary</b></span>
+                        <a href="#getExecutiveSummary"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getExecutiveSummary(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;executive-summary/:companyId&#x27;)<br />@UseInterceptors(CompanyCacheInterceptor)<br />@ApiOperation({summary: &#x27;Resumo Executivo Consolidado&#x27;, description: &#x27;Endpoint de elite que retorna o DNA da empresa, tendências de mercado e alertas críticos.&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa no bCost&#x27;})<br />@ApiResponse({status: 200, description: &#x27;Diagnóstico 360º processado com sucesso.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="59"
+                                    class="link-to-prism">src/insights/insights.controller.ts:59</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🏆 EXECUTIVE SUMMARY (CFO VIRTUAL)</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getFinancialHealth"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>getFinancialHealth</b></span>
+                        <a href="#getFinancialHealth"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getFinancialHealth(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;health/:companyId&#x27;)<br />@UseInterceptors(CompanyCacheInterceptor)<br />@ApiOperation({summary: &#x27;Score DNA de Saúde&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiResponse({status: 200, type: FinancialHealthDto})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="125"
+                                    class="link-to-prism">src/insights/insights.controller.ts:125</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🧬 SCORE DE SAÚDE FINANCEIRA</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>        <code><a href="../interfaces/FinancialHealth.html" target="_self" >Promise&lt;FinancialHealthDto&gt;</a></code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getHistoricalTrends"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>getHistoricalTrends</b></span>
+                        <a href="#getHistoricalTrends"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getHistoricalTrends(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, limit?: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;historical-trends/:companyId&#x27;)<br />@UseInterceptors(CompanyCacheInterceptor)<br />@ApiOperation({summary: &#x27;Histórico de Evolução Financeira&#x27;, description: &#x27;Recupera a série histórica de snapshots para construção de gráficos.&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiQuery({name: &#x27;limit&#x27;, required: false, description: &#x27;Quantidade de meses (default: 12)&#x27;})<br />@ApiResponse({status: 200, description: &#x27;Série histórica recuperada.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="172"
+                                    class="link-to-prism">src/insights/insights.controller.ts:172</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>📉 TENDÊNCIAS HISTÓRICAS</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>limit</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    Yes
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getTaxCompliance"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>getTaxCompliance</b></span>
+                        <a href="#getTaxCompliance"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getTaxCompliance(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;tax-compliance/:companyId&#x27;)<br />@ApiOperation({summary: &#x27;Status de Compliance Fiscal&#x27;, description: &#x27;Verifica obrigações e impostos pendentes para alerta no resumo executivo.&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiResponse({status: 200, description: &#x27;Diagnóstico fiscal processado.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="193"
+                                    class="link-to-prism">src/insights/insights.controller.ts:193</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🎯 STATUS FISCAL E COMPLIANCE</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="refreshInsights"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>refreshInsights</b></span>
+                        <a href="#refreshInsights"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>refreshInsights(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Post(&#x27;refresh/:companyId&#x27;)<br />@HttpCode(HttpStatus.OK)<br />@ApiOperation({summary: &#x27;Forçar Atualização de Insights&#x27;, description: &#x27;Invalida o cache e recalcula todos os indicadores (Saúde, Projeção, Snapshot) imediatamente.&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiResponse({status: 200, description: &#x27;Insights recalculados com sucesso.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="212"
+                                    class="link-to-prism">src/insights/insights.controller.ts:212</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>⚡ REFRESH ON-DEMAND</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="semanticSearch"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>semanticSearch</b></span>
+                        <a href="#semanticSearch"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>semanticSearch(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, query: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Get(&#x27;search/:companyId&#x27;)<br />@ApiOperation({summary: &#x27;Interface bCost AI (Busca Semântica)&#x27;, description: &#x27;Busca vetorial via linguagem natural para análise contextual.&#x27;})<br />@ApiParam({name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27;})<br />@ApiQuery({name: &#x27;q&#x27;, description: &#x27;Pergunta do usuário (ex: Como reduzir meu imposto?)&#x27;})<br />@ApiResponse({status: 200, description: &#x27;Contexto semântico para o LLM.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="146"
+                                    class="link-to-prism">src/insights/insights.controller.ts:146</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🔍 BUSCA SEMÂNTICA (AI Readiness)</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>query</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="triggerManualBatch"></a>
+                    <span class="name">
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier"></span>
+                            <span class="modifier">Async</span>
+                        <span ><b>triggerManualBatch</b></span>
+                        <a href="#triggerManualBatch"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>triggerManualBatch()</code>
+                </td>
+            </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <b>Decorators : </b>
+                    <br />
+                    <code>@Post(&#x27;trigger-batch&#x27;)<br />@HttpCode(HttpStatus.ACCEPTED)<br />@ApiOperation({summary: &#x27;Processamento em Lote&#x27;, description: &#x27;Força o recálculo massivo de projeções e auditorias para todas as empresas ativas.&#x27;})<br />@ApiResponse({status: 202, description: &#x27;Lote enviado para a fila de processamento.&#x27;})<br /></code>
+                </td>
+            </tr>
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="77"
+                                    class="link-to-prism">src/insights/insights.controller.ts:77</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>⚡ GATILHO MANUAL (Batch Processing)</p>
+</div>
+
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  UseInterceptors,
+  HttpCode,
+  HttpStatus,
+} from &#x27;@nestjs/common&#x27;;
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from &#x27;@nestjs/swagger&#x27;;
+
+import { InsightsService } from &#x27;./insights.service.js&#x27;;
+import { CompanyCacheInterceptor } from &#x27;../common/interceptors/company-cache.interceptor.js&#x27;;
+import { ProjectionItem } from &#x27;./cash-flow-projection/cash-flow-projection.service.js&#x27;;
+
+// DTOs para tipagem estrita e documentação OpenAPI
+import {
+  AnomalyReportDto,
+  FinancialHealthDto,
+} from &#x27;./dto/insights-response.dto.js&#x27;;
+
+/**
+ * InsightsController | bCost AI Engine
+ * -----------------------------------------------------------------------
+ * Camada de orquestração para inteligência financeira e preditiva.
+ * Este controller fornece diagnósticos de alto nível para o Cockpit bCost.
+ */
+@ApiTags(&#x27;Insights - Inteligência Preditiva&#x27;)
+@ApiBearerAuth()
+@Controller(&#x27;insights&#x27;)
+export class InsightsController {
+  constructor(private readonly insightsService: InsightsService) {}
+
+  /**
+   * 🏆 EXECUTIVE SUMMARY (CFO VIRTUAL)
+   */
+  @Get(&#x27;executive-summary/:companyId&#x27;)
+  @UseInterceptors(CompanyCacheInterceptor)
+  @ApiOperation({
+    summary: &#x27;Resumo Executivo Consolidado&#x27;,
+    description:
+      &#x27;Endpoint de elite que retorna o DNA da empresa, tendências de mercado e alertas críticos.&#x27;,
+  })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa no bCost&#x27; })
+  @ApiResponse({
+    status: 200,
+    description: &#x27;Diagnóstico 360º processado com sucesso.&#x27;,
+  })
+  async getExecutiveSummary(@Param(&#x27;companyId&#x27;) companyId: string) {
+    return await this.insightsService.getExecutiveSummary(companyId);
+  }
+
+  /**
+   * ⚡ GATILHO MANUAL (Batch Processing)
+   */
+  @Post(&#x27;trigger-batch&#x27;)
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({
+    summary: &#x27;Processamento em Lote&#x27;,
+    description:
+      &#x27;Força o recálculo massivo de projeções e auditorias para todas as empresas ativas.&#x27;,
+  })
+  @ApiResponse({
+    status: 202,
+    description: &#x27;Lote enviado para a fila de processamento.&#x27;,
+  })
+  async triggerManualBatch() {
+    const result &#x3D; await this.insightsService.runProjectionBatch();
+    return {
+      message: &#x27;Processamento de lote iniciado com sucesso.&#x27;,
+      timestamp: new Date().toISOString(),
+      summary: result,
+    };
+  }
+
+  /**
+   * 🚨 DETECÇÃO DE ANOMALIAS
+   */
+  @Get(&#x27;anomalies/:companyId&#x27;)
+  @UseInterceptors(CompanyCacheInterceptor)
+  @ApiOperation({ summary: &#x27;Listar Anomalias Estatísticas&#x27; })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiResponse({ status: 200, type: [AnomalyReportDto] })
+  async getAnomalies(
+    @Param(&#x27;companyId&#x27;) companyId: string,
+  ): Promise&lt;AnomalyReportDto[]&gt; {
+    return await this.insightsService.detectAnomalies(companyId);
+  }
+
+  /**
+   * 📈 PROJEÇÃO DE FLUXO DE CAIXA
+   */
+  @Get(&#x27;cash-flow/:companyId&#x27;)
+  @UseInterceptors(CompanyCacheInterceptor)
+  @ApiOperation({ summary: &#x27;Projeção Preditiva (90 dias)&#x27; })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiResponse({
+    status: 200,
+    description: &#x27;Time-series de projeção financeira.&#x27;,
+  })
+  async getCashFlow(
+    @Param(&#x27;companyId&#x27;) companyId: string,
+  ): Promise&lt;ProjectionItem[]&gt; {
+    return await this.insightsService.getCashFlowInsights(companyId);
+  }
+
+  /**
+   * 🧬 SCORE DE SAÚDE FINANCEIRA
+   */
+  @Get(&#x27;health/:companyId&#x27;)
+  @UseInterceptors(CompanyCacheInterceptor)
+  @ApiOperation({ summary: &#x27;Score DNA de Saúde&#x27; })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiResponse({ status: 200, type: FinancialHealthDto })
+  async getFinancialHealth(
+    @Param(&#x27;companyId&#x27;) companyId: string,
+  ): Promise&lt;FinancialHealthDto&gt; {
+    return await this.insightsService.getFinancialHealth(companyId);
+  }
+
+  /**
+   * 🔍 BUSCA SEMÂNTICA (AI Readiness)
+   */
+  @Get(&#x27;search/:companyId&#x27;)
+  @ApiOperation({
+    summary: &#x27;Interface bCost AI (Busca Semântica)&#x27;,
+    description:
+      &#x27;Busca vetorial via linguagem natural para análise contextual.&#x27;,
+  })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiQuery({
+    name: &#x27;q&#x27;,
+    description: &#x27;Pergunta do usuário (ex: Como reduzir meu imposto?)&#x27;,
+  })
+  @ApiResponse({ status: 200, description: &#x27;Contexto semântico para o LLM.&#x27; })
+  async semanticSearch(
+    @Param(&#x27;companyId&#x27;) companyId: string,
+    @Query(&#x27;q&#x27;) query: string,
+  ) {
+    return await this.insightsService.getSemanticContext(companyId, query);
+  }
+
+  // --- 🟢 ADIÇÕES PARA COMPLETAR O CONTROLLER ---
+
+  /**
+   * 📉 TENDÊNCIAS HISTÓRICAS
+   */
+  @Get(&#x27;historical-trends/:companyId&#x27;)
+  @UseInterceptors(CompanyCacheInterceptor)
+  @ApiOperation({
+    summary: &#x27;Histórico de Evolução Financeira&#x27;,
+    description:
+      &#x27;Recupera a série histórica de snapshots para construção de gráficos.&#x27;,
+  })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiQuery({
+    name: &#x27;limit&#x27;,
+    required: false,
+    description: &#x27;Quantidade de meses (default: 12)&#x27;,
+  })
+  @ApiResponse({ status: 200, description: &#x27;Série histórica recuperada.&#x27; })
+  async getHistoricalTrends(
+    @Param(&#x27;companyId&#x27;) companyId: string,
+    @Query(&#x27;limit&#x27;) limit?: number,
+  ) {
+    return await this.insightsService.getHistoricalTrends(
+      companyId,
+      limit ? Number(limit) : 12,
+    );
+  }
+
+  /**
+   * 🎯 STATUS FISCAL E COMPLIANCE
+   */
+  @Get(&#x27;tax-compliance/:companyId&#x27;)
+  @ApiOperation({
+    summary: &#x27;Status de Compliance Fiscal&#x27;,
+    description:
+      &#x27;Verifica obrigações e impostos pendentes para alerta no resumo executivo.&#x27;,
+  })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiResponse({ status: 200, description: &#x27;Diagnóstico fiscal processado.&#x27; })
+  async getTaxCompliance(@Param(&#x27;companyId&#x27;) companyId: string) {
+    return await this.insightsService.getTaxComplianceStatus(companyId);
+  }
+
+  /**
+   * ⚡ REFRESH ON-DEMAND
+   */
+  @Post(&#x27;refresh/:companyId&#x27;)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: &#x27;Forçar Atualização de Insights&#x27;,
+    description:
+      &#x27;Invalida o cache e recalcula todos os indicadores (Saúde, Projeção, Snapshot) imediatamente.&#x27;,
+  })
+  @ApiParam({ name: &#x27;companyId&#x27;, description: &#x27;UUID da empresa&#x27; })
+  @ApiResponse({
+    status: 200,
+    description: &#x27;Insights recalculados com sucesso.&#x27;,
+  })
+  async refreshInsights(@Param(&#x27;companyId&#x27;) companyId: string) {
+    return await this.insightsService.refreshCompanyInsights(companyId);
+  }
+}
+</code></pre>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'controller';
+            var COMPODOC_CURRENT_PAGE_URL = 'InsightsController.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

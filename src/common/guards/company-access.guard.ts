@@ -13,6 +13,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { SKIP_COMPANY_CHECK_KEY } from '../decorators/skip-company-check.decorator.js';
+import { redactDeep, redactSensitiveHeaders } from '../security/redact-headers.util.js';
 
 /**
  * CompanyAccessGuard
@@ -49,7 +50,7 @@ export class CompanyAccessGuard implements CanActivate {
     // JwtAuthGuard já cuida de autenticação; se não há user, deixa seguir.
     if (!user?.id) return true;
 
-    const headerCompanyId = request.headers?.['x-company-id'];
+    const headerCompanyId = redactSensitiveHeaders(request.headers as Record<string, unknown>)?.['x-company-id'];
     const normalizedHeader = Array.isArray(headerCompanyId)
       ? headerCompanyId[0]
       : headerCompanyId;

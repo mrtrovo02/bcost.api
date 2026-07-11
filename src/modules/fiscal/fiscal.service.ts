@@ -17,8 +17,8 @@ import {
   Invoice,
   NotificationType,
   NotificationSeverity,
-  ComplianceStatus, // FIX: importado enum correto
-  NotificationStatus, // FIX: importado enum para status de notificação
+  ComplianceStatus,
+  NotificationStatus,
 } from '@prisma/client';
 import * as crypto from 'crypto';
 
@@ -32,9 +32,34 @@ interface ComplianceIssue {
   description: string;
 }
 
+type FiscalSyncStatus = {
+  revenue: number;
+  taxPaid: number;
+  taxSaved: number;
+  healthScore: number;
+  rbt12: number;
+  usagePercent: string;
+  warning: string;
+  lastUpdate: string;
+};
+
+type FiscalPerformancePoint = {
+  month: string;
+  year: number;
+  faturamento: number;
+  imposto: number;
+  impostoSemBcost: number;
+  impostoComBcost: number;
+  taxSaved: number;
+  optimized: boolean;
+  isSnapshot: boolean;
+};
+
 @Injectable()
 export class FiscalService implements OnModuleInit {
   private readonly logger = new Logger(FiscalService.name);
+
+  private readonly simplesLimit = 4_800_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -59,6 +84,240 @@ export class FiscalService implements OnModuleInit {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`⚠️ Redis aguardando conexão: ${message}`);
     }
+  }
+
+  private toNumber(value: Prisma.Decimal | number | string | null | undefined): number {
+    if (value === null || value === undefined) return 0;
+
+    if (value instanceof Prisma.Decimal) {
+      return value.toNumber();
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private getMonthName(month: number): string {
+    const names = [
+      'Jan',
+      'Fev',
+      'Mar',
+      'Abr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Set',
+      'Out',
+      'Nov',
+      'Dez',
+    ];
+
+    return names[Math.max(0, Math.min(11, month - 1))] ?? String(month);
+  }
+
+  private getFiscalWarning(params: {
+    rbt12: number;
+    usagePercent: number;
+    fatorR: number;
+    unreconciled: number;
+  }): string {
+    const { usagePercent, fatorR, unreconciled } = params;
+
+    if (usagePercent >= 90) {
+      return 'Atenção: empresa próxima do limite anual do Simples Nacional.';
+    }
+
+    if (fatorR > 0 && fatorR < 28) {
+      return 'Atenção: Fator R abaixo de 28%. Existe risco de tributação no Anexo V.';
+    }
+
+    if (unreconciled > 10) {
+      return 'Atenção: alto volume de notas sem conciliação bancária.';
+    }
+
+    return 'Operação fiscal saudável.';
+  }
+
+  private calculateHealthScore(params: {
+    usagePercent: number;
+    fatorR: number;
+    unreconciled: number;
+    openComplianceIssues: number;
+  }): number {
+    const { usagePercent, fatorR, unreconciled, openComplianceIssues } = params;
+
+    let score = 100;
+
+    if (usagePercent >= 90) score -= 25;
+    else if (usagePercent >= 75) score -= 12;
+
+    if (fatorR > 0 && fatorR < 28) score -= 20;
+
+    if (unreconciled > 10) score -= 15;
+    else if (unreconciled > 0) score -= 5;
+
+    if (openComplianceIssues > 0) {
+      score -= Math.min(25, openComplianceIssues * 5);
+    }
+
+    return Math.max(0, Math.min(100, score));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fiscal Intelligence — compatibilidade com frontend comercial
+  // ---------------------------------------------------------------------------
+
+  /**
+   * GET /api/v1/fiscal/sync-status/:companyId
+   *
+   * Entrega os KPIs esperados pelo frontend:
+   * - revenue
+   * - taxPaid
+   * - taxSaved
+   * - healthScore
+   * - rbt12
+   * - usagePercent
+   * - warning
+   * - lastUpdate
+   */
+  async getFiscalSyncStatus(
+    companyId: string,
+    month: number,
+    year: number,
+  ): Promise<FiscalSyncStatus> {
+    this.logger.log(
+      `[Fiscal Intelligence] Calculando sync-status company=${companyId}, month=${month}, year=${year}`,
+    );
+
+    const company = await this.prisma.extended.company.findUnique({
+      where: { id: companyId },
+      select: {
+        id: true,
+        lastSyncAt: true,
+        taxRegime: true,
+        active: true,
+      },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Empresa não cadastrada.');
+    }
+
+    const monthlyTax = await this.calculateMonthlyTax(companyId, month, year);
+
+    const now = new Date();
+    const rbtStart = new Date(now);
+    rbtStart.setMonth(rbtStart.getMonth() - 12);
+
+    const [rbtInvoices, unreconciled, openComplianceIssues] = await Promise.all([
+      this.prisma.extended.invoice.findMany({
+        where: {
+          companyId,
+          issuedAt: {
+            gte: rbtStart,
+            lte: now,
+          },
+          status: InvoiceStatus.NORMAL,
+        },
+        select: {
+          amount: true,
+        },
+      }),
+      this.prisma.extended.invoice.count({
+        where: {
+          companyId,
+          reconciled: false,
+          status: InvoiceStatus.NORMAL,
+        },
+      }),
+      this.prisma.complianceCheck.count({
+        where: {
+          companyId,
+          resolved: false,
+        },
+      }),
+    ]);
+
+    const rbt12 = rbtInvoices.reduce(
+      (acc, invoice) => acc.plus(invoice.amount),
+      new Prisma.Decimal(0),
+    );
+
+    const rbt12Number = rbt12.toNumber();
+    const usagePercentNumber = Number(
+      ((rbt12Number / this.simplesLimit) * 100).toFixed(2),
+    );
+
+    const fatorR = monthlyTax.metrics.fatorR;
+    const taxSaved = monthlyTax.financial.economiaFatorR;
+    const taxPaid = monthlyTax.financial.impostoAPagar;
+    const revenue = monthlyTax.metrics.faturamentoMes;
+
+    const healthScore = this.calculateHealthScore({
+      usagePercent: usagePercentNumber,
+      fatorR,
+      unreconciled,
+      openComplianceIssues,
+    });
+
+    return {
+      revenue,
+      taxPaid,
+      taxSaved,
+      healthScore,
+      rbt12: rbt12Number,
+      usagePercent: String(usagePercentNumber),
+      warning: this.getFiscalWarning({
+        rbt12: rbt12Number,
+        usagePercent: usagePercentNumber,
+        fatorR,
+        unreconciled,
+      }),
+      lastUpdate:
+        company.lastSyncAt?.toISOString() ??
+        new Date().toISOString(),
+    };
+  }
+
+  /**
+   * GET /api/v1/fiscal/performance/:companyId
+   *
+   * Série temporal fiscal usada no frontend:
+   * - faturamento
+   * - impostoSemBcost
+   * - impostoComBcost
+   * - economia
+   */
+  async getFiscalPerformance(
+    companyId: string,
+    year: number,
+  ): Promise<FiscalPerformancePoint[]> {
+    this.logger.log(
+      `[Fiscal Intelligence] Calculando performance company=${companyId}, year=${year}`,
+    );
+
+    const yearly = await this.getYearlyPerformance(companyId, year);
+
+    return yearly.map((item: any): FiscalPerformancePoint => {
+      const monthNumber = Number(item.month);
+      const faturamento = this.toNumber(item.faturamento);
+      const impostoComBcost = this.toNumber(item.imposto);
+      const impostoSemBcost = Number((faturamento * 0.155).toFixed(2));
+      const taxSaved = Math.max(0, impostoSemBcost - impostoComBcost);
+
+      return {
+        month: this.getMonthName(monthNumber),
+        year,
+        faturamento,
+        imposto: impostoComBcost,
+        impostoSemBcost,
+        impostoComBcost,
+        taxSaved: Number(taxSaved.toFixed(2)),
+        optimized: taxSaved > 0,
+        isSnapshot: Boolean(item.isSnapshot),
+      };
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -94,6 +353,7 @@ export class FiscalService implements OnModuleInit {
       currentMonth,
       currentYear,
     );
+
     if (stats.metrics.fatorR < 28 && stats.metrics.fatorR > 20) {
       issues.push({
         checkName: 'ALERTA_FATOR_R',
@@ -110,7 +370,7 @@ export class FiscalService implements OnModuleInit {
           checkName: issue.checkName,
           severity: issue.severity,
           description: issue.description,
-          status: ComplianceStatus.OPEN, // FIX: era 'OPEN' string literal
+          status: ComplianceStatus.OPEN,
           resolved: false,
         },
       });
@@ -165,7 +425,7 @@ export class FiscalService implements OnModuleInit {
         title: `Alerta Fiscal: ${issue.checkName}`,
         message: issue.description,
         severity: issue.severity,
-        status: NotificationStatus.PENDING, // FIX: era 'PENDING' string literal
+        status: NotificationStatus.PENDING,
       },
     });
   }
@@ -214,7 +474,6 @@ export class FiscalService implements OnModuleInit {
 
   // ---------------------------------------------------------------------------
   // Cálculo mensal de imposto
-  // FIX: referenceMonth string → month + year como Int (alinhado ao schema)
   // ---------------------------------------------------------------------------
 
   async calculateMonthlyTax(companyId: string, month: number, year: number) {
@@ -229,7 +488,6 @@ export class FiscalService implements OnModuleInit {
           status: InvoiceStatus.NORMAL,
         },
       }),
-      // FIX: era { referenceMonth: referenceMonthStr } — campo não existe mais
       this.prisma.payroll.findMany({
         where: { companyId, month, year },
       }),
@@ -239,12 +497,14 @@ export class FiscalService implements OnModuleInit {
       (acc, inv) => acc.plus(inv.amount),
       new Prisma.Decimal(0),
     );
+
     const folhaMes = payrolls.reduce(
       (acc, p) => acc.plus(p.totalAmount),
       new Prisma.Decimal(0),
     );
 
     let fatorR = 0;
+
     if (!faturamentoMes.isZero()) {
       fatorR = folhaMes.div(faturamentoMes).mul(100).toNumber();
     }
@@ -253,7 +513,6 @@ export class FiscalService implements OnModuleInit {
     const aliqEfetiva = anexoUtilizado === 'III' ? 0.06 : 0.155;
     const impostoAPagar = faturamentoMes.mul(aliqEfetiva);
 
-    // FIX: period agora é string formatada para exibição — não mais usada como chave de query
     const period = `${year}-${String(month).padStart(2, '0')}`;
 
     return {
@@ -271,7 +530,10 @@ export class FiscalService implements OnModuleInit {
             ? faturamentoMes.mul(0.155).minus(impostoAPagar).toNumber()
             : 0,
       },
-      integrity: { count: invoices.length, period },
+      integrity: {
+        count: invoices.length,
+        period,
+      },
     };
   }
 
@@ -287,7 +549,10 @@ export class FiscalService implements OnModuleInit {
     const company = await this.prisma.extended.company.findUnique({
       where: { id: companyId },
     });
-    if (!company) throw new NotFoundException('Empresa não cadastrada.');
+
+    if (!company) {
+      throw new NotFoundException('Empresa não cadastrada.');
+    }
 
     const jobs = files.map((file) => ({
       name: 'xml-extraction-job',
@@ -299,13 +564,20 @@ export class FiscalService implements OnModuleInit {
       },
       opts: {
         attempts: 3,
-        backoff: { type: 'exponential', delay: 2000 },
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
         removeOnComplete: true,
       },
     }));
 
     const enqueued = await this.xmlQueue.addBulk(jobs);
-    return { status: 'queued', count: enqueued.length };
+
+    return {
+      status: 'queued',
+      count: enqueued.length,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -346,9 +618,11 @@ export class FiscalService implements OnModuleInit {
 
     for (const inv of invoices) {
       const idx = inv.issuedAt.getMonth();
+
       monthlyMap[idx].faturamento = monthlyMap[idx].faturamento.plus(
         inv.amount,
       );
+
       monthlyMap[idx].imposto = monthlyMap[idx].faturamento.mul(0.06);
     }
 
@@ -382,7 +656,9 @@ export class FiscalService implements OnModuleInit {
     return {
       optimized: false,
       message: 'Alerta: Empresa enquadrada no Anexo V (Alíquota cara).',
-      action: `Ajuste o Pró-labore para R$ ${(folhaIdeal - folhaMes).toFixed(2)} para migrar ao Anexo III.`,
+      action: `Ajuste o Pró-labore para R$ ${(folhaIdeal - folhaMes).toFixed(
+        2,
+      )} para migrar ao Anexo III.`,
       potentialSaving: faturamentoDecimal.mul(0.095).toNumber(),
     };
   }
@@ -409,7 +685,10 @@ export class FiscalService implements OnModuleInit {
 
     const customer = await this.prisma.customer.upsert({
       where: {
-        companyId_document: { companyId, document: '00.000.000/0001-91' },
+        companyId_document: {
+          companyId,
+          document: '00.000.000/0001-91',
+        },
       },
       update: {},
       create: {
@@ -423,7 +702,11 @@ export class FiscalService implements OnModuleInit {
     for (let m = 1; m <= 12; m++) {
       const issuedAt = new Date(year, m - 1, 15);
       const existing = await this.prisma.invoice.findFirst({
-        where: { companyId, customerId: customer.id, issuedAt },
+        where: {
+          companyId,
+          customerId: customer.id,
+          issuedAt,
+        },
       });
 
       if (!existing) {
@@ -433,20 +716,25 @@ export class FiscalService implements OnModuleInit {
             customerId: customer.id,
             amount: new Prisma.Decimal(10_000.0),
             taxAmount: new Prisma.Decimal(600.0),
-            // FIX: accessKey única por mês para evitar colisão no @unique do schema
-            accessKey: `352602${year}${String(m).padStart(2, '0')}${Math.random().toString().substring(2, 8)}`,
+            accessKey: `352602${year}${String(m).padStart(2, '0')}${Math.random()
+              .toString()
+              .substring(2, 8)}`,
             issuedAt,
             type: InvoiceType.SERVICE,
             status: InvoiceStatus.NORMAL,
             reconciled: false,
           },
         });
+
         results.push(res);
       } else {
         results.push(existing);
       }
     }
 
-    return { status: 'success', created: results.length };
+    return {
+      status: 'success',
+      created: results.length,
+    };
   }
 }

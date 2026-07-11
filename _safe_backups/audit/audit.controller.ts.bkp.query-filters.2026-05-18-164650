@@ -1,0 +1,79 @@
+'use strict';
+
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { AuditService } from './audit.service.js';
+import { CreateAuditLogDto } from './dto/create-audit-log.dto.js';
+import { QueryAuditLogDto } from './dto/query-audit-log.dto.js';
+
+@ApiTags('Audit - Auditoria Enterprise')
+@ApiBearerAuth('JWT')
+@UseGuards(JwtAuthGuard)
+@Controller('audit')
+export class AuditController {
+  constructor(private readonly auditService: AuditService) {}
+
+  @Get(':companyId')
+  @ApiOperation({
+    summary: 'AUDIT: Listar logs de auditoria por empresa',
+  })
+  async list(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Query() query: QueryAuditLogDto,
+  ) {
+    return await this.auditService.list(companyId, query);
+  }
+
+  @Get('summary/:companyId')
+  @ApiOperation({
+    summary: 'AUDIT: Resumo de auditoria por empresa',
+  })
+  async summary(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    return await this.auditService.summary(companyId);
+  }
+
+  @Get('health/:companyId')
+  @ApiOperation({
+    summary: 'AUDIT: Health check do módulo de auditoria',
+  })
+  async health(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    return await this.auditService.health(companyId);
+  }
+
+  @Post(':companyId')
+  @ApiOperation({
+    summary: 'AUDIT: Registrar evento de auditoria manual/sistêmico',
+  })
+  async create(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Body() dto: CreateAuditLogDto,
+    @Req() req: any,
+  ) {
+    const enriched: CreateAuditLogDto = {
+      ...dto,
+      ipAddress:
+        dto.ipAddress ||
+        req?.headers?.['x-forwarded-for'] ||
+        req?.ip ||
+        req?.socket?.remoteAddress,
+      userAgent: dto.userAgent || req?.headers?.['user-agent'],
+    };
+
+    return await this.auditService.create(companyId, enriched);
+  }
+}

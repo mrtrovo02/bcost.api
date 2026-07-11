@@ -1,0 +1,1019 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content injectable">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Injectables</li>
+  <li class="breadcrumb-item" >ReconciliationService</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/banking/reconciliation.service.ts</code>
+        </p>
+
+
+
+
+
+            <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Properties</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#logger" >logger</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#SYSTEM_USER_ID" >SYSTEM_USER_ID</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Async</span>
+                                <a href="#findInvoiceMatch" >findInvoiceMatch</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#manualMatch" >manualMatch</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#runAutoMatch" >runAutoMatch</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#undoMatch" >undoMatch</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+            <section data-compodoc="block-constructor">
+    <h3 id="constructor">Constructor</h3>
+        <table class="table table-sm table-bordered">
+            <tbody>
+                <tr>
+                    <td class="col-md-4">
+<code>constructor(prisma: <a href="../injectables/PrismaService.html" target="_self">PrismaService</a>)</code>
+                    </td>
+                </tr>
+                        <tr>
+                            <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="20" class="link-to-prism">src/modules/banking/reconciliation.service.ts:20</a></div>
+                            </td>
+                        </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                            <div>
+                                    <b>Parameters :</b>
+                                    <table class="params">
+                                        <thead>
+                                            <tr>
+                                                <td>Name</td>
+                                                    <td>Type</td>
+                                                <td>Optional</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                <tr>
+                                                        <td>prisma</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/PrismaService.html" target="_self" >PrismaService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+</section>
+
+            <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="findInvoiceMatch"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Async</span>
+                        <span ><b>findInvoiceMatch</b></span>
+                        <a href="#findInvoiceMatch"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>findInvoiceMatch(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, trn: literal type)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="218"
+                                    class="link-to-prism">src/modules/banking/reconciliation.service.ts:218</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🧠 ENGINE DE BUSCA (PRIVATE)
+Regra de Elite: Valor exato + Janela dinâmica de 7 dias (D-7 a D+2).</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>trn</td>
+                                            <td>
+                                                        <code>literal type</code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="manualMatch"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>manualMatch</b></span>
+                        <a href="#manualMatch"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>manualMatch(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, transactionId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, invoiceId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, userId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="118"
+                                    class="link-to-prism">src/modules/banking/reconciliation.service.ts:118</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🛠️ MANUAL MATCH (CONCILIAÇÃO FORÇADA)
+Vincula manualmente uma transação a uma nota fiscal.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>transactionId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>invoiceId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>userId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="runAutoMatch"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>runAutoMatch</b></span>
+                        <a href="#runAutoMatch"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>runAutoMatch(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="28"
+                                    class="link-to-prism">src/modules/banking/reconciliation.service.ts:28</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>🚀 AUTO MATCH (CONCILIAÇÃO AUTOMÁTICA)
+Utiliza o Prisma Extended para ignorar registros com &#39;deletedAt&#39;.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="undoMatch"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>undoMatch</b></span>
+                        <a href="#undoMatch"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>undoMatch(transactionId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, userId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="178"
+                                    class="link-to-prism">src/modules/banking/reconciliation.service.ts:178</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>⏪ UNDO MATCH (DESFAZER CONCILIAÇÃO)
+Libera a nota e a transação.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>transactionId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>userId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+            <section data-compodoc="block-properties">
+    
+    <h3 id="inputs">
+        Properties
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="logger"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Readonly</span>
+                        <span ><b>logger</b></span>
+                        <a href="#logger"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Type : </i>    <code>unknown</code>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Default value : </i><code>new Logger(ReconciliationService.name)</code>
+                    </td>
+                </tr>
+                    <tr>
+                        <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="14" class="link-to-prism">src/modules/banking/reconciliation.service.ts:14</a></div>
+                        </td>
+                    </tr>
+
+
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="SYSTEM_USER_ID"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Readonly</span>
+                        <span ><b>SYSTEM_USER_ID</b></span>
+                        <a href="#SYSTEM_USER_ID"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Default value : </i><code>&#x27;00000000-0000-0000-0000-000000000000&#x27;</code>
+                    </td>
+                </tr>
+                    <tr>
+                        <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="20" class="link-to-prism">src/modules/banking/reconciliation.service.ts:20</a></div>
+                        </td>
+                    </tr>
+
+            <tr>
+                <td class="col-md-4">
+                    <div class="io-description"><p>ID de Sistema para Auditoria Automatizada.
+Certifique-se de que este UUID exista na tabela &#39;users&#39; (via Seed).</p>
+</div>
+                </td>
+            </tr>
+
+        </tbody>
+    </table>
+</section>
+
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from &#x27;@nestjs/common&#x27;;
+import { PrismaService } from &#x27;../../database/prisma.service.js&#x27;;
+import { TransactionType, InvoiceStatus, Prisma } from &#x27;@prisma/client&#x27;;
+
+@Injectable()
+export class ReconciliationService {
+  private readonly logger &#x3D; new Logger(ReconciliationService.name);
+
+  /**
+   * ID de Sistema para Auditoria Automatizada.
+   * Certifique-se de que este UUID exista na tabela &#x27;users&#x27; (via Seed).
+   */
+  private readonly SYSTEM_USER_ID &#x3D; &#x27;00000000-0000-0000-0000-000000000000&#x27;;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * 🚀 AUTO MATCH (CONCILIAÇÃO AUTOMÁTICA)
+   * Utiliza o Prisma Extended para ignorar registros com &#x27;deletedAt&#x27;.
+   */
+  async runAutoMatch(companyId: string) {
+    if (!companyId) {
+      throw new BadRequestException(&#x27;companyId é obrigatório.&#x27;);
+    }
+
+    this.logger.log(
+      &#x60;[Reconciliation] Auto-Match iniciado | Company&#x3D;${companyId}&#x60;,
+    );
+
+    // Uso do .extended para garantir Soft Delete Compliance
+    const pendingTransactions &#x3D;
+      await this.prisma.extended.bankTransaction.findMany({
+        where: {
+          companyId,
+          reconciled: false,
+          type: TransactionType.CREDIT,
+        },
+        orderBy: { occurredAt: &#x27;asc&#x27; },
+      });
+
+    let matchCount &#x3D; 0;
+
+    for (const trn of pendingTransactions) {
+      const match &#x3D; await this.findInvoiceMatch(companyId, trn);
+
+      if (!match) continue;
+
+      try {
+        // Transação atômica com isolamento de leitura para evitar Double-Spending
+        await this.prisma.$transaction(
+          async (tx) &#x3D;&gt; {
+            await tx.bankTransaction.update({
+              where: { id: trn.id },
+              data: {
+                reconciled: true,
+                invoiceId: match.id,
+              },
+            });
+
+            await tx.invoice.update({
+              where: { id: match.id },
+              data: {
+                reconciled: true,
+                status: InvoiceStatus.PAID, // Atualiza status para fluxo de PnL
+              },
+            });
+
+            // Registro de Auditoria Enterprise
+            await tx.auditLog.create({
+              data: {
+                userId: this.SYSTEM_USER_ID,
+                companyId,
+                action: &#x27;AUTO_RECONCILIATION_MATCH&#x27;,
+                module: &#x27;RECONCILIATION&#x27;,
+                entity: &#x27;BankTransaction&#x27;,
+                entityId: trn.id,
+                payload: { invoiceId: match.id, amount: trn.amount },
+                statusCode: 200,
+              },
+            });
+          },
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+          },
+        );
+
+        matchCount++;
+        this.logger.debug(
+          &#x60;[MATCH OK] BankTransaction&#x3D;${trn.id} Invoice&#x3D;${match.id}&#x60;,
+        );
+      } catch (error: unknown) {
+        const message &#x3D; error instanceof Error ? error.message : String(error);
+        this.logger.error(&#x60;[MATCH ERROR] Transaction&#x3D;${trn.id}&#x60;, message);
+      }
+    }
+
+    const analyzed &#x3D; pendingTransactions.length;
+    return {
+      analyzed,
+      reconciled: matchCount,
+      accuracy:
+        analyzed &gt; 0 ? Number(((matchCount / analyzed) * 100).toFixed(2)) : 0,
+      timestamp: new Date(),
+    };
+  }
+
+  /**
+   * 🛠️ MANUAL MATCH (CONCILIAÇÃO FORÇADA)
+   * Vincula manualmente uma transação a uma nota fiscal.
+   */
+  async manualMatch(
+    companyId: string,
+    transactionId: string,
+    invoiceId: string,
+    userId: string,
+  ) {
+    this.logger.warn(
+      &#x60;[Manual-Match] User&#x3D;${userId} vinculando Tx&#x3D;${transactionId} à Inv&#x3D;${invoiceId}&#x60;,
+    );
+
+    return await this.prisma.$transaction(async (tx) &#x3D;&gt; {
+      // Verificação de existência via extended para evitar vincular notas &quot;deletadas&quot;
+      const [trn, inv] &#x3D; await Promise.all([
+        this.prisma.extended.bankTransaction.findUnique({
+          where: { id: transactionId },
+        }),
+        this.prisma.extended.invoice.findUnique({ where: { id: invoiceId } }),
+      ]);
+
+      if (!trn || !inv)
+        throw new NotFoundException(
+          &#x27;Transação ou Nota não encontrada (ou excluída).&#x27;,
+        );
+      if (trn.reconciled || inv.reconciled)
+        throw new BadRequestException(&#x27;Um dos registros já está conciliado.&#x27;);
+
+      const result &#x3D; await tx.bankTransaction.update({
+        where: { id: transactionId },
+        data: {
+          reconciled: true,
+          invoiceId: inv.id,
+        },
+      });
+
+      await tx.invoice.update({
+        where: { id: invoiceId },
+        data: { reconciled: true, status: InvoiceStatus.PAID },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId,
+          companyId,
+          action: &#x27;MANUAL_RECONCILIATION&#x27;,
+          module: &#x27;RECONCILIATION&#x27;,
+          entity: &#x27;BankTransaction&#x27;,
+          entityId: transactionId,
+          payload: { invoiceId, reason: &#x27;Manual override&#x27; },
+          statusCode: 201,
+        },
+      });
+
+      return result;
+    });
+  }
+
+  /**
+   * ⏪ UNDO MATCH (DESFAZER CONCILIAÇÃO)
+   * Libera a nota e a transação.
+   */
+  async undoMatch(transactionId: string, userId: string) {
+    const transaction &#x3D; await this.prisma.extended.bankTransaction.findUnique({
+      where: { id: transactionId },
+      select: { id: true, companyId: true, reconciled: true, invoiceId: true },
+    });
+
+    if (!transaction || !transaction.reconciled || !transaction.invoiceId) {
+      throw new NotFoundException(&#x27;Transação não disponível para desfazer.&#x27;);
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.bankTransaction.update({
+        where: { id: transactionId },
+        data: { reconciled: false, invoiceId: null },
+      }),
+      this.prisma.invoice.update({
+        where: { id: transaction.invoiceId },
+        data: { reconciled: false, status: InvoiceStatus.NORMAL },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          userId: userId || this.SYSTEM_USER_ID,
+          companyId: transaction.companyId,
+          action: &#x27;UNDO_RECONCILIATION&#x27;,
+          module: &#x27;RECONCILIATION&#x27;,
+          entity: &#x27;BankTransaction&#x27;,
+          entityId: transactionId,
+          payload: { previousInvoiceId: transaction.invoiceId },
+          statusCode: 200,
+        },
+      }),
+    ]);
+
+    return { status: &#x27;SUCCESS&#x27;, transactionId };
+  }
+
+  /**
+   * 🧠 ENGINE DE BUSCA (PRIVATE)
+   * Regra de Elite: Valor exato + Janela dinâmica de 7 dias (D-7 a D+2).
+   */
+  private async findInvoiceMatch(
+    companyId: string,
+    trn: { amount: Prisma.Decimal; occurredAt: Date },
+  ) {
+    const fromDate &#x3D; new Date(
+      trn.occurredAt.getTime() - 7 * 24 * 60 * 60 * 1000,
+    );
+    const toDate &#x3D; new Date(trn.occurredAt.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+    return this.prisma.extended.invoice.findFirst({
+      where: {
+        companyId,
+        reconciled: false,
+        status: { in: [InvoiceStatus.NORMAL, InvoiceStatus.PENDING] },
+        amount: trn.amount,
+        issuedAt: { gte: fromDate, lte: toDate },
+      },
+      orderBy: { issuedAt: &#x27;asc&#x27; },
+    });
+  }
+}
+</code></pre>
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'injectable';
+            var COMPODOC_CURRENT_PAGE_URL = 'ReconciliationService.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

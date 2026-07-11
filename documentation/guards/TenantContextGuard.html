@@ -1,0 +1,576 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content guard">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+    <li class="breadcrumb-item">Guards</li>
+    <li class="breadcrumb-item" >TenantContextGuard</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+        <div class="tab-pane fade active in" id="info">
+            <p class="comment">
+                <h3>File</h3>
+            </p>
+            <p class="comment">
+                <code>src/common/guards/tenant-context.guard.ts</code>
+            </p>
+
+
+                <p class="comment">
+                <h3>Description</h3>
+                </p>
+                <p class="comment">
+                    <p>TenantContextGuard — Isolamento Multi-tenant bCost</p>
+<p>RESPONSABILIDADES:</p>
+<ol>
+<li>Lê companyId e userId do req.user (já populado pelo JwtAuthGuard via JwtStrategy)</li>
+<li>Injeta no TenantContext (AsyncLocalStorage) para que o PrismaService aplique
+filtros de tenant automaticamente em todas as queries</li>
+<li>Atualiza o contextStorage para rastreabilidade em logs e AuditLog</li>
+</ol>
+<p>FIX CRÍTICO em relação ao original:</p>
+<p>O guard original tentava verificar o JWT manualmente com <code>jwtService.verifyAsync()</code>
+e exigia <code>companyId</code> no token. Isso causava dois problemas:</p>
+<ol>
+<li><p>DUPLICAÇÃO: O JwtAuthGuard (que executa antes) já valida e decodifica o token.
+Verificar de novo aqui desperdiça CPU e cria dois pontos de falha.</p>
+</li>
+<li><p>401 EM CASCATA: O JWT original não incluía <code>companyId</code> no payload, então
+<code>payload.companyId</code> era sempre undefined e o guard rejeitava tudo.
+Agora o AuthService.login() inclui companyId no payload e o JwtStrategy
+popula req.user com { id, email, companyId, role } — este guard apenas lê.</p>
+</li>
+<li><p>DEPENDÊNCIA CIRCULAR: injetar JwtService + PrismaService aqui criava ciclos
+com AuthModule e DatabaseModule que dificultavam o bootstrap.</p>
+</li>
+</ol>
+<p>ORDEM DOS GUARDS no AppModule (Top-Down):</p>
+<ol>
+<li>JwtAuthGuard      → valida Bearer token, popula req.user</li>
+<li>TenantContextGuard → propaga req.user.companyId para AsyncLocalStorage</li>
+<li>ThrottlerGuard    → rate limiting</li>
+</ol>
+<p>ROTAS @Public():
+Bypass completo — nenhum contexto de tenant é injetado.
+O PrismaService lida com tenantId === undefined retornando queries sem filtro.</p>
+
+                </p>
+
+
+
+
+                <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Properties</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#logger" >logger</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                <a href="#canActivate" >canActivate</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+                <section data-compodoc="block-constructor">
+    <h3 id="constructor">Constructor</h3>
+        <table class="table table-sm table-bordered">
+            <tbody>
+                <tr>
+                    <td class="col-md-4">
+<code>constructor(reflector: Reflector)</code>
+                    </td>
+                </tr>
+                        <tr>
+                            <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="55" class="link-to-prism">src/common/guards/tenant-context.guard.ts:55</a></div>
+                            </td>
+                        </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                            <div>
+                                    <b>Parameters :</b>
+                                    <table class="params">
+                                        <thead>
+                                            <tr>
+                                                <td>Name</td>
+                                                    <td>Type</td>
+                                                <td>Optional</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                <tr>
+                                                        <td>reflector</td>
+                                                  
+                                                        <td>
+                                                                    <code>Reflector</code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+</section>
+
+                <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="canActivate"></a>
+                    <span class="name">
+                        <span ><b>canActivate</b></span>
+                        <a href="#canActivate"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+<code>canActivate(context: ExecutionContext)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="62"
+                                    class="link-to-prism">src/common/guards/tenant-context.guard.ts:62</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>context</td>
+                                            <td>
+                                                        <code>ExecutionContext</code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/boolean" target="_blank" >boolean</a></code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+        </div>
+
+
+        <div class="tab-pane fade  tab-source-code" id="source">
+            <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+// &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;
+// ARQUIVO: src/common/guards/tenant-context.guard.ts
+// &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;
+
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  Logger,
+} from &#x27;@nestjs/common&#x27;;
+import { Reflector } from &#x27;@nestjs/core&#x27;;
+import { IS_PUBLIC_KEY } from &#x27;../decorators/public.decorator.js&#x27;;
+import { TenantContext } from &#x27;../tenant/tenant.context.js&#x27;;
+import { contextStorage } from &#x27;../context/context.storage.js&#x27;;
+import { randomUUID } from &#x27;crypto&#x27;;
+
+/**
+ * TenantContextGuard — Isolamento Multi-tenant bCost
+ *
+ * RESPONSABILIDADES:
+ * 1. Lê companyId e userId do req.user (já populado pelo JwtAuthGuard via JwtStrategy)
+ * 2. Injeta no TenantContext (AsyncLocalStorage) para que o PrismaService aplique
+ *    filtros de tenant automaticamente em todas as queries
+ * 3. Atualiza o contextStorage para rastreabilidade em logs e AuditLog
+ *
+ * FIX CRÍTICO em relação ao original:
+ *
+ * O guard original tentava verificar o JWT manualmente com &#x60;jwtService.verifyAsync()&#x60;
+ * e exigia &#x60;companyId&#x60; no token. Isso causava dois problemas:
+ *
+ * 1. DUPLICAÇÃO: O JwtAuthGuard (que executa antes) já valida e decodifica o token.
+ *    Verificar de novo aqui desperdiça CPU e cria dois pontos de falha.
+ *
+ * 2. 401 EM CASCATA: O JWT original não incluía &#x60;companyId&#x60; no payload, então
+ *    &#x60;payload.companyId&#x60; era sempre undefined e o guard rejeitava tudo.
+ *    Agora o AuthService.login() inclui companyId no payload e o JwtStrategy
+ *    popula req.user com { id, email, companyId, role } — este guard apenas lê.
+ *
+ * 3. DEPENDÊNCIA CIRCULAR: injetar JwtService + PrismaService aqui criava ciclos
+ *    com AuthModule e DatabaseModule que dificultavam o bootstrap.
+ *
+ * ORDEM DOS GUARDS no AppModule (Top-Down):
+ * 1. JwtAuthGuard      → valida Bearer token, popula req.user
+ * 2. TenantContextGuard → propaga req.user.companyId para AsyncLocalStorage
+ * 3. ThrottlerGuard    → rate limiting
+ *
+ * ROTAS @Public():
+ * Bypass completo — nenhum contexto de tenant é injetado.
+ * O PrismaService lida com tenantId &#x3D;&#x3D;&#x3D; undefined retornando queries sem filtro.
+ */
+@Injectable()
+export class TenantContextGuard implements CanActivate {
+  private readonly logger &#x3D; new Logger(&#x27;TenantContextGuard&#x27;);
+
+  // FIX: removidas injeções de JwtService e PrismaService
+  // O guard não precisa mais verificar JWT nem chamar setCompanyScope()
+  // (setCompanyScope() é @deprecated — o TenantContext via AsyncLocalStorage é o padrão)
+  constructor(private readonly reflector: Reflector) {}
+
+  canActivate(context: ExecutionContext): boolean {
+    // 1. Rotas marcadas com @Public() ignoram o contexto de tenant
+    const isPublic &#x3D; this.reflector.getAllAndOverride&lt;boolean&gt;(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+
+    if (isPublic) {
+      return true;
+    }
+
+    const request &#x3D; context.switchToHttp().getRequest();
+
+    // 2. req.user foi populado pelo JwtAuthGuard + JwtStrategy com { id, email, companyId, role }
+    //    Se não há user, o JwtAuthGuard já deveria ter lançado 401.
+    const user &#x3D; request.user as
+      | {
+          id?: string;
+          companyId?: string | null;
+          role?: string | null;
+        }
+      | undefined;
+
+    if (!user?.id) {
+      // Não lança aqui — deixa o JwtAuthGuard ser o guardião da autenticação.
+      // Este guard é responsável apenas por propagar o contexto.
+      return true;
+    }
+
+    const userId &#x3D; user.id;
+    const companyId &#x3D; user.companyId ?? undefined;
+    const requestId &#x3D;
+      (request.headers?.[&#x27;x-bcost-trace-id&#x27;] as string) ?? randomUUID();
+
+    // 3. Propaga para o TenantContext (AsyncLocalStorage do PrismaService)
+    //    O store já existe se o onRequest hook do Fastify (main.ts) rodou antes.
+    //    Atualizamos os campos sem recriar o store para não quebrar o contexto existente.
+    const tenantStore &#x3D; TenantContext.getStore();
+
+    if (tenantStore) {
+      tenantStore.tenantId &#x3D; companyId;
+      tenantStore.userId &#x3D; userId;
+      tenantStore.requestId &#x3D; tenantStore.requestId ?? requestId;
+    } else {
+      // Fallback: store não foi criado pelo hook do Fastify.
+      // Cenário: testes unitários, requisições WebSocket ou execução fora do ciclo HTTP normal.
+      this.logger.warn(
+        &#x60;[TenantContext] AsyncLocalStorage store ausente para request ${requestId}. &#x60; +
+          &#x27;Verifique se o onRequest hook está registrado em main.ts.&#x27;,
+      );
+      // Run síncrono — o contexto não se propaga para Promises filhas neste caminho.
+      // Para garantir propagação total, o hook do Fastify deve sempre ser a fonte primária.
+      TenantContext.run({ tenantId: companyId, userId, requestId }, () &#x3D;&gt; {});
+    }
+
+    // 4. Propaga para o contextStorage (usado pelo GlobalExceptionFilter e AuditLogInterceptor)
+    const appStore &#x3D; contextStorage.getStore();
+    if (appStore) {
+      appStore.companyId &#x3D; companyId;
+      appStore.userId &#x3D; userId;
+    }
+
+    // 5. Log de diagnóstico (debug apenas — não polui produção)
+    if (companyId) {
+      this.logger.debug(
+        &#x60;[Tenant] userId&#x3D;${userId} | companyId&#x3D;${companyId} | requestId&#x3D;${requestId}&#x60;,
+      );
+    } else {
+      this.logger.debug(
+        &#x60;[Tenant] userId&#x3D;${userId} sem empresa ativa — queries sem filtro de tenant.&#x60;,
+      );
+    }
+
+    return true;
+  }
+}
+</code></pre>
+        </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'guard';
+            var COMPODOC_CURRENT_PAGE_URL = 'TenantContextGuard.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

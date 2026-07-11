@@ -1,0 +1,793 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content interface">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Interfaces</li>
+  <li class="breadcrumb-item"
+  >
+  ComplianceReport</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/fiscal/compliance/compliance.service.ts</code>
+        </p>
+
+
+            <p class="comment">
+                <h3>Description</h3>
+            </p>
+            <p class="comment">
+                <p>Interface Enterprise para o Relatório de Compliance.</p>
+
+            </p>
+
+
+        <section data-compodoc="block-index">
+            <h3 id="index">Index</h3>
+            <table class="table table-sm table-bordered index-table">
+                <tbody>
+                    <tr>
+                        <td class="col-md-4">
+                            <h6><b>Properties</b></h6>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="col-md-4">
+                            <ul class="index-list">
+                                <li>
+                                        <a href="#companyId" 
+>
+                                            companyId
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#fatorR" 
+>
+                                            fatorR
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#findings" 
+>
+                                            findings
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#score" 
+>
+                                            score
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#status" 
+>
+                                            status
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#summary" 
+>
+                                            summary
+                                        </a>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+
+
+            <section data-compodoc="block-properties">
+                <h3 id="inputs">Properties</h3>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="companyId"></a>
+                                        <span class="name "><b>companyId</b>
+                                            <a href="#companyId">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>companyId:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="fatorR"></a>
+                                        <span class="name "><b>fatorR</b>
+                                            <a href="#fatorR">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>fatorR:     <code>literal type</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>literal type</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="findings"></a>
+                                        <span class="name "><b>findings</b>
+                                            <a href="#findings">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>findings:     <code>Array&lt;literal type&gt;</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>Array&lt;literal type&gt;</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="score"></a>
+                                        <span class="name "><b>score</b>
+                                            <a href="#score">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>score:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="status"></a>
+                                        <span class="name "><b>status</b>
+                                            <a href="#status">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>status:     <code>&quot;HEALTHY&quot; | &quot;WARNING&quot; | &quot;CRITICAL&quot;</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>&quot;HEALTHY&quot; | &quot;WARNING&quot; | &quot;CRITICAL&quot;</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="summary"></a>
+                                        <span class="name "><b>summary</b>
+                                            <a href="#summary">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>summary:     <code>literal type</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>literal type</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+            </section>
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import { Injectable, Logger, NotFoundException } from &#x27;@nestjs/common&#x27;;
+import { PrismaService } from &#x27;../../../database/prisma.service.js&#x27;;
+import {
+  InvoiceStatus,
+  InvoiceType,
+  Prisma,
+  CertificateStatus,
+  NotificationType,
+  NotificationSeverity,
+} from &#x27;@prisma/client&#x27;;
+
+/**
+ * Interface Enterprise para o Relatório de Compliance.
+ */
+export interface ComplianceReport {
+  companyId: string;
+  score: number;
+  status: &#x27;HEALTHY&#x27; | &#x27;WARNING&#x27; | &#x27;CRITICAL&#x27;;
+  fatorR: {
+    current: number;
+    eligible: boolean;
+    recommendedAnexo: string;
+    targetPayrollValue: number;
+    projectedTaxSaving: number;
+  };
+  findings: Array&lt;{
+    code: string;
+    severity: &#x27;LOW&#x27; | &#x27;MEDIUM&#x27; | &#x27;HIGH&#x27;;
+    message: string;
+    affectedInvoices?: string[];
+    fixSuggestion?: string;
+  }&gt;;
+  summary: {
+    totalAnalyzedInvoices: number;
+    totalPayrollAnalyzed: number;
+    issuesCount: number;
+    revenueYTD: number;
+    billingLimitProgress: number;
+  };
+}
+
+@Injectable()
+export class ComplianceService {
+  private readonly logger &#x3D; new Logger(&#x27;bCost-Compliance-Engine&#x27;);
+  private readonly SIMPLES_LIMIT &#x3D; 4800000; // Limite Simples Nacional R$ 4.8M
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Ponto de entrada rápido para verificações de saúde via Controller.
+   */
+  async runHealthCheck(companyId: string): Promise&lt;ComplianceReport&gt; {
+    return this.runFullComplianceAudit(companyId);
+  }
+
+  /**
+   * Monitor de integridade de certificados digitais.
+   * Executa a atualização de status e dispara notificações sistêmicas.
+   */
+  async checkCertificatesHealth() {
+    this.logger.log(
+      &#x27;🛡️ [Compliance] Verificando integridade de certificados...&#x27;,
+    );
+
+    const today &#x3D; new Date();
+    const alertThreshold &#x3D; new Date();
+    alertThreshold.setDate(today.getDate() + 30);
+
+    const certificates &#x3D; await this.prisma.digitalCertificate.findMany({
+      where: { status: { not: CertificateStatus.REVOKED } },
+    });
+
+    let alertsGenerated &#x3D; 0;
+
+    for (const cert of certificates) {
+      try {
+        if (cert.validTo &lt;&#x3D; today) {
+          await this.processCertificateExpiration(cert, &#x27;EXPIRED&#x27;);
+          alertsGenerated++;
+        } else if (cert.validTo &lt;&#x3D; alertThreshold) {
+          await this.processCertificateExpiration(cert, &#x27;WARNING&#x27;);
+          alertsGenerated++;
+        }
+      } catch (error: any) {
+        this.logger.error(
+          &#x60;❌ Erro no check do certificado ${cert.id}: ${error.message}&#x60;,
+        );
+      }
+    }
+
+    return { checked: certificates.length, alerts: alertsGenerated };
+  }
+
+  /**
+   * Auditoria Profunda de Conformidade.
+   * Analisa Faturamento, Cancelamentos e Eficiência Tributária (Fator R).
+   */
+  async runFullComplianceAudit(companyId: string): Promise&lt;ComplianceReport&gt; {
+    const company &#x3D; await this.prisma.company.findUnique({
+      where: { id: companyId },
+      include: { _count: { select: { invoices: true } } },
+    });
+
+    if (!company)
+      throw new NotFoundException(
+        &#x27;Empresa não encontrada no ecossistema bCost.&#x27;,
+      );
+
+    const findings: ComplianceReport[&#x27;findings&#x27;] &#x3D; [];
+    let score &#x3D; 100;
+
+    // 1. ANÁLISE DE FATURAMENTO ACUMULADO (YTD)
+    const revenueStats &#x3D; await this.fetchYearlyRevenue(companyId);
+    const billingProgress &#x3D; revenueStats
+      .div(this.SIMPLES_LIMIT)
+      .mul(100)
+      .toNumber();
+
+    if (billingProgress &gt; 80) {
+      findings.push({
+        code: &#x27;SIMPLES_LIMIT_WARNING&#x27;,
+        severity: &#x27;HIGH&#x27;,
+        message: &#x60;Faturamento atingiu ${billingProgress.toFixed(1)}% do limite do Simples.&#x60;,
+        fixSuggestion:
+          &#x27;Inicie o planejamento tributário para Lucro Presumido IMEDIATAMENTE.&#x27;,
+      });
+      score -&#x3D; 20;
+    }
+
+    // 2. AUDITORIA DE INTEGRIDADE (CANCELAMENTOS)
+    const canceledCount &#x3D; await this.prisma.invoice.count({
+      where: { companyId, status: InvoiceStatus.CANCELLED },
+    });
+
+    if (canceledCount &gt; 5) {
+      findings.push({
+        code: &#x27;HIGH_CANCEL_RATE&#x27;,
+        severity: &#x27;MEDIUM&#x27;,
+        message: &#x60;Volume de notas canceladas (${canceledCount}) acima da média de segurança.&#x60;,
+        fixSuggestion:
+          &#x27;Revise os processos de emissão para evitar fiscalização por substituição.&#x27;,
+      });
+      score -&#x3D; 10;
+    }
+
+    // 3. MOTOR DE INTELIGÊNCIA FATOR R (Últimos 12 meses)
+    const fatorRResult &#x3D; await this.calculateFatorR(companyId);
+
+    if (!fatorRResult.eligible &amp;&amp; fatorRResult.factor &gt; 0) {
+      findings.push({
+        code: &#x27;FATOR_R_INEFFICIENT&#x27;,
+        severity: &#x27;HIGH&#x27;,
+        message: &#x60;Fator R insuficiente (${fatorRResult.factor}%). Empresa tributada no Anexo V.&#x60;,
+        fixSuggestion: &#x60;Ajuste a folha/pró-labore em R$ ${fatorRResult.neededForTarget.toFixed(2)} para migrar ao Anexo III.&#x60;,
+      });
+      score -&#x3D; 30;
+    }
+
+    return {
+      companyId,
+      score: Math.max(score, 0),
+      status: this.resolveStatus(score),
+      fatorR: {
+        current: fatorRResult.factor,
+        eligible: fatorRResult.eligible,
+        recommendedAnexo: fatorRResult.recommendedAnexo,
+        targetPayrollValue: fatorRResult.neededForTarget,
+        projectedTaxSaving: fatorRResult.potentialSaving,
+      },
+      findings,
+      summary: {
+        totalAnalyzedInvoices: company._count.invoices,
+        totalPayrollAnalyzed: fatorRResult.totalPayroll,
+        issuesCount: findings.length,
+        revenueYTD: revenueStats.toNumber(),
+        billingLimitProgress: Number(billingProgress.toFixed(2)),
+      },
+    };
+  }
+
+  /**
+   * Cálculo Matemático do Fator R.
+   * Cruza Payroll vs Invoices (Service) dos últimos 12 meses.
+   */
+  private async calculateFatorR(companyId: string) {
+    const l12Date &#x3D; new Date();
+    l12Date.setFullYear(l12Date.getFullYear() - 1);
+
+    const [revenueAgg, payrollAgg] &#x3D; await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: {
+          companyId,
+          type: InvoiceType.SERVICE,
+          status: InvoiceStatus.NORMAL,
+          issuedAt: { gte: l12Date },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.payroll.aggregate({
+        where: {
+          companyId,
+          createdAt: { gte: l12Date },
+        },
+        _sum: { totalAmount: true },
+      }),
+    ]);
+
+    const totalRevenue &#x3D; new Prisma.Decimal(revenueAgg._sum?.amount || 0);
+    const totalPayroll &#x3D; new Prisma.Decimal(payrollAgg._sum?.totalAmount || 0);
+
+    if (totalRevenue.isZero()) {
+      return {
+        factor: 0,
+        eligible: false,
+        recommendedAnexo: &#x27;N/A&#x27;,
+        totalPayroll: 0,
+        neededForTarget: 0,
+        potentialSaving: 0,
+      };
+    }
+
+    const factorRatio &#x3D; totalPayroll.div(totalRevenue);
+    const factorPercentage &#x3D; factorRatio.mul(100).toNumber();
+
+    // Economia projetada (Diferença média de 9.5% entre Anexo V e III)
+    const potentialSaving &#x3D; totalRevenue.mul(0.095).toNumber();
+    const targetPayroll &#x3D; totalRevenue.mul(0.28);
+    const neededForTarget &#x3D; targetPayroll.minus(totalPayroll);
+
+    return {
+      factor: Number(factorPercentage.toFixed(2)),
+      eligible: factorPercentage &gt;&#x3D; 28,
+      recommendedAnexo: factorPercentage &gt;&#x3D; 28 ? &#x27;Anexo III&#x27; : &#x27;Anexo V&#x27;,
+      totalPayroll: totalPayroll.toNumber(),
+      neededForTarget: neededForTarget.gt(0) ? neededForTarget.toNumber() : 0,
+      potentialSaving: factorPercentage &lt; 28 ? potentialSaving : 0,
+    };
+  }
+
+  /**
+   * Processamento atômico de expiração de certificados.
+   */
+  private async processCertificateExpiration(
+    cert: any,
+    level: &#x27;EXPIRED&#x27; | &#x27;WARNING&#x27;,
+  ) {
+    const isExpired &#x3D; level &#x3D;&#x3D;&#x3D; &#x27;EXPIRED&#x27;;
+
+    await this.prisma.$transaction([
+      ...(isExpired
+        ? [
+            this.prisma.digitalCertificate.update({
+              where: { id: cert.id },
+              data: { status: CertificateStatus.EXPIRED },
+            }),
+          ]
+        : []),
+      this.prisma.notificationLog.create({
+        data: {
+          companyId: cert.companyId,
+          type: NotificationType.CERT_EXPIRATION,
+          severity: isExpired
+            ? NotificationSeverity.CRITICAL
+            : NotificationSeverity.WARNING,
+          title: &#x27;Certificado Digital - Ação Requerida&#x27;,
+          message: isExpired
+            ? &#x60;O certificado da empresa expirou em ${cert.validTo.toLocaleDateString(&#x27;pt-BR&#x27;)}.&#x60;
+            : &#x60;Atenção: O certificado vencerá em breve (${cert.validTo.toLocaleDateString(&#x27;pt-BR&#x27;)}).&#x60;,
+        },
+      }),
+    ]);
+  }
+
+  private async fetchYearlyRevenue(companyId: string): Promise&lt;Prisma.Decimal&gt; {
+    const yearStart &#x3D; new Date(Date.UTC(new Date().getFullYear(), 0, 1));
+    const agg &#x3D; await this.prisma.invoice.aggregate({
+      where: {
+        companyId,
+        status: InvoiceStatus.NORMAL,
+        issuedAt: { gte: yearStart },
+      },
+      _sum: { amount: true },
+    });
+    return new Prisma.Decimal(agg._sum?.amount || 0);
+  }
+
+  private resolveStatus(score: number): ComplianceReport[&#x27;status&#x27;] {
+    if (score &gt;&#x3D; 80) return &#x27;HEALTHY&#x27;;
+    if (score &gt;&#x3D; 50) return &#x27;WARNING&#x27;;
+    return &#x27;CRITICAL&#x27;;
+  }
+}
+</code></pre>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'interface';
+            var COMPODOC_CURRENT_PAGE_URL = 'ComplianceReport.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

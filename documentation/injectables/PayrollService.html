@@ -1,0 +1,956 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content injectable">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Injectables</li>
+  <li class="breadcrumb-item" >PayrollService</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/fiscal/payroll/payroll.service.ts</code>
+        </p>
+
+
+
+
+
+            <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Properties</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#FACTOR_R_THRESHOLD" >FACTOR_R_THRESHOLD</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#logger" >logger</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#createPayrollRecord" >createPayrollRecord</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getCompanyPayrollHistory" >getCompanyPayrollHistory</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getFactorRDiagnostics" >getFactorRDiagnostics</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getPayrollStats" >getPayrollStats</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+            <section data-compodoc="block-constructor">
+    <h3 id="constructor">Constructor</h3>
+        <table class="table table-sm table-bordered">
+            <tbody>
+                <tr>
+                    <td class="col-md-4">
+<code>constructor(prisma: <a href="../injectables/PrismaService.html" target="_self">PrismaService</a>)</code>
+                    </td>
+                </tr>
+                        <tr>
+                            <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="25" class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:25</a></div>
+                            </td>
+                        </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                            <div>
+                                    <b>Parameters :</b>
+                                    <table class="params">
+                                        <thead>
+                                            <tr>
+                                                <td>Name</td>
+                                                    <td>Type</td>
+                                                <td>Optional</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                <tr>
+                                                        <td>prisma</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/PrismaService.html" target="_self" >PrismaService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+</section>
+
+            <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="createPayrollRecord"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>createPayrollRecord</b></span>
+                        <a href="#createPayrollRecord"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>createPayrollRecord(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, data: <a href="../classes/CreatePayrollDto.html" target="_self">CreatePayrollDto</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="47"
+                                    class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:47</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Registro de Folha utilizando os novos campos numéricos do Prisma.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>data</td>
+                                            <td>
+                                                            <code><a href="../classes/CreatePayrollDto.html" target="_self" >CreatePayrollDto</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getCompanyPayrollHistory"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getCompanyPayrollHistory</b></span>
+                        <a href="#getCompanyPayrollHistory"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getCompanyPayrollHistory(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="33"
+                                    class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:33</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Histórico completo para auditoria e conferência.
+Adaptado para ordenar por Year e Month.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getFactorRDiagnostics"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getFactorRDiagnostics</b></span>
+                        <a href="#getFactorRDiagnostics"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getFactorRDiagnostics(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, targetMonth: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>, targetYear: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="104"
+                                    class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:104</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Diagnóstico de Fator R (Core Fiscal bCost)
+Realiza a análise preditiva baseada nos 12 meses anteriores.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>targetMonth</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                        <tr>
+                                                <td>targetYear</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>Promise&lt;FactorRResult&gt;</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getPayrollStats"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getPayrollStats</b></span>
+                        <a href="#getPayrollStats"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getPayrollStats(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="178"
+                                    class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:178</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Estatísticas de folha para o Dashboard de BI.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+            <section data-compodoc="block-properties">
+    
+    <h3 id="inputs">
+        Properties
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="FACTOR_R_THRESHOLD"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Readonly</span>
+                        <span ><b>FACTOR_R_THRESHOLD</b></span>
+                        <a href="#FACTOR_R_THRESHOLD"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Default value : </i><code>0.28</code>
+                    </td>
+                </tr>
+                    <tr>
+                        <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="25" class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:25</a></div>
+                        </td>
+                    </tr>
+
+
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="logger"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Readonly</span>
+                        <span ><b>logger</b></span>
+                        <a href="#logger"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Type : </i>    <code>unknown</code>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Default value : </i><code>new Logger(PayrollService.name)</code>
+                    </td>
+                </tr>
+                    <tr>
+                        <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="24" class="link-to-prism">src/modules/fiscal/payroll/payroll.service.ts:24</a></div>
+                        </td>
+                    </tr>
+
+
+        </tbody>
+    </table>
+</section>
+
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import { Injectable, Logger, BadRequestException } from &#x27;@nestjs/common&#x27;;
+import { PrismaService } from &#x27;../../../database/prisma.service.js&#x27;;
+import { CreatePayrollDto } from &#x27;./dto/create-payroll.dto.js&#x27;;
+import { Prisma, InvoiceStatus } from &#x27;@prisma/client&#x27;;
+
+export interface FactorRResult {
+  competenciaReferencia: string;
+  analise12Meses: {
+    faturamentoAcumulado: number;
+    massaSalarialAcumulada: number;
+  };
+  diagnostico: {
+    fatorR: number;
+    isEligibleAnexoIII: boolean;
+    valorNecessarioParaAtingir28: number;
+  };
+  insight: string;
+}
+
+@Injectable()
+export class PayrollService {
+  private readonly logger &#x3D; new Logger(PayrollService.name);
+  private readonly FACTOR_R_THRESHOLD &#x3D; 0.28;
+
+  constructor(private readonly prisma: PrismaService) {}
+
+  /**
+   * Histórico completo para auditoria e conferência.
+   * Adaptado para ordenar por Year e Month.
+   */
+  async getCompanyPayrollHistory(companyId: string) {
+    this.logger.log(
+      &#x60;[Payroll] Buscando histórico completo para empresa ${companyId}&#x60;,
+    );
+    return await this.prisma.payroll.findMany({
+      where: { companyId },
+      orderBy: [{ year: &#x27;desc&#x27; }, { month: &#x27;desc&#x27; }],
+      take: 24,
+    });
+  }
+
+  /**
+   * Registro de Folha utilizando os novos campos numéricos do Prisma.
+   */
+  async createPayrollRecord(companyId: string, data: CreatePayrollDto) {
+    this.logger.log(
+      &#x60;[Payroll] Registrando competência ${data.month}/${data.year} para empresa ${companyId}&#x60;,
+    );
+
+    try {
+      // Usamos findFirst com a dupla month/year (Substitui referenceMonth)
+      const existing &#x3D; await this.prisma.payroll.findFirst({
+        where: {
+          companyId,
+          month: data.month,
+          year: data.year,
+        },
+      });
+
+      if (existing) {
+        return await this.prisma.payroll.update({
+          where: { id: existing.id },
+          data: {
+            totalAmount: new Prisma.Decimal(data.amount),
+            // Atualizamos campos auxiliares se existirem no seu DTO
+            salariesAmount: data.salariesAmount
+              ? new Prisma.Decimal(data.salariesAmount)
+              : existing.salariesAmount,
+            proLaboreAmount: data.proLaboreAmount
+              ? new Prisma.Decimal(data.proLaboreAmount)
+              : existing.proLaboreAmount,
+          },
+        });
+      }
+
+      return await this.prisma.payroll.create({
+        data: {
+          companyId,
+          month: data.month,
+          year: data.year,
+          totalAmount: new Prisma.Decimal(data.amount),
+          salariesAmount: data.salariesAmount
+            ? new Prisma.Decimal(data.salariesAmount)
+            : 0,
+          proLaboreAmount: data.proLaboreAmount
+            ? new Prisma.Decimal(data.proLaboreAmount)
+            : 0,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error(&#x60;[Payroll Error] ${error.message}&#x60;);
+      throw new BadRequestException(
+        &#x27;Falha ao persistir folha no banco. Verifique os dados.&#x27;,
+      );
+    }
+  }
+
+  /**
+   * Diagnóstico de Fator R (Core Fiscal bCost)
+   * Realiza a análise preditiva baseada nos 12 meses anteriores.
+   */
+  async getFactorRDiagnostics(
+    companyId: string,
+    targetMonth: number,
+    targetYear: number,
+  ): Promise&lt;FactorRResult&gt; {
+    const targetRef &#x3D; &#x60;${targetYear}-${String(targetMonth).padStart(2, &#x27;0&#x27;)}&#x60;;
+
+    // 1. Range de faturamento (Invoices usam issuedAt: Date)
+    const startDate &#x3D; new Date(Date.UTC(targetYear - 1, targetMonth - 1, 1));
+    const endDate &#x3D; new Date(
+      Date.UTC(targetYear, targetMonth - 1, 0, 23, 59, 59),
+    );
+
+    // 2. Montagem de filtros para folha (agora por pares de Mês/Ano)
+    const pastMonthsConditions: Prisma.PayrollWhereInput[] &#x3D; [];
+    for (let i &#x3D; 1; i &lt;&#x3D; 12; i++) {
+      const d &#x3D; new Date(Date.UTC(targetYear, targetMonth - i - 1, 1));
+      pastMonthsConditions.push({
+        month: d.getUTCMonth() + 1,
+        year: d.getUTCFullYear(),
+      });
+    }
+
+    // 3. Agregação em paralelo (Performance de Elite)
+    const [revenueData, payrollData] &#x3D; await Promise.all([
+      this.prisma.invoice.aggregate({
+        where: {
+          companyId,
+          status: InvoiceStatus.NORMAL,
+          issuedAt: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.payroll.aggregate({
+        where: {
+          companyId,
+          OR: pastMonthsConditions, // Busca exata pelos meses decompostos
+        },
+        _sum: { totalAmount: true },
+      }),
+    ]);
+
+    const rbt12 &#x3D; new Prisma.Decimal(revenueData._sum?.amount || 0);
+    const folha12 &#x3D; new Prisma.Decimal(payrollData._sum?.totalAmount || 0);
+
+    const ratio &#x3D; rbt12.isZero() ? 0 : folha12.div(rbt12).toNumber();
+    const factorRPercent &#x3D; Number((ratio * 100).toFixed(2));
+    const isEligible &#x3D; ratio &gt;&#x3D; this.FACTOR_R_THRESHOLD;
+
+    const shortfall &#x3D; !isEligible
+      ? rbt12.mul(this.FACTOR_R_THRESHOLD).minus(folha12).toNumber()
+      : 0;
+
+    return {
+      competenciaReferencia: targetRef,
+      analise12Meses: {
+        faturamentoAcumulado: rbt12.toNumber(),
+        massaSalarialAcumulada: folha12.toNumber(),
+      },
+      diagnostico: {
+        fatorR: factorRPercent,
+        isEligibleAnexoIII: isEligible,
+        valorNecessarioParaAtingir28:
+          shortfall &gt; 0 ? Number(shortfall.toFixed(2)) : 0,
+      },
+      insight: isEligible
+        ? &#x27;✅ Fator R ideal! Sua empresa está elegível ao Anexo III (alíquota reduzida).&#x27;
+        : &#x60;🚨 Alerta: Fator R em ${factorRPercent}%. Sua tributação será pelo Anexo V. Aporte R$ ${shortfall.toFixed(2)} em Pró-labore para reduzir o imposto.&#x60;,
+    };
+  }
+
+  /**
+   * Estatísticas de folha para o Dashboard de BI.
+   */
+  async getPayrollStats(companyId: string) {
+    const records &#x3D; await this.prisma.payroll.findMany({
+      where: { companyId },
+      orderBy: [{ year: &#x27;desc&#x27; }, { month: &#x27;desc&#x27; }],
+      take: 12,
+    });
+
+    if (records.length &#x3D;&#x3D;&#x3D; 0) {
+      return {
+        resumo: { ultimoLancamento: 0, mediaAnual: 0, totalAcumulado: 0 },
+        history: [],
+      };
+    }
+
+    const totalYear &#x3D; records.reduce(
+      (sum, rec) &#x3D;&gt; sum.plus(rec.totalAmount),
+      new Prisma.Decimal(0),
+    );
+
+    return {
+      resumo: {
+        ultimoLancamento: Number(records[0].totalAmount),
+        mediaAnual: Number(totalYear.div(records.length).toFixed(2)),
+        totalAcumulado: totalYear.toNumber(),
+      },
+      history: records.map((r) &#x3D;&gt; ({
+        competencia: &#x60;${r.year}-${String(r.month).padStart(2, &#x27;0&#x27;)}&#x60;, // Reconstroi string para o front
+        valor: Number(r.totalAmount),
+        data: r.createdAt,
+      })),
+    };
+  }
+}
+</code></pre>
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'injectable';
+            var COMPODOC_CURRENT_PAGE_URL = 'PayrollService.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

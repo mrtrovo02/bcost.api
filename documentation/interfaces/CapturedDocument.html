@@ -1,0 +1,713 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content interface">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Interfaces</li>
+  <li class="breadcrumb-item"
+  >
+  CapturedDocument</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/fiscal/dfe/dfe.service.ts</code>
+        </p>
+
+
+            <p class="comment">
+                <h3>Description</h3>
+            </p>
+            <p class="comment">
+                <p>Interface Enterprise para documentos capturados.</p>
+
+            </p>
+
+
+        <section data-compodoc="block-index">
+            <h3 id="index">Index</h3>
+            <table class="table table-sm table-bordered index-table">
+                <tbody>
+                    <tr>
+                        <td class="col-md-4">
+                            <h6><b>Properties</b></h6>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="col-md-4">
+                            <ul class="index-list">
+                                <li>
+                                        <a href="#accessKey" 
+>
+                                            accessKey
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#issuedAt" 
+>
+                                            issuedAt
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#type" 
+>
+                                            type
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#xmlContent" 
+>
+                                            xmlContent
+                                        </a>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+
+
+            <section data-compodoc="block-properties">
+                <h3 id="inputs">Properties</h3>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="accessKey"></a>
+                                        <span class="name "><b>accessKey</b>
+                                            <a href="#accessKey">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>accessKey:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="issuedAt"></a>
+                                        <span class="name "><b>issuedAt</b>
+                                            <a href="#issuedAt">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>issuedAt:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date" target="_blank" >Date</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date" target="_blank" >Date</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="type"></a>
+                                        <span class="name "><b>type</b>
+                                            <a href="#type">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>type:     <code>&quot;NFE&quot; | &quot;NFSE&quot;</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>&quot;NFE&quot; | &quot;NFSE&quot;</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="xmlContent"></a>
+                                        <span class="name "><b>xmlContent</b>
+                                            <a href="#xmlContent">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>xmlContent:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+            </section>
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  OnModuleInit,
+} from &#x27;@nestjs/common&#x27;;
+import { Cron, CronExpression } from &#x27;@nestjs/schedule&#x27;;
+import { PrismaService } from &#x27;../../../database/prisma.service.js&#x27;;
+import { InjectQueue } from &#x27;@nestjs/bullmq&#x27;;
+import { Queue } from &#x27;bullmq&#x27;;
+import { NotificationService } from &#x27;../../notifications/notification.service.js&#x27;;
+import { CertificateStatus } from &#x27;@prisma/client&#x27;;
+
+/**
+ * Interface Enterprise para documentos capturados.
+ */
+export interface CapturedDocument {
+  accessKey: string;
+  xmlContent: string;
+  type: &#x27;NFE&#x27; | &#x27;NFSE&#x27;;
+  issuedAt: Date;
+}
+
+/**
+ * Tipagem para lacunas de numeração.
+ */
+interface InvoiceGap {
+  from: number;
+  to: number;
+}
+
+@Injectable()
+export class DfeService implements OnModuleInit {
+  private readonly logger &#x3D; new Logger(DfeService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationService: NotificationService,
+    @InjectQueue(&#x27;xml-extraction&#x27;) private readonly xmlQueue: Queue,
+  ) {}
+
+  async onModuleInit() {
+    this.logger.log(
+      &#x27;🚀 DFe Engine Inicializada: Monitorando filas SEFAZ/Redis.&#x27;,
+    );
+  }
+
+  /**
+   * 🤖 CRON JOB: Sincronização Proativa (Auto-Sync)
+   */
+  @Cron(CronExpression.EVERY_4_HOURS)
+  async handleAutomatedSync() {
+    this.logger.log(&#x27;[DFe-Schedule] Varredura global bCost iniciada.&#x27;);
+
+    const activeCompanies &#x3D; await this.prisma.company.findMany({
+      where: {
+        active: true,
+        certificates: {
+          some: {
+            status: CertificateStatus.ACTIVE,
+            validTo: { gt: new Date() },
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (activeCompanies.length &#x3D;&#x3D;&#x3D; 0) {
+      this.logger.warn(
+        &#x27;[DFe-Schedule] Nenhuma empresa apta para sincronização automática.&#x27;,
+      );
+      return;
+    }
+
+    for (const company of activeCompanies) {
+      try {
+        await this.syncCompanyInvoices(company.id);
+      } catch (err: any) {
+        this.logger.error(
+          &#x60;[DFe-Schedule] Falha na empresa ${company.id}: ${err.message}&#x60;,
+        );
+      }
+    }
+  }
+
+  /**
+   * 🏗️ Engine de Sincronização: Orquestra o Certificado A1 e a integração.
+   */
+  async syncCompanyInvoices(companyId: string) {
+    this.logger.log(
+      &#x60;[DFe-Engine] Iniciando extração para Empresa: ${companyId}&#x60;,
+    );
+
+    const certificate &#x3D; await this.prisma.digitalCertificate.findFirst({
+      where: { companyId, status: CertificateStatus.ACTIVE },
+    });
+
+    if (!certificate) {
+      await this.notificationService.notifyComplianceIssue(
+        companyId,
+        &#x27;CERTIFICADO_AUSENTE&#x27;,
+      );
+      return {
+        status: &#x27;ERROR&#x27;,
+        message: &#x27;Certificado A1 não encontrado ou inativo.&#x27;,
+      };
+    }
+
+    if (new Date(certificate.validTo) &lt; new Date()) {
+      await this.prisma.digitalCertificate.update({
+        where: { id: certificate.id },
+        data: { status: CertificateStatus.EXPIRED },
+      });
+      await this.notificationService.notifyComplianceIssue(
+        companyId,
+        &#x27;CERTIFICADO_EXPIRADO&#x27;,
+      );
+      return { status: &#x27;ERROR&#x27;, message: &#x27;Certificado A1 expirado.&#x27; };
+    }
+
+    try {
+      const documents: CapturedDocument[] &#x3D;
+        await this.fetchFromGovernmentGateway(companyId, certificate);
+
+      if (!documents || documents.length &#x3D;&#x3D;&#x3D; 0) {
+        return { status: &#x27;SUCCESS&#x27;, message: &#x27;Nada novo na SEFAZ.&#x27;, count: 0 };
+      }
+
+      const jobs &#x3D; documents.map((doc) &#x3D;&gt; ({
+        name: &#x27;process-xml&#x27;,
+        data: {
+          companyId,
+          fileBuffer: Buffer.from(doc.xmlContent).toString(&#x27;base64&#x27;),
+          type: doc.type,
+          isAutoCaptured: true,
+          accessKey: doc.accessKey,
+          capturedAt: new Date().toISOString(),
+        },
+        opts: {
+          jobId: &#x60;dfe-${doc.accessKey}&#x60;,
+          removeOnComplete: { age: 3600 },
+          attempts: 5,
+          backoff: { type: &#x27;exponential&#x27;, delay: 3000 },
+        },
+      }));
+
+      await this.xmlQueue.addBulk(jobs);
+
+      await this.prisma.company.update({
+        where: { id: companyId },
+        data: { lastSyncAt: new Date() },
+      });
+
+      return {
+        status: &#x27;SUCCESS&#x27;,
+        syncedCount: documents.length,
+        timestamp: new Date(),
+      };
+    } catch (error: any) {
+      this.logger.error(&#x60;[DFe-Engine] Falha crítica: ${error.message}&#x60;);
+      throw new BadRequestException(&#x60;Erro na comunicação: ${error.message}&#x60;);
+    }
+  }
+
+  /**
+   * 🔍 STATUS: Monitoramento detalhado da saúde da integração
+   */
+  async getSyncStatus(companyId: string) {
+    const counts &#x3D; await this.xmlQueue.getJobCounts(
+      &#x27;wait&#x27;,
+      &#x27;active&#x27;,
+      &#x27;completed&#x27;,
+      &#x27;failed&#x27;,
+    );
+    const activeJobs &#x3D; await this.xmlQueue.getActive();
+    const companyActiveJobs &#x3D; activeJobs.filter(
+      (job) &#x3D;&gt; job.data.companyId &#x3D;&#x3D;&#x3D; companyId,
+    );
+
+    const lastSync &#x3D; await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { lastSyncAt: true },
+    });
+
+    return {
+      companyId,
+      isProcessing: companyActiveJobs.length &gt; 0,
+      activeJobsCount: companyActiveJobs.length,
+      queueGlobal: counts,
+      lastSuccessfulSync: lastSync?.lastSyncAt,
+      health: counts.failed &gt; 50 ? &#x27;CRITICAL&#x27; : &#x27;STABLE&#x27;,
+    };
+  }
+
+  /**
+   * 🛡️ AUDITORIA: Verifica lacunas (gaps) na numeração de notas
+   */
+  async checkInvoiceGaps(companyId: string, year: number) {
+    const invoices &#x3D; await this.prisma.invoice.findMany({
+      where: {
+        companyId,
+        issuedAt: {
+          gte: new Date(year, 0, 1),
+          lte: new Date(year, 11, 31),
+        },
+        accessKey: { not: null }, // Garante que não venham nulos do banco
+      },
+      select: { accessKey: true },
+      orderBy: { issuedAt: &#x27;asc&#x27; },
+    });
+
+    // CORREÇÃO: Uso de Non-null assertion (!) e tipagem explícita para o array
+    const numbers &#x3D; invoices
+      .map((inv) &#x3D;&gt; parseInt(inv.accessKey!.substring(25, 34)))
+      .filter((n) &#x3D;&gt; !isNaN(n))
+      .sort((a, b) &#x3D;&gt; a - b);
+
+    const gaps: InvoiceGap[] &#x3D; [];
+    for (let i &#x3D; 0; i &lt; numbers.length - 1; i++) {
+      if (numbers[i + 1] - numbers[i] &gt; 1) {
+        gaps.push({ from: numbers[i] + 1, to: numbers[i + 1] - 1 });
+      }
+    }
+
+    if (gaps.length &gt; 0) {
+      await this.notificationService.notifyComplianceIssue(
+        companyId,
+        &#x27;LACUNA_NUMERACAO_NF&#x27;,
+      );
+    }
+
+    return { totalGaps: gaps.length, missingRanges: gaps };
+  }
+
+  /**
+   * 🌡️ CRON JOB: Alerta de Expiração de Certificado
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
+  async checkCertificatesHealth() {
+    this.logger.log(
+      &#x27;[Audit-Schedule] Analisando validade dos certificados A1...&#x27;,
+    );
+
+    const thresholdDate &#x3D; new Date();
+    thresholdDate.setDate(thresholdDate.getDate() + 15);
+
+    const expiringSoon &#x3D; await this.prisma.digitalCertificate.findMany({
+      where: {
+        validTo: { lte: thresholdDate, gt: new Date() },
+        status: CertificateStatus.ACTIVE,
+      },
+    });
+
+    for (const cert of expiringSoon) {
+      await this.notificationService.notifyCertificateExpiring(
+        cert.companyId,
+        cert.validTo,
+      );
+    }
+  }
+
+  /**
+   * 🚀 ADICIONADO: Manifestação Automática (Ciência da Operação)
+   * Essencial para o bCost confirmar o recebimento e permitir o download do XML completo.
+   */
+  async manifestInvoice(companyId: string, accessKey: string) {
+    this.logger.log(
+      &#x60;[DFe-Manifest] Manifestando Ciência para chave: ${accessKey}&#x60;,
+    );
+
+    // Simulação de chamada SEFAZ para &quot;Ciência da Operação&quot;
+    // Isso permite que a SEFAZ libere o XML completo para download.
+    return {
+      status: &#x27;MANIFESTED&#x27;,
+      event: &#x27;CIENCIA_DA_OPERACAO&#x27;,
+      timestamp: new Date(),
+    };
+  }
+
+  private async fetchFromGovernmentGateway(
+    companyId: string,
+    certificate: any,
+  ): Promise&lt;CapturedDocument[]&gt; {
+    this.logger.debug(
+      &#x60;[Gateway] Handshake SSL via Certificado ID: ${certificate.id}&#x60;,
+    );
+    // Integração real via WebService SEFAZ (DistribuicaoDFe)
+    return [];
+  }
+}
+</code></pre>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'interface';
+            var COMPODOC_CURRENT_PAGE_URL = 'CapturedDocument.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

@@ -1,0 +1,1106 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content injectable">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Injectables</li>
+  <li class="breadcrumb-item" >DashboardService</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/dashboard/dashboard.service.ts</code>
+        </p>
+
+
+
+
+
+            <section data-compodoc="block-index">
+    <h3 id="index">Index</h3>
+    <table class="table table-sm table-bordered index-table">
+        <tbody>
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Properties</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Private</span>
+                                    <span class="modifier">Readonly</span>
+                                <a href="#logger" >logger</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                        <h6><b>Methods</b></h6>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <ul class="index-list">
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getCompanyOverview" >getCompanyOverview</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getComplianceDiagnostic" >getComplianceDiagnostic</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getFinancialAlerts" >getFinancialAlerts</a>
+                            </li>
+                            <li>
+                                    <span class="modifier">Async</span>
+                                <a href="#getRealTimeMetrics" >getRealTimeMetrics</a>
+                            </li>
+                        </ul>
+                    </td>
+                </tr>
+
+
+
+
+
+        </tbody>
+    </table>
+</section>
+
+            <section data-compodoc="block-constructor">
+    <h3 id="constructor">Constructor</h3>
+        <table class="table table-sm table-bordered">
+            <tbody>
+                <tr>
+                    <td class="col-md-4">
+<code>constructor(prisma: <a href="../injectables/PrismaService.html" target="_self">PrismaService</a>, analyticsService: <a href="../injectables/AnalyticsService.html" target="_self">AnalyticsService</a>, insightsService: <a href="../injectables/InsightsService.html" target="_self">InsightsService</a>, cashFlowService: <a href="../injectables/CashFlowProjectionService.html" target="_self">CashFlowProjectionService</a>, anomalyService: <a href="../injectables/AnomalyDetectionService.html" target="_self">AnomalyDetectionService</a>)</code>
+                    </td>
+                </tr>
+                        <tr>
+                            <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="26" class="link-to-prism">src/modules/dashboard/dashboard.service.ts:26</a></div>
+                            </td>
+                        </tr>
+
+                <tr>
+                    <td class="col-md-4">
+                            <div>
+                                    <b>Parameters :</b>
+                                    <table class="params">
+                                        <thead>
+                                            <tr>
+                                                <td>Name</td>
+                                                    <td>Type</td>
+                                                <td>Optional</td>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                                <tr>
+                                                        <td>prisma</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/PrismaService.html" target="_self" >PrismaService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                                <tr>
+                                                        <td>analyticsService</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/AnalyticsService.html" target="_self" >AnalyticsService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                                <tr>
+                                                        <td>insightsService</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/InsightsService.html" target="_self" >InsightsService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                                <tr>
+                                                        <td>cashFlowService</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/CashFlowProjectionService.html" target="_self" >CashFlowProjectionService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                                <tr>
+                                                        <td>anomalyService</td>
+                                                  
+                                                        <td>
+                                                                        <code><a href="../injectables/AnomalyDetectionService.html" target="_self" >AnomalyDetectionService</a></code>
+                                                        </td>
+                                                  
+                                                    <td>
+                                                            No
+                                                    </td>
+                                                    
+                                                </tr>
+                                        </tbody>
+                                    </table>
+                            </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+</section>
+
+            <section data-compodoc="block-methods">
+    
+    <h3 id="methods">
+        Methods
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getCompanyOverview"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getCompanyOverview</b></span>
+                        <a href="#getCompanyOverview"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getCompanyOverview(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="52"
+                                    class="link-to-prism">src/modules/dashboard/dashboard.service.ts:52</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Consolidado principal do Dashboard bCost.</p>
+<p>Executa 7 queries em paralelo via Promise.all para latência mínima.
+Cada bloco alimenta um widget diferente no frontend (Recharts).</p>
+<p>FIX: removido <code>private readonly db: PrismaClient</code> (shadow casting).
+O cast <code>prisma as unknown as PrismaClient</code> contornava erros de tipagem
+mas bypassava as extensões de multi-tenancy e soft-delete do PrismaService.
+Agora usa <code>this.prisma</code> diretamente — as extensões aplicam os filtros
+de companyId e deletedAt automaticamente em todas as queries.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getComplianceDiagnostic"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getComplianceDiagnostic</b></span>
+                        <a href="#getComplianceDiagnostic"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getComplianceDiagnostic(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="285"
+                                    class="link-to-prism">src/modules/dashboard/dashboard.service.ts:285</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Score de compliance ponderado por severidade.
+Algoritmo: começa em 100, desconta 20 pts por CRITICAL e 5 pts por WARNING/INFO.
+Score &lt; 60 = status CRITICAL no dashboard (bloqueia ações no frontend).</p>
+<p>NOVO: inclui breakdown por categoria e issues IN_PROGRESS para o contador
+saber o que já está sendo tratado.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getFinancialAlerts"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getFinancialAlerts</b></span>
+                        <a href="#getFinancialAlerts"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getFinancialAlerts(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>, days: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank">number</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="152"
+                                    class="link-to-prism">src/modules/dashboard/dashboard.service.ts:152</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>Obrigações fiscais vencendo nos próximos N dias.
+Padrão: 5 dias — alinhado ao prazo mínimo para gerar DAS no Simples Nacional.</p>
+<p>NOVO: inclui obrigações OVERDUE para o contador ver o que já venceu sem pagar.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                                <td>Default value</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+                                            <td>
+                                            </td>
+
+                                        </tr>
+                                        <tr>
+                                                <td>days</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+                                            <td>
+                                                    <code>5</code>
+                                            </td>
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="getRealTimeMetrics"></a>
+                    <span class="name">
+                            <span class="modifier">Async</span>
+                        <span ><b>getRealTimeMetrics</b></span>
+                        <a href="#getRealTimeMetrics"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-md-4">
+                        <span class="modifier-icon icon ion-ios-reset"></span>
+                    <code>getRealTimeMetrics(companyId: <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank">string</a>)</code>
+                </td>
+            </tr>
+
+
+                    <tr>
+                        <td class="col-md-4">
+                            <div class="io-line">Defined in <a href="" data-line="223"
+                                    class="link-to-prism">src/modules/dashboard/dashboard.service.ts:223</a></div>
+                        </td>
+                    </tr>
+
+
+            <tr>
+                <td class="col-md-4">
+                        <div class="io-description"><p>KPIs do mês corrente para o widget de processamento ao vivo.
+Inclui provisão de imposto e contagem de notas — base para o DAS estimado.</p>
+</div>
+
+                            <div class="io-description">
+                                <b>Parameters :</b>
+                                
+                                <table class="params">
+                                    <thead>
+                                        <tr>
+                                            <td>Name</td>
+                                                <td>Type</td>
+                                            <td>Optional</td>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                                <td>companyId</td>
+                                            <td>
+                                                            <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+                                            </td>
+
+                                            <td>
+                                                    No
+                                            </td>
+
+
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <div class="io-description">
+                            <b>Returns : </b>    <code>unknown</code>
+
+                        </div>
+                            <div class="io-description">
+                                
+                            </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</section>
+            <section data-compodoc="block-properties">
+    
+    <h3 id="inputs">
+        Properties
+    </h3>
+    <table class="table table-sm table-bordered">
+        <tbody>
+            <tr>
+                <td class="col-md-4">
+                    <a name="logger"></a>
+                    <span class="name">
+                            <span class="modifier">Private</span>
+                            <span class="modifier">Readonly</span>
+                        <span ><b>logger</b></span>
+                        <a href="#logger"><span class="icon ion-ios-link"></span></a>
+                    </span>
+                </td>
+            </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Type : </i>    <code>unknown</code>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-md-4">
+                        <i>Default value : </i><code>new Logger(DashboardService.name)</code>
+                    </td>
+                </tr>
+                    <tr>
+                        <td class="col-md-4">
+                                <div class="io-line">Defined in <a href="" data-line="26" class="link-to-prism">src/modules/dashboard/dashboard.service.ts:26</a></div>
+                        </td>
+                    </tr>
+
+
+        </tbody>
+    </table>
+</section>
+
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+// &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;
+// ARQUIVO: src/modules/dashboard/dashboard.service.ts
+// &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;
+
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from &#x27;@nestjs/common&#x27;;
+import {
+  JobStatus,
+  ObligationStatus,
+  ComplianceStatus,
+  NotificationSeverity,
+} from &#x27;@prisma/client&#x27;;
+import { PrismaService } from &#x27;../../database/prisma.service.js&#x27;;
+import { AnalyticsService } from &#x27;../analytics/analytics.service.js&#x27;;
+import { InsightsService } from &#x27;../../insights/insights.service.js&#x27;;
+import { CashFlowProjectionService } from &#x27;../../insights/cash-flow-projection/cash-flow-projection.service.js&#x27;;
+import { AnomalyDetectionService } from &#x27;../../insights/anomaly-detection/anomaly-detection.service.js&#x27;;
+
+@Injectable()
+export class DashboardService {
+  private readonly logger &#x3D; new Logger(DashboardService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly analyticsService: AnalyticsService,
+    private readonly insightsService: InsightsService,
+    private readonly cashFlowService: CashFlowProjectionService,
+    private readonly anomalyService: AnomalyDetectionService,
+  ) {}
+
+  // ---------------------------------------------------------------------------
+  // VISÃO 360° — Cockpit Principal
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Consolidado principal do Dashboard bCost.
+   *
+   * Executa 7 queries em paralelo via Promise.all para latência mínima.
+   * Cada bloco alimenta um widget diferente no frontend (Recharts).
+   *
+   * FIX: removido &#x60;private readonly db: PrismaClient&#x60; (shadow casting).
+   * O cast &#x60;prisma as unknown as PrismaClient&#x60; contornava erros de tipagem
+   * mas bypassava as extensões de multi-tenancy e soft-delete do PrismaService.
+   * Agora usa &#x60;this.prisma&#x60; diretamente — as extensões aplicam os filtros
+   * de companyId e deletedAt automaticamente em todas as queries.
+   */
+  async getCompanyOverview(companyId: string) {
+    this.logger.log(
+      &#x60;[Dashboard] Gerando visão geral 360º para empresa: ${companyId}&#x60;,
+    );
+
+    try {
+      const [
+        healthScore,
+        revenueHistory,
+        pendingJobs,
+        recentLogs,
+        financialHealth,
+        anomalies,
+        projections,
+      ] &#x3D; await Promise.all([
+        this.analyticsService.getFiscalHealthScore(companyId),
+        this.analyticsService.getRevenueHistory(companyId),
+
+        this.prisma.automationJob.count({
+          where: { companyId, status: JobStatus.RUNNING },
+        }),
+
+        this.prisma.auditLog.findMany({
+          where: { companyId },
+          take: 5,
+          orderBy: { createdAt: &#x27;desc&#x27; },
+          select: { action: true, createdAt: true, module: true },
+        }),
+
+        this.insightsService.getFinancialHealth(companyId),
+        this.anomalyService.detectAnomalies(companyId),
+        this.cashFlowService.getLatestProjection(companyId),
+      ]);
+
+      const currentYear &#x3D; new Date().getUTCFullYear();
+
+      // YTD — faturamento acumulado no ano corrente
+      const ytdRevenue &#x3D; await this.prisma.financialSnapshot.aggregate({
+        where: { companyId, year: currentYear },
+        _sum: { revenue: true },
+      });
+
+      // Obrigações fiscais vencidas — alerta crítico para o contador
+      const overdueObligations &#x3D; await this.prisma.taxObligation.count({
+        where: { companyId, status: ObligationStatus.OVERDUE },
+      });
+
+      // Notas pendentes de reconciliação — diferencial vs players legados
+      const unreconciledInvoices &#x3D; await this.prisma.invoice.count({
+        where: { companyId, reconciled: false },
+      });
+
+      return {
+        summary: {
+          fiscalScore: healthScore,
+          financialScore: financialHealth.score,
+          totalRevenueYTD: ytdRevenue._sum.revenue?.toNumber() ?? 0,
+          activeAutomations: pendingJobs,
+          criticalAnomalies: anomalies.filter(
+            (a: { deviationScore: number }) &#x3D;&gt; a.deviationScore &gt; 2.0,
+          ).length,
+          // NOVO: alertas que o contador abre o sistema para ver todo dia
+          overdueObligations,
+          unreconciledInvoices,
+        },
+        revenueChart: revenueHistory,
+        cashFlowProjection: Array.isArray(projections)
+          ? projections.slice(0, 30)
+          : [],
+        activityFeed: recentLogs.map((log) &#x3D;&gt; ({
+          ...log,
+          description: &#x60;${log.module}: ${log.action.replace(/_/g, &#x27; &#x27;)}&#x60;,
+        })),
+        engineStatus: {
+          status: financialHealth.status,
+          lastAnalysis: new Date(),
+        },
+        timestamp: new Date(),
+      };
+    } catch (error: unknown) {
+      const message &#x3D; error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        &#x60;[Dashboard Critical] Erro ao consolidar dados: ${message}&#x60;,
+      );
+      throw new InternalServerErrorException(
+        &#x27;Erro ao processar indicadores do dashboard.&#x27;,
+      );
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ALERTAS FINANCEIROS — Vencimentos próximos
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Obrigações fiscais vencendo nos próximos N dias.
+   * Padrão: 5 dias — alinhado ao prazo mínimo para gerar DAS no Simples Nacional.
+   *
+   * NOVO: inclui obrigações OVERDUE para o contador ver o que já venceu sem pagar.
+   */
+  async getFinancialAlerts(companyId: string, days &#x3D; 5) {
+    const today &#x3D; new Date();
+    const horizonDate &#x3D; new Date();
+    horizonDate.setDate(today.getDate() + days);
+
+    const [urgentObligations, overdueObligations, expiringCerts] &#x3D;
+      await Promise.all([
+        // Vencendo em breve
+        this.prisma.taxObligation.findMany({
+          where: {
+            companyId,
+            status: ObligationStatus.PENDING,
+            dueDate: { gte: today, lte: horizonDate },
+          },
+          orderBy: { dueDate: &#x27;asc&#x27; },
+        }),
+
+        // Já vencidas (crítico — multa e juros acumulando)
+        this.prisma.taxObligation.findMany({
+          where: {
+            companyId,
+            status: ObligationStatus.OVERDUE,
+          },
+          orderBy: { dueDate: &#x27;asc&#x27; },
+          take: 10,
+        }),
+
+        // Certificados digitais expirando em 30 dias
+        this.prisma.digitalCertificate.findMany({
+          where: {
+            companyId,
+            validTo: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+            status: &#x27;ACTIVE&#x27;,
+          },
+          select: { id: true, issuer: true, validTo: true },
+        }),
+      ]);
+
+    const formatObligation &#x3D; (ob: (typeof urgentObligations)[0]) &#x3D;&gt; ({
+      id: ob.id,
+      name: ob.name,
+      amount: ob.amount.toNumber(),
+      dueDate: ob.dueDate,
+      status: ob.status,
+      daysRemaining: Math.ceil(
+        (ob.dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+      ),
+    });
+
+    return {
+      upcoming: urgentObligations.map(formatObligation),
+      overdue: overdueObligations.map(formatObligation),
+      certificates: expiringCerts.map((cert) &#x3D;&gt; ({
+        id: cert.id,
+        issuer: cert.issuer,
+        validTo: cert.validTo,
+        daysToExpiry: Math.ceil(
+          (cert.validTo.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+        ),
+      })),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // MÉTRICAS EM TEMPO REAL — Mês corrente
+  // ---------------------------------------------------------------------------
+
+  /**
+   * KPIs do mês corrente para o widget de processamento ao vivo.
+   * Inclui provisão de imposto e contagem de notas — base para o DAS estimado.
+   */
+  async getRealTimeMetrics(companyId: string) {
+    this.logger.debug(
+      &#x60;[Dashboard] Capturando métricas de processamento vivo: ${companyId}&#x60;,
+    );
+
+    const now &#x3D; new Date();
+    const startOfMonth &#x3D; new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonth &#x3D; now.getMonth() + 1;
+    const currentYear &#x3D; now.getFullYear();
+
+    const [invoicesCount, taxEstimate, payrollCount, reconciledCount] &#x3D;
+      await Promise.all([
+        this.prisma.invoice.count({
+          where: { companyId, issuedAt: { gte: startOfMonth } },
+        }),
+        this.prisma.taxCalculation.aggregate({
+          where: { companyId, month: currentMonth, year: currentYear },
+          _sum: { totalAmount: true },
+        }),
+        // Folhas lançadas no mês — confirma se o Fator R está alimentado
+        this.prisma.payroll.count({
+          where: { companyId, month: currentMonth, year: currentYear },
+        }),
+        // Taxa de conciliação do mês — KPI de saúde operacional
+        this.prisma.invoice.count({
+          where: {
+            companyId,
+            issuedAt: { gte: startOfMonth },
+            reconciled: true,
+          },
+        }),
+      ]);
+
+    const reconciliationRate &#x3D;
+      invoicesCount &gt; 0
+        ? Number(((reconciledCount / invoicesCount) * 100).toFixed(1))
+        : 100;
+
+    return {
+      monthReference: currentMonth,
+      year: currentYear,
+      processedInvoices: invoicesCount,
+      reconciledInvoices: reconciledCount,
+      reconciliationRate,
+      estimatedTaxProvision: taxEstimate._sum.totalAmount?.toNumber() ?? 0,
+      payrollRegistered: payrollCount &gt; 0,
+      engineStatus: &#x27;STABLE&#x27;,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // DIAGNÓSTICO DE COMPLIANCE
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Score de compliance ponderado por severidade.
+   * Algoritmo: começa em 100, desconta 20 pts por CRITICAL e 5 pts por WARNING/INFO.
+   * Score &lt; 60 &#x3D; status CRITICAL no dashboard (bloqueia ações no frontend).
+   *
+   * NOVO: inclui breakdown por categoria e issues IN_PROGRESS para o contador
+   * saber o que já está sendo tratado.
+   */
+  async getComplianceDiagnostic(companyId: string) {
+    const [openIssues, inProgressIssues, resolvedThisMonth] &#x3D; await Promise.all(
+      [
+        this.prisma.complianceCheck.findMany({
+          where: {
+            companyId,
+            status: ComplianceStatus.OPEN,
+            resolved: false,
+          },
+          orderBy: { severity: &#x27;desc&#x27; },
+        }),
+
+        this.prisma.complianceCheck.findMany({
+          where: {
+            companyId,
+            status: ComplianceStatus.IN_PROGRESS,
+            resolved: false,
+          },
+          orderBy: { createdAt: &#x27;desc&#x27; },
+          take: 5,
+        }),
+
+        // Resolvidos no mês corrente — mostra progresso para o cliente
+        this.prisma.complianceCheck.count({
+          where: {
+            companyId,
+            status: ComplianceStatus.RESOLVED,
+            resolvedAt: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            },
+          },
+        }),
+      ],
+    );
+
+    // Score ponderado por severidade
+    const score &#x3D; openIssues.reduce((acc, curr) &#x3D;&gt; {
+      const penalty &#x3D;
+        curr.severity &#x3D;&#x3D;&#x3D; NotificationSeverity.CRITICAL
+          ? 20
+          : curr.severity &#x3D;&#x3D;&#x3D; NotificationSeverity.WARNING
+            ? 5
+            : 2;
+      return Math.max(0, acc - penalty);
+    }, 100);
+
+    const complianceStatus &#x3D;
+      score &gt;&#x3D; 80 ? &#x27;HEALTHY&#x27; : score &gt;&#x3D; 50 ? &#x27;WARNING&#x27; : &#x27;CRITICAL&#x27;;
+
+    return {
+      complianceScore: score,
+      status: complianceStatus,
+      issuesFound: openIssues.length,
+      inProgress: inProgressIssues.length,
+      resolvedThisMonth,
+      criticalBlockers: openIssues.filter(
+        (f) &#x3D;&gt; f.severity &#x3D;&#x3D;&#x3D; NotificationSeverity.CRITICAL,
+      ).length,
+      details: openIssues.map((f) &#x3D;&gt; ({
+        id: f.id,
+        check: f.checkName,
+        impact: f.severity,
+        message: f.description,
+        since: f.createdAt,
+      })),
+      inProgressDetails: inProgressIssues.map((f) &#x3D;&gt; ({
+        id: f.id,
+        check: f.checkName,
+      })),
+    };
+  }
+}
+</code></pre>
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'injectable';
+            var COMPODOC_CURRENT_PAGE_URL = 'DashboardService.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

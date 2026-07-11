@@ -1,6 +1,7 @@
 // src/modules/notifications/external-notifier.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { redactDeep, redactSensitiveHeaders } from '../../common/security/redact-headers.util.js';
 
 @Injectable()
 export class ExternalNotifierService {

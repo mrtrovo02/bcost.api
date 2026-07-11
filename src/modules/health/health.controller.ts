@@ -18,7 +18,7 @@ import { CompanyCacheInterceptor } from '../../common/interceptors/company-cache
  * Este é o diferencial tecnológico: enquanto as consultorias tradicionais
  * são caixas-pretas, sua API oferece transparência total de performance.
  */
-@Controller('health')
+@Controller('internal/health')
 export class HealthController {
   constructor(
     private health: HealthCheckService,

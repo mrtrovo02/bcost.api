@@ -1,0 +1,901 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content interface">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Interfaces</li>
+  <li class="breadcrumb-item"
+  >
+  NormalizedInvoiceData</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/fiscal/xml/xml.service.ts</code>
+        </p>
+
+
+
+
+        <section data-compodoc="block-index">
+            <h3 id="index">Index</h3>
+            <table class="table table-sm table-bordered index-table">
+                <tbody>
+                    <tr>
+                        <td class="col-md-4">
+                            <h6><b>Properties</b></h6>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="col-md-4">
+                            <ul class="index-list">
+                                <li>
+                                        <a href="#accessKey" 
+>
+                                            accessKey
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#amount" 
+>
+                                            amount
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#customerDocument" 
+>
+                                            customerDocument
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#customerName" 
+>
+                                            customerName
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#issuedAt" 
+>
+                                            issuedAt
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#number" 
+>
+                                            number
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#rawJson" 
+>
+                                            rawJson
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#retentions" 
+>
+                                            retentions
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#taxableValue" 
+>
+                                            taxableValue
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#type" 
+>
+                                            type
+                                        </a>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+
+
+            <section data-compodoc="block-properties">
+                <h3 id="inputs">Properties</h3>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="accessKey"></a>
+                                        <span class="name "><b>accessKey</b>
+                                            <a href="#accessKey">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>accessKey:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="amount"></a>
+                                        <span class="name "><b>amount</b>
+                                            <a href="#amount">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>amount:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="customerDocument"></a>
+                                        <span class="name "><b>customerDocument</b>
+                                            <a href="#customerDocument">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>customerDocument:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="customerName"></a>
+                                        <span class="name "><b>customerName</b>
+                                            <a href="#customerName">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>customerName:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="issuedAt"></a>
+                                        <span class="name "><b>issuedAt</b>
+                                            <a href="#issuedAt">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>issuedAt:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date" target="_blank" >Date</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date" target="_blank" >Date</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="number"></a>
+                                        <span class="name "><b>number</b>
+                                            <a href="#number">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>number:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="rawJson"></a>
+                                        <span class="name "><b>rawJson</b>
+                                            <a href="#rawJson">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>rawJson:     <code>unknown</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>unknown</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="retentions"></a>
+                                        <span class="name "><b>retentions</b>
+                                            <a href="#retentions">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>retentions:     <code>literal type</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>literal type</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="taxableValue"></a>
+                                        <span class="name "><b>taxableValue</b>
+                                            <a href="#taxableValue">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>taxableValue:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/number" target="_blank" >number</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="type"></a>
+                                        <span class="name "><b>type</b>
+                                            <a href="#type">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>type:     <code>&quot;PRODUCT&quot; | &quot;SERVICE&quot;</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>&quot;PRODUCT&quot; | &quot;SERVICE&quot;</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+            </section>
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import { Injectable, BadRequestException, Logger } from &#x27;@nestjs/common&#x27;;
+import { XMLParser } from &#x27;fast-xml-parser&#x27;;
+
+/**
+ * Interface normalizada para o Schema 2026.
+ * Nomes de campos sincronizados com as colunas do banco de dados (Prisma).
+ */
+type UnknownRecord &#x3D; Record&lt;string, unknown&gt;;
+
+const isRecord &#x3D; (value: unknown): value is UnknownRecord &#x3D;&gt;
+  typeof value &#x3D;&#x3D;&#x3D; &#x27;object&#x27; &amp;&amp; value !&#x3D;&#x3D; null &amp;&amp; !Array.isArray(value);
+
+const getPath &#x3D; (value: unknown, path: Array&lt;string | number&gt;): unknown &#x3D;&gt; {
+  let current: unknown &#x3D; value;
+  for (const part of path) {
+    if (typeof part &#x3D;&#x3D;&#x3D; &#x27;number&#x27;) {
+      if (!Array.isArray(current)) return undefined;
+      current &#x3D; current[part];
+      continue;
+    }
+    if (!isRecord(current)) return undefined;
+    current &#x3D; current[part];
+  }
+  return current;
+};
+
+const firstRecord &#x3D; (value: unknown): UnknownRecord | undefined &#x3D;&gt; {
+  if (isRecord(value)) return value;
+  if (Array.isArray(value)) {
+    const first: unknown &#x3D; (value as unknown[])[0];
+    return isRecord(first) ? first : undefined;
+  }
+  return undefined;
+};
+
+const toStringSafe &#x3D; (value: unknown): string | undefined &#x3D;&gt; {
+  if (typeof value &#x3D;&#x3D;&#x3D; &#x27;string&#x27;) return value;
+  if (typeof value &#x3D;&#x3D;&#x3D; &#x27;number&#x27;) return String(value);
+  return undefined;
+};
+
+const toNumberSafe &#x3D; (value: unknown, fallback &#x3D; 0): number &#x3D;&gt; {
+  if (typeof value &#x3D;&#x3D;&#x3D; &#x27;number&#x27;) return value;
+  if (typeof value &#x3D;&#x3D;&#x3D; &#x27;string&#x27; &amp;&amp; value.trim().length &gt; 0) {
+    const parsed &#x3D; Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
+};
+
+const toDateSafe &#x3D; (value: unknown, fallback: Date): Date &#x3D;&gt; {
+  if (value instanceof Date) return value;
+  if (typeof value &#x3D;&#x3D;&#x3D; &#x27;string&#x27; || typeof value &#x3D;&#x3D;&#x3D; &#x27;number&#x27;) {
+    const parsed &#x3D; new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return fallback;
+};
+
+const firstPathRecord &#x3D; (
+  root: UnknownRecord,
+  paths: Array&lt;Array&lt;string | number&gt;&gt;,
+): UnknownRecord | undefined &#x3D;&gt; {
+  for (const path of paths) {
+    const found &#x3D; firstRecord(getPath(root, path));
+    if (found) return found;
+  }
+  return undefined;
+};
+
+export interface NormalizedInvoiceData {
+  number: string;
+  accessKey: string;
+  issuedAt: Date; // Corrigido: era issueDate
+  amount: number; // Corrigido: era totalValue
+  taxableValue: number;
+  type: &#x27;PRODUCT&#x27; | &#x27;SERVICE&#x27;;
+  customerDocument: string;
+  customerName: string;
+  retentions: {
+    iss: number;
+    irrf: number;
+    pis: number;
+    cofins: number;
+    csll: number;
+  };
+  rawJson: unknown;
+}
+
+@Injectable()
+export class XmlService {
+  private readonly logger &#x3D; new Logger(XmlService.name);
+  private readonly parser: XMLParser;
+
+  constructor() {
+    this.parser &#x3D; new XMLParser({
+      ignoreAttributes: false,
+      attributeNamePrefix: &#x27;@_&#x27;,
+      parseTagValue: true,
+      trimValues: true,
+      isArray: (name) &#x3D;&gt;
+        [&#x27;InfNfse&#x27;, &#x27;CompNfse&#x27;, &#x27;det&#x27;, &#x27;imposto&#x27;, &#x27;Nfse&#x27;].includes(name),
+    });
+  }
+
+  parseInvoiceXml(xmlInput: Buffer | string): NormalizedInvoiceData {
+    try {
+      const xmlString &#x3D;
+        typeof xmlInput &#x3D;&#x3D;&#x3D; &#x27;string&#x27; ? xmlInput : xmlInput.toString(&#x27;utf-8&#x27;);
+
+      if (!xmlString || xmlString.trim().length &#x3D;&#x3D;&#x3D; 0) {
+        throw new Error(&#x27;Conteúdo do XML está vazio.&#x27;);
+      }
+
+      const jsonObj &#x3D; this.parser.parse(xmlString) as unknown;
+      const root &#x3D; isRecord(jsonObj) ? jsonObj : undefined;
+      if (!root) {
+        throw new Error(&#x27;Estrutura XML inválida.&#x27;);
+      }
+
+      const nfe &#x3D; firstRecord(
+        getPath(root, [&#x27;nfeProc&#x27;, &#x27;NFe&#x27;, &#x27;infNFe&#x27;]) ??
+          getPath(root, [&#x27;NFe&#x27;, &#x27;infNFe&#x27;]),
+      );
+      if (nfe) {
+        return this.extractNFeData(nfe, root);
+      }
+
+      const nfseBase &#x3D; firstPathRecord(root, [
+        [&#x27;CompNfse&#x27;, 0, &#x27;Nfse&#x27;, &#x27;InfNfse&#x27;],
+        [&#x27;Nfse&#x27;, &#x27;InfNfse&#x27;],
+        [&#x27;Nfse&#x27;, 0, &#x27;InfNfse&#x27;],
+        [
+          &#x27;ConsultarLoteRpsResposta&#x27;,
+          &#x27;ListaNfse&#x27;,
+          &#x27;CompNfse&#x27;,
+          &#x27;Nfse&#x27;,
+          &#x27;InfNfse&#x27;,
+        ],
+        [&#x27;EnviarLoteRpsResposta&#x27;, &#x27;ListaNfse&#x27;, &#x27;CompNfse&#x27;, &#x27;Nfse&#x27;, &#x27;InfNfse&#x27;],
+      ]);
+
+      if (nfseBase) {
+        return this.extractNFSeData(nfseBase, root);
+      }
+
+      throw new Error(&#x27;Estrutura fiscal não reconhecida.&#x27;);
+    } catch (error: unknown) {
+      const message &#x3D; error instanceof Error ? error.message : String(error);
+      this.logger.error(&#x60;[Parser Error] ${message}&#x60;);
+      throw new BadRequestException(&#x60;Erro na interpretação do XML: ${message}&#x60;);
+    }
+  }
+
+  private extractNFeData(
+    info: UnknownRecord,
+    raw: UnknownRecord,
+  ): NormalizedInvoiceData {
+    const total &#x3D; isRecord(info.total) ? info.total : undefined;
+    const totais &#x3D; total &amp;&amp; isRecord(total.ICMSTot) ? total.ICMSTot : undefined;
+    const retencoes &#x3D;
+      total &amp;&amp; isRecord(total.retTrib) ? total.retTrib : undefined;
+    const dest &#x3D; isRecord(info.dest) ? info.dest : undefined;
+    const ide &#x3D; isRecord(info.ide) ? info.ide : undefined;
+
+    const accessKeyRaw &#x3D; toStringSafe(info[&#x27;@_Id&#x27;]);
+    const accessKey &#x3D;
+      (accessKeyRaw ? accessKeyRaw.replace(&#x27;NFe&#x27;, &#x27;&#x27;) : undefined) ??
+      toStringSafe(getPath(info, [&#x27;protNFe&#x27;, &#x27;infProt&#x27;, &#x27;chNFe&#x27;])) ??
+      &#x60;NFE-${Date.now()}&#x60;;
+
+    return {
+      number: toStringSafe(ide?.nNF) ?? &#x27;0&#x27;,
+      accessKey,
+      issuedAt: toDateSafe(ide?.dhEmi ?? ide?.dEmi, new Date()),
+      amount: toNumberSafe(totais?.vNF, 0),
+      taxableValue: toNumberSafe(totais?.vBC ?? totais?.vNF, 0),
+      type: &#x27;PRODUCT&#x27;,
+      customerDocument: toStringSafe(dest?.CNPJ ?? dest?.CPF) ?? &#x27;00000000000&#x27;,
+      customerName: toStringSafe(dest?.xNome) ?? &#x27;Cliente Consumidor&#x27;,
+      retentions: {
+        iss: 0,
+        irrf: toNumberSafe(retencoes?.vIRRF, 0),
+        pis: toNumberSafe(retencoes?.vPIS, 0),
+        cofins: toNumberSafe(retencoes?.vCOFINS, 0),
+        csll: toNumberSafe(retencoes?.vCSLL, 0),
+      },
+      rawJson: raw,
+    };
+  }
+
+  private extractNFSeData(
+    nfse: UnknownRecord,
+    raw: UnknownRecord,
+  ): NormalizedInvoiceData {
+    const servico &#x3D; isRecord(nfse.Servico) ? nfse.Servico : undefined;
+    const valores &#x3D; isRecord(servico?.Valores)
+      ? servico?.Valores
+      : isRecord(nfse.Valores)
+        ? nfse.Valores
+        : undefined;
+    const tomador &#x3D; isRecord(nfse.TomadorServico)
+      ? nfse.TomadorServico
+      : isRecord(nfse.Tomador)
+        ? nfse.Tomador
+        : undefined;
+    const tomadorIdent &#x3D; isRecord(tomador?.IdentificacaoTomador)
+      ? tomador?.IdentificacaoTomador
+      : undefined;
+
+    const prestadorCnpj &#x3D;
+      toStringSafe(
+        getPath(nfse, [&#x27;PrestadorServico&#x27;, &#x27;IdentificacaoPrestador&#x27;, &#x27;Cnpj&#x27;]),
+      ) ??
+      toStringSafe(getPath(nfse, [&#x27;PrestadorServico&#x27;, &#x27;Cnpj&#x27;])) ??
+      &#x27;00000000000000&#x27;;
+
+    return {
+      number: toStringSafe(nfse.Numero) ?? &#x27;0&#x27;,
+      accessKey:
+        toStringSafe(nfse.CodigoVerificacao) ??
+        &#x60;NFSE-${toStringSafe(nfse.Numero) ?? &#x27;0&#x27;}-${prestadorCnpj}&#x60;,
+      issuedAt: toDateSafe(nfse.DataEmissao ?? nfse.DataGeracao, new Date()),
+      amount: toNumberSafe(valores?.ValorServicos, 0),
+      taxableValue: toNumberSafe(
+        valores?.BaseCalculo ?? valores?.ValorServicos,
+        0,
+      ),
+      type: &#x27;SERVICE&#x27;,
+      customerDocument:
+        toStringSafe(getPath(tomadorIdent, [&#x27;CpfCnpj&#x27;, &#x27;Cnpj&#x27;])) ??
+        toStringSafe(getPath(tomadorIdent, [&#x27;CpfCnpj&#x27;, &#x27;Cpf&#x27;])) ??
+        toStringSafe(tomador?.Cnpj ?? tomador?.Cpf) ??
+        &#x27;00000000000&#x27;,
+      customerName:
+        toStringSafe(tomador?.RazaoSocial ?? tomador?.Nome) ??
+        &#x27;Tomador Desconhecido&#x27;,
+      retentions: {
+        iss: toNumberSafe(valores?.ValorIssRetido ?? valores?.IssRetido, 0),
+        irrf: toNumberSafe(
+          valores?.ValorIr ?? valores?.IrRetido ?? valores?.ValorIrrf,
+          0,
+        ),
+        pis: toNumberSafe(valores?.ValorPis ?? valores?.PisRetido, 0),
+        cofins: toNumberSafe(valores?.ValorCofins ?? valores?.CofinsRetido, 0),
+        csll: toNumberSafe(valores?.ValorCsll ?? valores?.CsllRetido, 0),
+      },
+      rawJson: raw,
+    };
+  }
+}
+</code></pre>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'interface';
+            var COMPODOC_CURRENT_PAGE_URL = 'NormalizedInvoiceData.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

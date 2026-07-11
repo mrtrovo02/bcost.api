@@ -1,44 +1,60 @@
-# ---- Stage 1: Build ----
+# --- ESTÁGIO 1: Build ---
 FROM node:20-alpine AS builder
+
+# Instala dependências nativas (libc6-compat) e openssl (crítico para o Prisma no Alpine)
+RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# Copiar arquivos de dependência e schema Prisma
+# Copia arquivos de pacotes e definição do Prisma
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Instalar todas as dependências (incluindo dev) e gerar cliente Prisma
-RUN npm ci
+# Instala dependências com legacy-peer-deps para resolver conflitos NestJS
+RUN npm install --legacy-peer-deps
+
+# Com o openssl instalado no SO, o Prisma detecta a arquitetura (musl) automaticamente
 RUN npx prisma generate
 
-# Copiar o restante do código e compilar
+# Copia o código e realiza o build
 COPY . .
 RUN npm run build
 
-# ---- Stage 2: Production ----
-FROM node:20-alpine AS production
+# --- ESTÁGIO 2: Runner (Produção) ---
+FROM node:20-alpine AS runner
+
+ENV NODE_ENV=production
+ENV PORT=5000
 
 WORKDIR /app
 
-# Criar usuário não-root para segurança
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+# O openssl também é necessário no ambiente de execução para a engine conectar ao banco
+RUN apk add --no-cache openssl
 
-# Copiar apenas as dependências de produção
-COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+# Segurança: usuário não-root
+RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nestjs
 
-# Copiar build e cliente Prisma do stage builder
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+# Copia apenas o estritamente necessário do builder
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
 
-# (Opcional) Instalar wget para healthcheck, se necessário
-RUN apk add --no-cache wget
+# Remove pacotes de desenvolvimento e limpa o cache
+RUN npm prune --production --legacy-peer-deps && npm cache clean --force
 
-# Mudar para usuário não-root
-USER nodejs
+# Recopia os binários gerados do Prisma para o ambiente final
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Expor a porta usada pela aplicação (definida via .env ou 5000)
+# Permissões de diretório
+RUN chown -R nestjs:nodejs /app
+USER nestjs
+
+# Healthcheck robusto (aguarda 40s para o Bootstrap do Fastify completar)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3   CMD node -e "require('http').get('http://localhost:5000/health', (r) => {r.statusCode < 400 ? process.exit(0) : process.exit(1)})" || exit 1
+
+# Inicialização com controle rigoroso de memória
+CMD ["sh", "-c", "if [ -f dist/src/main.js ]; then node --max-old-space-size=450 dist/src/main.js; elif [ -f dist/main.js ]; then node --max-old-space-size=450 dist/main.js; else echo 'Erro: main.js não encontrado'; exit 1; fi"]
+
 EXPOSE 5000
-
-# Comando de inicialização (usando node diretamente para produção)
-CMD ["node", "dist/src/main.js"]

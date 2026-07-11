@@ -1,0 +1,39 @@
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+import { AuditProducer } from '../audit/audit.producer.js';
+
+@Injectable()
+export class AuditInterceptor implements NestInterceptor {
+  constructor(private readonly auditProducer: AuditProducer) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const startTime = Date.now();
+    const request = context.switchToHttp().getRequest();
+    const { method, url, user, body, ip } = request;
+
+    return next.handle().pipe(
+      tap({
+        next: (data) => {
+          const responseTime = Date.now() - startTime;
+          const response = context.switchToHttp().getResponse();
+
+          // Envia para a fila de forma assíncrona
+          this.auditProducer.dispatch({
+            action: method,
+            module: url.split('/')[2] || 'core',
+            entity: url.split('/')[3] || 'resource',
+            entityId: body?.id || data?.id,
+            payload: body,
+            statusCode: response.statusCode,
+            responseTime,
+            ipAddress: ip,
+            userAgent: request.headers['user-agent'],
+            userId: user?.id,
+            companyId: user?.companyId,
+          });
+        },
+      }),
+    );
+  }
+}

@@ -1,0 +1,827 @@
+<!doctype html>
+<html class="no-js" lang="">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <title>bcost-api documentation</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+
+        <link rel="icon" type="image/x-icon" href="../images/favicon.ico">
+	   <link rel="stylesheet" href="../styles/style.css">
+        <link rel="stylesheet" href="../styles/dark.css">
+    </head>
+    <body>
+          <script>
+               // Blocking script to avoid flickering dark mode
+               // Dark mode toggle button
+               var useDark = window.matchMedia('(prefers-color-scheme: dark)');
+               var darkModeState = useDark.matches;
+               var $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               var $darkModeToggles = document.querySelectorAll('.dark-mode-switch');
+               var darkModeStateLocal = localStorage.getItem('compodoc_darkmode-state');
+
+               function checkToggle(check) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].checked = check;
+                    }
+               }
+
+               function toggleDarkMode(state) {
+                    if (window.localStorage) {
+                         localStorage.setItem('compodoc_darkmode-state', state);
+                    }
+
+                    checkToggle(state);
+
+                    const hasClass = document.body.classList.contains('dark');
+
+                    if (state) {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.add('dark');
+                         }
+                         if (!hasClass) {
+                              document.body.classList.add('dark');
+                         }
+                    } else {
+                         for (var i = 0; i < $darkModeToggles.length; i++) {
+                              $darkModeToggles[i].classList.remove('dark');
+                         }
+                         if (hasClass) {
+                              document.body.classList.remove('dark');
+                         }
+                    }
+               }
+
+               useDark.addEventListener('change', function (evt) {
+                    toggleDarkMode(evt.matches);
+               });
+               if (darkModeStateLocal) {
+                    darkModeState = darkModeStateLocal === 'true';
+               }
+               toggleDarkMode(darkModeState);
+          </script>
+          <script>
+              // --- Iframe navigation tracking for Template Playground ---
+              function sendCurrentUrlToParent() {
+                  if (window.parent && window.parent !== window) {
+                      window.parent.postMessage({
+                          type: 'compodoc-iframe-navigate',
+                          url: window.location.pathname + window.location.hash
+                      }, '*');
+                  }
+              }
+              window.addEventListener('hashchange', sendCurrentUrlToParent, false);
+              window.addEventListener('popstate', sendCurrentUrlToParent, false);
+              window.addEventListener('DOMContentLoaded', sendCurrentUrlToParent, false);
+          </script>
+
+        <div class="navbar navbar-default navbar-fixed-top d-md-none p-0">
+               <div class="d-flex">
+                    <a href="../" class="navbar-brand">bcost-api documentation</a>
+                    <button type="button" class="btn btn-default btn-menu ion-ios-menu" id="btn-menu"></button>
+               </div>
+        </div>
+
+        <div class="xs-menu menu" id="mobile-menu">
+                <div id="book-search-input" role="search"><input type="text" placeholder="Type to search"></div>            <compodoc-menu></compodoc-menu>
+        </div>
+
+        <div class="container-fluid main">
+           <div class="row main">
+               <div class="d-none d-md-block menu">
+                   <compodoc-menu mode="normal"></compodoc-menu>
+               </div>
+               <!-- START CONTENT -->
+               <div class="content interface">
+                   <div class="content-data">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<ol class="breadcrumb">
+  <li class="breadcrumb-item">Interfaces</li>
+  <li class="breadcrumb-item"
+  >
+  ComplianceIssue</li>
+</ol>
+
+<ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="#info" 
+                class="nav-link"
+                class="nav-link active"
+                role="tab" id="info-tab" data-bs-toggle="tab" data-link="info">Info</a>
+        </li>
+        <li class="nav-item">
+            <a href="#source" 
+                class="nav-link"
+                
+                role="tab" id="source-tab" data-bs-toggle="tab" data-link="source">Source</a>
+        </li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade active in" id="info">
+        <p class="comment">
+            <h3>File</h3>
+        </p>
+        <p class="comment">
+            <code>src/modules/fiscal/fiscal.service.ts</code>
+        </p>
+
+
+
+
+        <section data-compodoc="block-index">
+            <h3 id="index">Index</h3>
+            <table class="table table-sm table-bordered index-table">
+                <tbody>
+                    <tr>
+                        <td class="col-md-4">
+                            <h6><b>Properties</b></h6>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="col-md-4">
+                            <ul class="index-list">
+                                <li>
+                                        <a href="#checkName" 
+>
+                                            checkName
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#description" 
+>
+                                            description
+                                        </a>
+                                </li>
+                                <li>
+                                        <a href="#severity" 
+>
+                                            severity
+                                        </a>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+
+
+            <section data-compodoc="block-properties">
+                <h3 id="inputs">Properties</h3>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="checkName"></a>
+                                        <span class="name "><b>checkName</b>
+                                            <a href="#checkName">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>checkName:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="description"></a>
+                                        <span class="name "><b>description</b>
+                                            <a href="#description">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>description:         <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>        <code><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/string" target="_blank" >string</a></code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+                    <table class="table table-sm table-bordered">
+                        <tbody>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <a name="severity"></a>
+                                        <span class="name "><b>severity</b>
+                                            <a href="#severity">
+                                                <span class="icon ion-ios-link"></span>
+                                            </a>
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="col-md-4">
+                                        <code>severity:     <code>NotificationSeverity</code>
+</code>
+                                    </td>
+                                </tr>
+
+
+                                    <tr>
+                                        <td class="col-md-4">
+                                            <i>Type : </i>    <code>NotificationSeverity</code>
+
+                                        </td>
+                                    </tr>
+
+
+
+
+
+                        </tbody>
+                    </table>
+            </section>
+    </div>
+
+
+    <div class="tab-pane fade  tab-source-code" id="source">
+        <pre class="line-numbers compodoc-sourcecode"><code class="language-typescript">&#x27;use strict&#x27;;
+
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleInit,
+} from &#x27;@nestjs/common&#x27;;
+import { InjectQueue } from &#x27;@nestjs/bullmq&#x27;;
+import { Queue } from &#x27;bullmq&#x27;;
+import { PrismaService } from &#x27;../../database/prisma.service.js&#x27;;
+import { UploadXmlDto } from &#x27;./dto/upload-xml.dto.js&#x27;;
+import {
+  Prisma,
+  InvoiceType,
+  InvoiceStatus,
+  Invoice,
+  NotificationType,
+  NotificationSeverity,
+  ComplianceStatus, // FIX: importado enum correto
+  NotificationStatus, // FIX: importado enum para status de notificação
+} from &#x27;@prisma/client&#x27;;
+import * as crypto from &#x27;crypto&#x27;;
+
+// ---------------------------------------------------------------------------
+// Tipos auxiliares
+// ---------------------------------------------------------------------------
+
+interface ComplianceIssue {
+  checkName: string;
+  severity: NotificationSeverity;
+  description: string;
+}
+
+@Injectable()
+export class FiscalService implements OnModuleInit {
+  private readonly logger &#x3D; new Logger(FiscalService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectQueue(&#x27;xml-extraction&#x27;) private readonly xmlQueue: Queue,
+  ) {}
+
+  // FIX BOOTSTRAP: onModuleInit não pode ter await de rede
+  // xmlQueue.client aguardava conexão Redis — bloqueava NestFactory.create()
+  onModuleInit(): void {
+    // Fire-and-forget — verifica Redis em background após bootstrap
+    setTimeout(() &#x3D;&gt; {
+      void this.verifyRedisConnectivity();
+    }, 500);
+  }
+
+  private async verifyRedisConnectivity(): Promise&lt;void&gt; {
+    try {
+      const client &#x3D; await this.xmlQueue.client;
+      await client.ping();
+      this.logger.log(&#x27;✅ Conexão Redis para Faturas ativa.&#x27;);
+    } catch (error: unknown) {
+      const message &#x3D; error instanceof Error ? error.message : String(error);
+      this.logger.warn(&#x60;⚠️ Redis aguardando conexão: ${message}&#x60;);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Compliance
+  // ---------------------------------------------------------------------------
+
+  async runComplianceAudit(companyId: string) {
+    this.logger.log(
+      &#x60;[Compliance] Iniciando auditoria para Company&#x3D;${companyId}&#x60;,
+    );
+
+    const issues: ComplianceIssue[] &#x3D; [];
+    const now &#x3D; new Date();
+    const currentMonth &#x3D; now.getMonth() + 1;
+    const currentYear &#x3D; now.getFullYear();
+
+    // 1. Notas sem reconciliação
+    const unreconciled &#x3D; await this.prisma.extended.invoice.count({
+      where: { companyId, reconciled: false, status: InvoiceStatus.NORMAL },
+    });
+
+    if (unreconciled &gt; 10) {
+      issues.push({
+        checkName: &#x27;PENDENCIA_CONCILIACAO&#x27;,
+        severity: NotificationSeverity.WARNING,
+        description: &#x60;Existem ${unreconciled} notas sem vínculo bancário. Isso distorce o DRE.&#x60;,
+      });
+    }
+
+    // 2. Fator R crítico
+    const stats &#x3D; await this.calculateMonthlyTax(
+      companyId,
+      currentMonth,
+      currentYear,
+    );
+    if (stats.metrics.fatorR &lt; 28 &amp;&amp; stats.metrics.fatorR &gt; 20) {
+      issues.push({
+        checkName: &#x27;ALERTA_FATOR_R&#x27;,
+        severity: NotificationSeverity.CRITICAL,
+        description: &#x60;Fator R em ${stats.metrics.fatorR}%. Falta pouco para o Anexo III. Ajuste o Pro-labore.&#x60;,
+      });
+    }
+
+    // Persiste resultados
+    for (const issue of issues) {
+      await this.prisma.complianceCheck.create({
+        data: {
+          companyId,
+          checkName: issue.checkName,
+          severity: issue.severity,
+          description: issue.description,
+          status: ComplianceStatus.OPEN, // FIX: era &#x27;OPEN&#x27; string literal
+          resolved: false,
+        },
+      });
+
+      await this.createFiscalNotification(companyId, issue);
+    }
+
+    return { auditDate: now, issuesFound: issues.length };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Projeções
+  // ---------------------------------------------------------------------------
+
+  async getFiscalProjections(companyId: string) {
+    const lastSnapshots &#x3D; await this.prisma.financialSnapshot.findMany({
+      where: { companyId },
+      orderBy: { createdAt: &#x27;desc&#x27; },
+      take: 3,
+    });
+
+    if (lastSnapshots.length &#x3D;&#x3D;&#x3D; 0) {
+      return { message: &#x27;Dados insuficientes para projeção.&#x27; };
+    }
+
+    const avgTax &#x3D;
+      lastSnapshots.reduce((acc, s) &#x3D;&gt; acc + s.taxPayable.toNumber(), 0) /
+      lastSnapshots.length;
+
+    return {
+      estimatedTaxNextMonth: Number(avgTax.toFixed(2)),
+      confidence: lastSnapshots.length &gt;&#x3D; 3 ? &#x27;HIGH&#x27; : &#x27;MEDIUM&#x27;,
+      recommendation:
+        avgTax &gt; 5000
+          ? &#x27;Considere revisão do regime tributário.&#x27;
+          : &#x27;Alíquota dentro da média.&#x27;,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notificações internas
+  // ---------------------------------------------------------------------------
+
+  private async createFiscalNotification(
+    companyId: string,
+    issue: ComplianceIssue,
+  ): Promise&lt;void&gt; {
+    await this.prisma.notificationLog.create({
+      data: {
+        companyId,
+        type: NotificationType.COMPLIANCE_ISSUE,
+        title: &#x60;Alerta Fiscal: ${issue.checkName}&#x60;,
+        message: issue.description,
+        severity: issue.severity,
+        status: NotificationStatus.PENDING, // FIX: era &#x27;PENDING&#x27; string literal
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Snapshot financeiro
+  // ---------------------------------------------------------------------------
+
+  async generateFinancialSnapshot(
+    companyId: string,
+    month: number,
+    year: number,
+  ) {
+    const stats &#x3D; await this.calculateMonthlyTax(companyId, month, year);
+    const rawData &#x3D; &#x60;${companyId}-${year}-${month}-${stats.metrics.faturamentoMes}&#x60;;
+    const integrityHash &#x3D; crypto
+      .createHash(&#x27;sha256&#x27;)
+      .update(rawData)
+      .digest(&#x27;hex&#x27;);
+
+    return this.prisma.financialSnapshot.upsert({
+      where: { integrityHash },
+      update: {
+        revenue: stats.metrics.faturamentoMes,
+        taxPayable: stats.financial.impostoAPagar,
+        fatorRData: stats.metrics,
+        netProfit: new Prisma.Decimal(stats.metrics.faturamentoMes).minus(
+          stats.metrics.folhaMes,
+        ),
+      },
+      create: {
+        companyId,
+        month,
+        year,
+        revenue: stats.metrics.faturamentoMes,
+        expenses: 0,
+        taxPayable: stats.financial.impostoAPagar,
+        netProfit: new Prisma.Decimal(stats.metrics.faturamentoMes).minus(
+          stats.metrics.folhaMes,
+        ),
+        fatorRData: stats.metrics,
+        integrityHash,
+      },
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cálculo mensal de imposto
+  // FIX: referenceMonth string → month + year como Int (alinhado ao schema)
+  // ---------------------------------------------------------------------------
+
+  async calculateMonthlyTax(companyId: string, month: number, year: number) {
+    const startDate &#x3D; new Date(year, month - 1, 1);
+    const endDate &#x3D; new Date(year, month, 0, 23, 59, 59);
+
+    const [invoices, payrolls] &#x3D; await Promise.all([
+      this.prisma.extended.invoice.findMany({
+        where: {
+          companyId,
+          issuedAt: { gte: startDate, lte: endDate },
+          status: InvoiceStatus.NORMAL,
+        },
+      }),
+      // FIX: era { referenceMonth: referenceMonthStr } — campo não existe mais
+      this.prisma.payroll.findMany({
+        where: { companyId, month, year },
+      }),
+    ]);
+
+    const faturamentoMes &#x3D; invoices.reduce(
+      (acc, inv) &#x3D;&gt; acc.plus(inv.amount),
+      new Prisma.Decimal(0),
+    );
+    const folhaMes &#x3D; payrolls.reduce(
+      (acc, p) &#x3D;&gt; acc.plus(p.totalAmount),
+      new Prisma.Decimal(0),
+    );
+
+    let fatorR &#x3D; 0;
+    if (!faturamentoMes.isZero()) {
+      fatorR &#x3D; folhaMes.div(faturamentoMes).mul(100).toNumber();
+    }
+
+    const anexoUtilizado &#x3D; fatorR &gt;&#x3D; 28 ? &#x27;III&#x27; : &#x27;V&#x27;;
+    const aliqEfetiva &#x3D; anexoUtilizado &#x3D;&#x3D;&#x3D; &#x27;III&#x27; ? 0.06 : 0.155;
+    const impostoAPagar &#x3D; faturamentoMes.mul(aliqEfetiva);
+
+    // FIX: period agora é string formatada para exibição — não mais usada como chave de query
+    const period &#x3D; &#x60;${year}-${String(month).padStart(2, &#x27;0&#x27;)}&#x60;;
+
+    return {
+      metrics: {
+        faturamentoMes: faturamentoMes.toNumber(),
+        folhaMes: folhaMes.toNumber(),
+        fatorR: Number(fatorR.toFixed(2)),
+        anexoUtilizado,
+        aliqEfetiva: aliqEfetiva * 100,
+      },
+      financial: {
+        impostoAPagar: impostoAPagar.toNumber(),
+        economiaFatorR:
+          anexoUtilizado &#x3D;&#x3D;&#x3D; &#x27;III&#x27;
+            ? faturamentoMes.mul(0.155).minus(impostoAPagar).toNumber()
+            : 0,
+      },
+      integrity: { count: invoices.length, period },
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Upload de XML
+  // ---------------------------------------------------------------------------
+
+  async enqueueXmlUpload(
+    companyId: string,
+    files: Array&lt;Express.Multer.File&gt;,
+    details: UploadXmlDto,
+  ) {
+    const company &#x3D; await this.prisma.extended.company.findUnique({
+      where: { id: companyId },
+    });
+    if (!company) throw new NotFoundException(&#x27;Empresa não cadastrada.&#x27;);
+
+    const jobs &#x3D; files.map((file) &#x3D;&gt; ({
+      name: &#x27;xml-extraction-job&#x27;,
+      data: {
+        xmlContent: file.buffer.toString(&#x27;utf-8&#x27;),
+        companyId,
+        type: details.type,
+        originalName: file.originalname,
+      },
+      opts: {
+        attempts: 3,
+        backoff: { type: &#x27;exponential&#x27;, delay: 2000 },
+        removeOnComplete: true,
+      },
+    }));
+
+    const enqueued &#x3D; await this.xmlQueue.addBulk(jobs);
+    return { status: &#x27;queued&#x27;, count: enqueued.length };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Performance anual
+  // ---------------------------------------------------------------------------
+
+  async getYearlyPerformance(companyId: string, year: number) {
+    const snapshots &#x3D; await this.prisma.financialSnapshot.findMany({
+      where: { companyId, year },
+      orderBy: { month: &#x27;asc&#x27; },
+    });
+
+    if (snapshots.length &gt; 0) {
+      return snapshots.map((s) &#x3D;&gt; ({
+        month: s.month,
+        faturamento: s.revenue.toNumber(),
+        imposto: s.taxPayable.toNumber(),
+        isSnapshot: true,
+      }));
+    }
+
+    const invoices &#x3D; await this.prisma.extended.invoice.findMany({
+      where: {
+        companyId,
+        issuedAt: {
+          gte: new Date(year, 0, 1),
+          lte: new Date(year, 11, 31, 23, 59, 59),
+        },
+        status: InvoiceStatus.NORMAL,
+      },
+    });
+
+    const monthlyMap &#x3D; Array.from({ length: 12 }, (_, i) &#x3D;&gt; ({
+      month: i + 1,
+      faturamento: new Prisma.Decimal(0),
+      imposto: new Prisma.Decimal(0),
+    }));
+
+    for (const inv of invoices) {
+      const idx &#x3D; inv.issuedAt.getMonth();
+      monthlyMap[idx].faturamento &#x3D; monthlyMap[idx].faturamento.plus(
+        inv.amount,
+      );
+      monthlyMap[idx].imposto &#x3D; monthlyMap[idx].faturamento.mul(0.06);
+    }
+
+    return monthlyMap.map((m) &#x3D;&gt; ({
+      month: m.month,
+      faturamento: m.faturamento.toNumber(),
+      imposto: m.imposto.toNumber(),
+      isSnapshot: false,
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Otimização Fator R
+  // ---------------------------------------------------------------------------
+
+  async getFactorROptimization(companyId: string, month: number, year: number) {
+    const stats &#x3D; await this.calculateMonthlyTax(companyId, month, year);
+    const { faturamentoMes, folhaMes, fatorR } &#x3D; stats.metrics;
+
+    if (fatorR &gt;&#x3D; 28) {
+      return {
+        optimized: true,
+        message: &#x27;Benefício fiscal do Anexo III garantido.&#x27;,
+        currentSaving: stats.financial.economiaFatorR,
+      };
+    }
+
+    const faturamentoDecimal &#x3D; new Prisma.Decimal(faturamentoMes);
+    const folhaIdeal &#x3D; faturamentoDecimal.mul(0.28).toNumber();
+
+    return {
+      optimized: false,
+      message: &#x27;Alerta: Empresa enquadrada no Anexo V (Alíquota cara).&#x27;,
+      action: &#x60;Ajuste o Pró-labore para R$ ${(folhaIdeal - folhaMes).toFixed(2)} para migrar ao Anexo III.&#x60;,
+      potentialSaving: faturamentoDecimal.mul(0.095).toNumber(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Listagem de faturas
+  // ---------------------------------------------------------------------------
+
+  async getCompanyInvoices(companyId: string) {
+    return this.prisma.extended.invoice.findMany({
+      where: { companyId },
+      orderBy: { issuedAt: &#x27;desc&#x27; },
+      take: 50,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Seed de demonstração
+  // ---------------------------------------------------------------------------
+
+  async seedDemoData(companyId: string) {
+    const year &#x3D; new Date().getFullYear();
+    const results: Invoice[] &#x3D; [];
+
+    const customer &#x3D; await this.prisma.customer.upsert({
+      where: {
+        companyId_document: { companyId, document: &#x27;00.000.000/0001-91&#x27; },
+      },
+      update: {},
+      create: {
+        companyId,
+        name: &#x27;Cliente Padrão bCost&#x27;,
+        document: &#x27;00.000.000/0001-91&#x27;,
+        email: &#x27;cliente@bcost.com.br&#x27;,
+      },
+    });
+
+    for (let m &#x3D; 1; m &lt;&#x3D; 12; m++) {
+      const issuedAt &#x3D; new Date(year, m - 1, 15);
+      const existing &#x3D; await this.prisma.invoice.findFirst({
+        where: { companyId, customerId: customer.id, issuedAt },
+      });
+
+      if (!existing) {
+        const res &#x3D; await this.prisma.invoice.create({
+          data: {
+            companyId,
+            customerId: customer.id,
+            amount: new Prisma.Decimal(10_000.0),
+            taxAmount: new Prisma.Decimal(600.0),
+            // FIX: accessKey única por mês para evitar colisão no @unique do schema
+            accessKey: &#x60;352602${year}${String(m).padStart(2, &#x27;0&#x27;)}${Math.random().toString().substring(2, 8)}&#x60;,
+            issuedAt,
+            type: InvoiceType.SERVICE,
+            status: InvoiceStatus.NORMAL,
+            reconciled: false,
+          },
+        });
+        results.push(res);
+      } else {
+        results.push(existing);
+      }
+    }
+
+    return { status: &#x27;success&#x27;, created: results.length };
+  }
+}
+</code></pre>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+                   </div><div class="search-results">
+    <div class="has-results">
+        <h1 class="search-results-title"><span class='search-results-count'></span> results matching "<span class='search-query'></span>"</h1>
+        <ul class="search-results-list"></ul>
+    </div>
+    <div class="no-results">
+        <h1 class="search-results-title">No results matching "<span class='search-query'></span>"</h1>
+    </div>
+</div>
+</div>
+               <!-- END CONTENT -->
+           </div>
+       </div>
+
+          <label class="dark-mode-switch">
+               <input type="checkbox">
+               <span class="slider">
+                    <svg class="slider-icon" viewBox="0 0 24 24" fill="none" height="20" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" width="20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path>
+                    </svg>
+               </span>
+          </label>
+
+       <script>
+            var COMPODOC_CURRENT_PAGE_DEPTH = 1;
+            var COMPODOC_CURRENT_PAGE_CONTEXT = 'interface';
+            var COMPODOC_CURRENT_PAGE_URL = 'ComplianceIssue.html';
+            var MAX_SEARCH_RESULTS = 15;
+       </script>
+
+       <script>
+               $darkModeToggleSwitchers = document.querySelectorAll('.dark-mode-switch input');
+               checkToggle(darkModeState);
+               if ($darkModeToggleSwitchers.length > 0) {
+                    for (var i = 0; i < $darkModeToggleSwitchers.length; i++) {
+                         $darkModeToggleSwitchers[i].addEventListener('change', function (event) {
+                              darkModeState = !darkModeState;
+                              toggleDarkMode(darkModeState);
+                         });
+                    }
+               }
+          </script>
+
+       <script src="../js/libs/custom-elements.min.js"></script>
+       <script src="../js/libs/lit-html.js"></script>
+
+       <script src="../js/menu-wc.js" defer></script>
+       <script nomodule src="../js/menu-wc_es5.js" defer></script>
+
+       <script src="../js/libs/bootstrap-native.js"></script>
+
+       <script src="../js/libs/es6-shim.min.js"></script>
+       <script src="../js/libs/EventDispatcher.js"></script>
+       <script src="../js/libs/promise.min.js"></script>
+
+       <script src="../js/compodoc.js"></script>
+
+       <script src="../js/tabs.js"></script>
+       <script src="../js/menu.js"></script>
+       <script src="../js/libs/clipboard.min.js"></script>
+       <script src="../js/libs/prism.js"></script>
+       <script src="../js/sourceCode.js"></script>
+          <script src="../js/search/search.js"></script>
+          <script src="../js/search/lunr.min.js"></script>
+          <script src="../js/search/search-lunr.js"></script>
+          <script src="../js/search/search_index.js"></script>
+       <script src="../js/lazy-load-graphs.js"></script>
+
+
+    </body>
+</html>

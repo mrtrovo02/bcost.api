@@ -1,0 +1,14 @@
+'use strict';
+
+import { Module } from '@nestjs/common';
+import { PrismaModule } from '../../database/prisma.module.js';
+import { CommandCenterEnterpriseController } from './command-center-enterprise.controller.js';
+import { CommandCenterEnterpriseService } from './command-center-enterprise.service.js';
+
+@Module({
+  imports: [PrismaModule],
+  controllers: [CommandCenterEnterpriseController],
+  providers: [CommandCenterEnterpriseService],
+  exports: [CommandCenterEnterpriseService],
+})
+export class CommandCenterEnterpriseModule {}

@@ -1,3 +1,4 @@
+import { MetricsController } from './metrics.controller';
 'use strict';
 
 import { Module } from '@nestjs/common';
@@ -23,7 +24,7 @@ import { CompanyCacheInterceptor } from '../../common/interceptors/company-cache
       max: 1000,
     }),
   ],
-  controllers: [HealthController],
+  controllers: [MetricsController, HealthController],
   providers: [
     HealthService,
     PerformanceAuditService,

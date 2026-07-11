@@ -11,20 +11,22 @@ import { AutomationController } from './automation.controller.js';
 import { RevenueModule } from '../revenue/revenue.module.js';
 import { FiscalModule } from '../fiscal/fiscal.module.js';
 import { AnalyticsModule } from '../analytics/analytics.module.js';
+import { AutomationJobsEnterpriseController } from './automation-jobs-enterprise.controller.js';
+import { AutomationJobsEnterpriseService } from './automation-jobs-enterprise.service.js';
 
 /**
  * AutomationModule: O Hub de Orquestração e Autonomia do bCost.
- * * Este módulo centraliza:
+ * Este módulo centraliza:
  * 1. Agendamentos Temporais (@Cron) via AutomationService.
  * 2. Gestão de Estado de Tarefas (Logs/Status) via AutomationJobService.
- * 3. Interoperabilidade entre Fiscal, Faturamento e Analytics.
+ * 3. Interoperabilidade entre Fiscal, Faturamento e Analytics (Forecasting & Anomaly Detection).
  */
 @Module({
   imports: [
     // Módulos que exportam os serviços necessários para os Jobs
-    RevenueModule, // Provê: RevenueService
-    FiscalModule, // Provê: TaxCalculationService, ComplianceService
-    AnalyticsModule, // Provê: ForecastingService
+    RevenueModule,   // Provê: RevenueService
+    FiscalModule,    // Provê: TaxCalculationService, ComplianceService
+    AnalyticsModule, // Provê: ForecastingService e AnomalyDetectionService
   ],
   controllers: [
     // Endpoints REST para controle e telemetria dos Jobs
