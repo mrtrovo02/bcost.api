@@ -1,5 +1,9 @@
 'use strict';
 
+// =============================================================================
+// ARQUIVO: src/common/guards/company-access.guard.ts
+// =============================================================================
+
 import {
   CanActivate,
   ExecutionContext,
@@ -9,13 +13,17 @@ import {
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 import { SKIP_COMPANY_CHECK_KEY } from '../decorators/skip-company-check.decorator.js';
-import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
+import { redactDeep, redactSensitiveHeaders } from '../security/redact-headers.util.js';
 
 /**
  * CompanyAccessGuard
  *
- * Garante que o companyId presente na requisição pertence ao usuário autenticado
- * ou que o usuário possui perfil com permissões globais (ADMIN_MASTER, MASTER, SUPER_ADMIN, ADMIN).
+ * Garante que o companyId presente na requisição pertence ao usuário autenticado.
+ * Este guard NÃO troca o tenant ativo — ele valida coerência entre:
+ * - companyId da rota/corpo/header
+ * - companyId ativo do token (req.user.companyId)
+ *
+ * Se não houver companyId na requisição, o guard não bloqueia.
  */
 @Injectable()
 export class CompanyAccessGuard implements CanActivate {
@@ -36,53 +44,34 @@ export class CompanyAccessGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user as
-      | {
-          id?: string;
-          companyId?: string | null;
-          activeCompanyId?: string | null;
-          role?: string | null;
-        }
+      | { id?: string; companyId?: string | null }
       | undefined;
 
+    // JwtAuthGuard já cuida de autenticação; se não há user, deixa seguir.
     if (!user?.id) return true;
 
-    const redactedHeaders = redactSensitiveHeaders(
-      request.headers as Record<string, unknown>,
-    );
-    const headerCompanyId = redactedHeaders?.['x-company-id'];
+    const headerCompanyId = redactSensitiveHeaders(request.headers as Record<string, unknown>)?.['x-company-id'];
     const normalizedHeader = Array.isArray(headerCompanyId)
       ? headerCompanyId[0]
       : headerCompanyId;
 
     const paramCompanyId =
       request.params?.companyId ??
-      request.query?.company_id ??
-      request.query?.companyId ??
       request.body?.companyId ??
-      (typeof normalizedHeader === 'string' ? normalizedHeader : null);
+      request.query?.companyId ??
+      normalizedHeader;
 
     if (!paramCompanyId) {
       return true;
     }
 
-    const globalRoles = ['ADMIN_MASTER', 'MASTER', 'SUPER_ADMIN', 'ADMIN'];
-    const userRole = user.role ? String(user.role).toUpperCase() : '';
-    if (globalRoles.includes(userRole)) {
-      request.companyId = paramCompanyId;
-      return true;
-    }
-
-    const allowedCompanyIds = [
-      user.companyId,
-      user.activeCompanyId,
-    ].filter(Boolean);
-
-    if (!allowedCompanyIds.includes(paramCompanyId)) {
+    if (!user.companyId || user.companyId !== paramCompanyId) {
       throw new ForbiddenException(
         'Acesso negado: companyId não corresponde à empresa ativa do usuário.',
       );
     }
 
+    // Propaga companyId validado para uso em interceptors/auditoria
     request.companyId = paramCompanyId;
 
     return true;

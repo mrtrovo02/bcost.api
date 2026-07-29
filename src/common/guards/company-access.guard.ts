@@ -1,79 +1,74 @@
-'use strict';
-
-// =============================================================================
-// ARQUIVO: src/common/guards/company-access.guard.ts
-// =============================================================================
-
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
-import { SKIP_COMPANY_CHECK_KEY } from '../decorators/skip-company-check.decorator.js';
-import { redactDeep, redactSensitiveHeaders } from '../security/redact-headers.util.js';
+import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
 
 /**
- * CompanyAccessGuard
+ * ARQUIVO: src/common/guards/company-access.guard.ts
  *
  * Garante que o companyId presente na requisição pertence ao usuário autenticado.
- * Este guard NÃO troca o tenant ativo — ele valida coerência entre:
- * - companyId da rota/corpo/header
- * - companyId ativo do token (req.user.companyId)
  *
- * Se não houver companyId na requisição, o guard não bloqueia.
+ * Aceita como fonte legítima de comparação:
+ * - user.companyId (empresa ativa carregada no JWT)
+ * - user.activeCompanyId (alias usado por alguns fluxos de sessão)
+ *
+ * NOTA DE SEGURANÇA: este guard NÃO possui bypass por "role administrativa
+ * global" (ex.: ADMIN_MASTER, SUPER_ADMIN). O enum CompanyRole do schema
+ * atual só define OWNER, ACCOUNTANT, MANAGER, VIEWER — todos escopados por
+ * empresa. Se um papel de administrador de plataforma for introduzido no
+ * futuro, ele deve ser modelado explicitamente (ex.: User.platformRole) e
+ * o bypass deve ser adicionado aqui de forma auditável, não implícita.
+ *
+ * Se não houver companyId na requisição, o guard não bloqueia (rotas não
+ * escopadas por empresa continuam funcionando normalmente).
  */
 @Injectable()
 export class CompanyAccessGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (isPublic) return true;
-
-    const skipCompanyCheck = this.reflector.getAllAndOverride<boolean>(
-      SKIP_COMPANY_CHECK_KEY,
-      [context.getHandler(), context.getClass()],
-    );
-    if (skipCompanyCheck) return true;
-
     const request = context.switchToHttp().getRequest();
     const user = request.user as
-      | { id?: string; companyId?: string | null }
+      | {
+          id?: string;
+          companyId?: string | null;
+          activeCompanyId?: string | null;
+          role?: string | null;
+        }
       | undefined;
 
-    // JwtAuthGuard já cuida de autenticação; se não há user, deixa seguir.
-    if (!user?.id) return true;
+    // JwtAuthGuard já cuida de autenticação; se não há user, deixa seguir
+    // (rota pode ser pública ou protegida por outro guard).
+    if (!user) return true;
 
-    const headerCompanyId = redactSensitiveHeaders(request.headers as Record<string, unknown>)?.['x-company-id'];
+    const redactedHeaders = redactSensitiveHeaders(
+      request.headers as Record<string, unknown>,
+    );
+    const headerCompanyId = redactedHeaders?.['x-company-id'];
     const normalizedHeader = Array.isArray(headerCompanyId)
       ? headerCompanyId[0]
       : headerCompanyId;
 
-    const paramCompanyId =
+    const paramCompanyId: string | null =
       request.params?.companyId ??
-      request.body?.companyId ??
+      request.query?.company_id ??
       request.query?.companyId ??
-      normalizedHeader;
+      request.body?.companyId ??
+      (typeof normalizedHeader === 'string' ? normalizedHeader : null);
 
-    if (!paramCompanyId) {
-      return true;
-    }
+    // Se a requisição não referencia nenhuma empresa, não há o que validar.
+    if (!paramCompanyId) return true;
 
-    if (!user.companyId || user.companyId !== paramCompanyId) {
+    const allowedCompanyIds = [user.companyId, user.activeCompanyId].filter(
+      Boolean,
+    );
+
+    if (!allowedCompanyIds.includes(paramCompanyId)) {
       throw new ForbiddenException(
         'Acesso negado: companyId não corresponde à empresa ativa do usuário.',
       );
     }
 
-    // Propaga companyId validado para uso em interceptors/auditoria
     request.companyId = paramCompanyId;
-
     return true;
   }
 }

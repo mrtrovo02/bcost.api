@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { FastifyRequest } from 'fastify';
-import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
+import { redactDeep, redactSensitiveHeaders } from '../security/redact-headers.util.js';
 import {
   contextStorage,
   RequestContextStore,
@@ -38,10 +38,7 @@ export class TenantContextGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    const redactedHeaders = redactSensitiveHeaders(
-      request.headers as Record<string, unknown>,
-    );
-    const rawTraceId = redactedHeaders['x-bcost-trace-id'];
+    const rawTraceId = redactSensitiveHeaders(request.headers as Record<string, unknown>)['x-bcost-trace-id'];
 
     const requestId =
       typeof rawTraceId === 'string' && rawTraceId.trim().length > 0
@@ -66,35 +63,9 @@ export class TenantContextGuard implements CanActivate {
     }
 
     const userId = request.user?.sub || request.user?.id || null;
-    const role = request.user?.role || null;
-
-    const headerCompanyId = redactedHeaders['x-company-id'];
-    const normalizedHeader = Array.isArray(headerCompanyId)
-      ? headerCompanyId[0]
-      : headerCompanyId;
-
-    const reqParams = (request as Record<string, unknown>).params as
-      | Record<string, string>
-      | undefined;
-    const reqQuery = (request as Record<string, unknown>).query as
-      | Record<string, string>
-      | undefined;
-    const reqBody = (request as Record<string, unknown>).body as
-      | Record<string, string>
-      | undefined;
-
-    const requestCompanyId =
-      reqParams?.companyId ||
-      reqQuery?.company_id ||
-      reqQuery?.companyId ||
-      reqBody?.companyId ||
-      (typeof normalizedHeader === 'string' ? normalizedHeader : null);
-
     const companyId =
-      requestCompanyId ||
-      request.user?.activeCompanyId ||
-      request.user?.companyId ||
-      null;
+      request.user?.companyId || request.user?.activeCompanyId || null;
+    const role = request.user?.role || null;
 
     store.userId = userId;
     store.companyId = companyId;
@@ -109,7 +80,7 @@ export class TenantContextGuard implements CanActivate {
 
     if (process.env.NODE_ENV !== 'production') {
       this.logger.debug(
-        `[TenantContextGuard] userId=${userId ?? 'anonymous'} | companyId=${
+        `[Tenant] userId=${userId ?? 'anonymous'} | companyId=${
           companyId ?? 'none'
         } | requestId=${requestId}`,
       );

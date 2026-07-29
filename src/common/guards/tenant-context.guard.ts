@@ -1,90 +1,68 @@
-'use strict';
+import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
+import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
 
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { FastifyRequest } from 'fastify';
-import { redactDeep, redactSensitiveHeaders } from '../security/redact-headers.util.js';
-import {
-  contextStorage,
-  RequestContextStore,
-} from '../context/context.storage.js';
-
-type AuthenticatedRequest = FastifyRequest & {
-  user?: {
-    id?: string;
-    sub?: string;
-    email?: string;
-    role?: string;
-    companyId?: string;
-    activeCompanyId?: string;
-  };
-  tenantContext?: {
-    userId: string | null;
-    companyId: string | null;
-    role: string | null;
-    requestId: string;
-  };
-};
-
+/**
+ * ARQUIVO: src/common/guards/tenant-context.guard.ts
+ *
+ * Resolve e loga o companyId efetivo da requisição, a partir de múltiplas
+ * fontes (params, query, body, header x-company-id, ou o companyId/
+ * activeCompanyId do token). Não bloqueia a requisição — apenas propaga
+ * contexto de tenant para interceptors/auditoria/observabilidade.
+ *
+ * A validação de autorização (o usuário PODE acessar essa empresa?) é
+ * responsabilidade do CompanyAccessGuard, não deste guard.
+ */
 @Injectable()
 export class TenantContextGuard implements CanActivate {
   private readonly logger = new Logger(TenantContextGuard.name);
 
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
+    const request = context.switchToHttp().getRequest();
 
-    const rawTraceId = redactSensitiveHeaders(request.headers as Record<string, unknown>)['x-bcost-trace-id'];
+    const redactedHeaders = redactSensitiveHeaders(
+      request.headers as Record<string, unknown>,
+    );
+    const rawTraceId = redactedHeaders['x-bcost-trace-id'];
 
-    const requestId =
-      typeof rawTraceId === 'string' && rawTraceId.trim().length > 0
-        ? rawTraceId
-        : String(request.id || randomUUID());
+    const headerCompanyId = redactedHeaders['x-company-id'];
+    const normalizedHeader = Array.isArray(headerCompanyId)
+      ? headerCompanyId[0]
+      : headerCompanyId;
 
-    let store = contextStorage.getStore();
+    const reqParams = (request as Record<string, unknown>).params as
+      | Record<string, string>
+      | undefined;
+    const reqQuery = (request as Record<string, unknown>).query as
+      | Record<string, string>
+      | undefined;
+    const reqBody = (request as Record<string, unknown>).body as
+      | Record<string, string>
+      | undefined;
 
-    if (!store) {
-      store = {
-        requestId,
-        traceId: requestId,
-        startedAt: Date.now(),
-        method: request.method,
-        url: request.url,
-        userId: null,
-        companyId: null,
-        role: null,
-      } satisfies RequestContextStore;
+    const requestCompanyId =
+      reqParams?.companyId ||
+      reqQuery?.company_id ||
+      reqQuery?.companyId ||
+      reqBody?.companyId ||
+      (typeof normalizedHeader === 'string' ? normalizedHeader : null);
 
-      contextStorage.enterWith(store);
-    }
-
-    const userId = request.user?.sub || request.user?.id || null;
-    const companyId =
-      request.user?.companyId || request.user?.activeCompanyId || null;
+    const userId = request.user?.id ?? request.user?.sub ?? null;
     const role = request.user?.role || null;
 
-    store.userId = userId;
-    store.companyId = companyId;
-    store.role = role;
+    const companyId =
+      requestCompanyId ||
+      request.user?.activeCompanyId ||
+      request.user?.companyId ||
+      null;
 
-    request.tenantContext = {
-      userId,
-      companyId,
-      role,
-      requestId,
-    };
+    request.companyId = companyId;
+    request.traceId = rawTraceId ?? request.traceId;
 
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.debug(
-        `[Tenant] userId=${userId ?? 'anonymous'} | companyId=${
-          companyId ?? 'none'
-        } | requestId=${requestId}`,
-      );
-    }
+    this.logger.debug(
+      `[TenantContextGuard] userId=${userId ?? 'anonymous'} | companyId=${
+        companyId ?? 'none'
+      } | role=${role ?? 'none'}`,
+    );
 
     return true;
   }
