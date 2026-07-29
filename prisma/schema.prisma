@@ -30,8 +30,8 @@ model User {
   deletedAt                  DateTime?
   logs                       AuditLog[]
   companies                  CompanyUser[]
-  acknowledgerNotifications  NotificationLog[] @relation("notification_acknowledger")
-  recipientNotifications     NotificationLog[] @relation("notification_recipient")
+  acknowledgerNotifications NotificationLog[] @relation("notification_acknowledger")
+  recipientNotifications    NotificationLog[] @relation("notification_recipient")
   sessions                   UserSession[]
 
   @@index([email])
@@ -58,47 +58,48 @@ model UserSession {
 // =============================================================================
 
 model Company {
-  id                  String               @id @default(uuid())
-  cnpj                String               @unique
-  name                String
-  taxRegime           TaxRegime            @default(SIMPLES_NACIONAL)
-  anexo               Int                  @default(3)
-  cnae                String?
-  cnae2               String?
-  municipalCode       String?
-  active              Boolean              @default(true)
-  planLevel           String               @default("FREE")
-  lastSyncAt          DateTime?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  deletedAt           DateTime?
-  version             Int                  @default(1)
-  settings            Json?                @default("{}")
-  
-  logs                AuditLog[]
-  automationJobs      AutomationJob[]
-  balanceLocks        BalanceLock[]
-  bankAccounts        BankAccount[]
-  bankTransactions    BankTransaction[]
-  businessRules       BusinessRule[]
-  cashFlowProjections CashFlowProjection[]
-  users               CompanyUser[]
-  complianceChecks    ComplianceCheck[]
-  contracts           Contract[]
-  customers           Customer[]
-  certificates        DigitalCertificate[]
-  financialEvents     FinancialEvent[]
-  financialSnapshots  FinancialSnapshot[]
-  invoices            Invoice[]
-  notifications       NotificationLog[]
-  payrolls            Payroll[]
-  taxCalculations     TaxCalculation[]
-  taxObligations      TaxObligation[]
-  webhooks            WebhookConfig[]
-  employees           Employee[]
-  accountingEntries   AccountingEntry[]
-  fiscalObligations   FiscalObligation[]
-  accountPlans        AccountPlan[]
+  id                   String                @id @default(uuid())
+  cnpj                 String                @unique
+  name                 String
+  taxRegime            TaxRegime             @default(SIMPLES_NACIONAL)
+  anexo                Int                   @default(3)
+  cnae                 String?
+  cnae2                String?
+  municipalCode        String?
+  active               Boolean               @default(true)
+  planLevel            String                @default("FREE")
+  lastSyncAt           DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+  version              Int                   @default(1)
+  settings             Json?                 @default("{}")
+
+  logs                 AuditLog[]
+  automationJobs       AutomationJob[]
+  balanceLocks         BalanceLock[]
+  bankAccounts         BankAccount[]
+  bankTransactions     BankTransaction[]
+  businessRules        BusinessRule[]
+  cashFlowProjections  CashFlowProjection[]
+  users                CompanyUser[]
+  complianceChecks     ComplianceCheck[]
+  contracts            Contract[]
+  customers            Customer[]
+  certificates         DigitalCertificate[]
+  financialEvents      FinancialEvent[]
+  financialSnapshots   FinancialSnapshot[]
+  invoices             Invoice[]
+  notifications        NotificationLog[]
+  payrolls             Payroll[]
+  taxCalculations      TaxCalculation[]
+  taxObligations       TaxObligation[]
+  webhooks             WebhookConfig[]
+  employees            Employee[]
+  accountingEntries    AccountingEntry[]
+  fiscalObligations    FiscalObligation[]
+  accountPlans         AccountPlan[]
+  fiscalSimulationLogs FiscalSimulationLog[]
 
   @@index([cnpj])
   @@index([active])
@@ -145,7 +146,7 @@ model Invoice {
   createdAt       DateTime               @default(now())
   updatedAt       DateTime               @updatedAt
   deletedAt       DateTime?
-  
+
   bankTransaction BankTransaction?       @relation("InvoiceBankTransaction")
   company         Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer        Customer               @relation(fields: [customerId], references: [id])
@@ -191,7 +192,7 @@ model BankTransaction {
   metadata        Json?
   createdAt       DateTime         @default(now())
   version         Int              @default(1)
-  
+
   bankAccount     BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
   invoice         Invoice?         @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
@@ -292,7 +293,7 @@ model TaxObligation {
   fileUrl         String?
   createdAt       DateTime         @default(now())
   version         Int              @default(1)
-  
+
   bankTransaction BankTransaction? @relation("TaxObligationBankTransaction")
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -301,17 +302,17 @@ model TaxObligation {
 }
 
 model TaxCalculation {
-  id          String   @id @default(uuid())
-  companyId   String
-  month       Int
-  year        Int
-  totalAmount Decimal  @db.Decimal(18, 2)
-  rbt12       Decimal? @db.Decimal(18, 2)
-  fatorR      Float?
+  id            String   @id @default(uuid())
+  companyId     String
+  month         Int
+  year          Int
+  totalAmount   Decimal  @db.Decimal(18, 2)
+  rbt12         Decimal? @db.Decimal(18, 2)
+  fatorR        Float?
   inputSnapshot Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, month, year])
   @@map("tax_calculations")
@@ -337,6 +338,24 @@ model FiscalObligation {
   @@index([companyId, dueDate])
   @@index([companyId, status])
   @@map("fiscal_obligations")
+}
+
+model FiscalSimulationLog {
+  id                   String   @id @default(uuid())
+  companyId            String?  @map("company_id")
+  monthlyRevenue       Float    @map("monthly_revenue")
+  cbsRate              Float    @map("cbs_rate")
+  ibsRate              Float    @map("ibs_rate")
+  cbsValue             Float    @map("cbs_value")
+  ibsValue             Float    @map("ibs_value")
+  totalTransitionalTax Float    @map("total_transitional_tax")
+  netRevenue           Float    @map("net_revenue")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  company              Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("fiscal_simulation_logs")
 }
 
 // =============================================================================
@@ -384,20 +403,20 @@ model Payroll {
 }
 
 model PayrollEntry {
-  id               String   @id @default(uuid())
-  payrollId        String
-  employeeId       String
-  baseSalary       Decimal  @db.Decimal(18, 2)
-  inssEmployee     Decimal  @default(0) @db.Decimal(18, 2)
-  inssEmployer     Decimal  @default(0) @db.Decimal(18, 2)
-  irrf             Decimal  @default(0) @db.Decimal(18, 2)
-  fgts             Decimal  @default(0) @db.Decimal(18, 2)
-  otherBenefits    Decimal  @default(0) @db.Decimal(18, 2)
-  otherDeductions  Decimal  @default(0) @db.Decimal(18, 2)
-  netSalary        Decimal  @db.Decimal(18, 2)
-  createdAt        DateTime @default(now())
-  employee         Employee @relation(fields: [employeeId], references: [id])
-  payroll          Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  payrollId       String
+  employeeId      String
+  baseSalary      Decimal  @db.Decimal(18, 2)
+  inssEmployee    Decimal  @default(0) @db.Decimal(18, 2)
+  inssEmployer    Decimal  @default(0) @db.Decimal(18, 2)
+  irrf            Decimal  @default(0) @db.Decimal(18, 2)
+  fgts            Decimal  @default(0) @db.Decimal(18, 2)
+  otherBenefits   Decimal  @default(0) @db.Decimal(18, 2)
+  otherDeductions Decimal  @default(0) @db.Decimal(18, 2)
+  netSalary       Decimal  @db.Decimal(18, 2)
+  createdAt       DateTime @default(now())
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  payroll         Payroll  @relation(fields: [payrollId], references: [id], onDelete: Cascade)
 
   @@unique([payrollId, employeeId])
   @@index([employeeId])
@@ -554,7 +573,7 @@ model NotificationLog {
   metadata         Json?
   createdAt        DateTime             @default(now())
   sentAt           DateTime?
-  
+
   acknowledger     User?                @relation("notification_acknowledger", fields: [acknowledgedById], references: [id])
   company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user             User?                @relation("notification_recipient", fields: [userId], references: [id])

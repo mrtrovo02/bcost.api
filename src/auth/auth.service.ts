@@ -222,8 +222,13 @@ export class AuthService {
       where: { email: email.toLowerCase().trim() },
       include: {
         companies: {
-          // FIX: filtra empresas com soft delete aplicado
-          where: { deletedAt: null },
+          // FIX: filtra vinculos com soft delete aplicado E empresas
+          // que tambem nao estejam soft-deleted (evita reativar empresa
+          // ja removida como "ativa" no momento do login).
+          where: {
+            deletedAt: null,
+            company: { deletedAt: null },
+          },
           include: { company: true },
           orderBy: { createdAt: 'asc' },
         },

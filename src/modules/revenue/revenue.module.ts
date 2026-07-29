@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 
 import { RevenueService } from './revenue.service.js';
 import { RevenueController } from './revenue.controller.js';
+import { RevenueCompatibilityController } from './revenue-compatibility.controller.js';
 
 import { PrismaModule } from '../../database/prisma.module.js';
 
-// ✅ IMPORT DO REPOSITORY
+// ✅ REPOSITORY
 import { RevenueRepository } from './repositories/revenue.repository.js';
 
 // ✅ USE CASES
@@ -14,10 +15,13 @@ import { CloseMonthUseCase } from './use-cases/close-month.use-case.js';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [RevenueController],
+  controllers: [
+    RevenueController,
+    RevenueCompatibilityController, // 🔥 Novo Controller de Compatibilidade
+  ],
   providers: [
     RevenueService,
-    RevenueRepository, // 🔥 FALTAVA ISSO
+    RevenueRepository,
     CalculateFactorRUseCase,
     CloseMonthUseCase,
   ],

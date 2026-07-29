@@ -18,7 +18,7 @@ export class InvoiceService {
 
   /**
    * 🛡️ ACESSO ESTENDIDO:
-   * Utiliza a extensão do Prisma para garantir Multi-tenancy (companyId) 
+   * Utiliza a extensão do Prisma para garantir Multi-tenancy (companyId)
    * e Soft Delete (deletedAt) de forma transparente.
    */
   private get db() {
@@ -27,7 +27,11 @@ export class InvoiceService {
 
   /**
    * bCost Engine: Ingestão de Nota Fiscal
-   * Compatibilidade total com DTO (issueDate, totalValue, retenções) e Schema.
+   * Mapeamento estrito DTO -> Schema real do Prisma (produção).
+   *
+   * NOTA: Campos de retenção (ISS/IRRF/PIS/COFINS/CSLL) e payload bruto
+   * ainda não existem no schema atual. Se forem necessários, devem ser
+   * adicionados via migration Prisma antes de serem reintroduzidos aqui.
    */
   async create(dto: CreateInvoiceDto) {
     // 1. Validação de existência do Tenant (Safety Check)
@@ -49,9 +53,9 @@ export class InvoiceService {
             document: dto.customerDocument || '00000000000',
           },
         },
-        update: { 
+        update: {
           name: dto.customerName || 'Cliente Consumidor',
-          active: true 
+          active: true,
         },
         create: {
           companyId: dto.companyId,
@@ -70,26 +74,17 @@ export class InvoiceService {
           type: dto.type,
           status: dto.status || InvoiceStatus.NORMAL,
           nfeStatus: dto.nfeStatus || NFeStatus.AUTHORIZED,
-          
+
           // Valores Financeiros (Conversão para Decimal Prisma)
           amount: new Prisma.Decimal(dto.totalValue),
           taxAmount: new Prisma.Decimal(dto.taxableValue),
-          
+
           // Datas e Flags
           issuedAt: new Date(dto.issueDate),
-          isAutoCaptured: dto.isAutoCaptured || false,
           reconciled: false,
-          
-          // Mapeamento de Impostos Retidos (Audit Log Ready)
-          issRetained: dto.issRetained ? new Prisma.Decimal(dto.issRetained) : null,
-          irrfRetained: dto.irrfRetained ? new Prisma.Decimal(dto.irrfRetained) : null,
-          pisRetained: dto.pisRetained ? new Prisma.Decimal(dto.pisRetained) : null,
-          cofinsRetained: dto.cofinsRetained ? new Prisma.Decimal(dto.cofinsRetained) : null,
-          csllRetained: dto.csllRetained ? new Prisma.Decimal(dto.csllRetained) : null,
 
-          // Versão e Metadados Originais
+          // Versão (controle otimista)
           version: 1,
-          payload: dto.rawJson || {},
         },
       });
     } catch (error: any) {
@@ -135,10 +130,10 @@ export class InvoiceService {
   async findOne(id: string) {
     const invoice = await this.db.invoice.findUnique({
       where: { id },
-      include: { 
+      include: {
         customer: true,
-        sefazEvents: { orderBy: { createdAt: 'desc' } }
-      }
+        sefazEvents: { orderBy: { createdAt: 'desc' } },
+      },
     });
 
     if (!invoice) {
