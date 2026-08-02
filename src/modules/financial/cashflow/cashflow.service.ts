@@ -82,9 +82,10 @@ export class CashFlowService {
         timestamp: new Date(),
       };
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         `❌ Erro na projeção financeira [Empresa: ${companyId}]:`,
-        error.message,
+        message,
       );
       throw error;
     }

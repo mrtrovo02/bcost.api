@@ -110,7 +110,7 @@ export class FinanceService {
       if (potentialMatch) {
         try {
           // Transação ACID usando o executor robusto do seu PrismaService
-          const result = await this.prisma.runInTransaction(async (tx) => {
+          const result = await this.prisma.$transaction(async (tx) => {
             await tx.bankTransaction.update({
               where: { id: potentialMatch.id },
               data: { reconciled: true, taxObligationId: obligation.id },

@@ -71,7 +71,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
                 : undefined,
           } as any, // 'as any' aqui permite salvar o JSON sem conflito de profundidade de tipo
           ipAddress: request.ip,
-          userAgent: redactSensitiveHeaders(request.headers as Record<string, unknown>)['user-agent'],
+          userAgent: String(
+            redactSensitiveHeaders(request.headers as Record<string, unknown>)[
+              'user-agent'
+            ] ?? '',
+          ),
         },
       })
       .catch((err) => this.logger.error('CRITICAL: AuditLog Failed', err));

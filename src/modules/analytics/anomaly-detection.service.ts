@@ -35,7 +35,7 @@ export class AnomalyDetectionService {
       this.logger.log(`Iniciando detecção de anomalias para a empresa: ${companyId}`);
 
       // Busca as últimas transações respeitando o camelCase do schema identificado
-      const transactions = await this.prisma.bank_transactions.findMany({
+      const transactions = await this.prisma.bankTransaction.findMany({
         where: { companyId },
         orderBy: { occurredAt: 'desc' },
         take: 200, 
@@ -152,7 +152,7 @@ export class AnomalyDetectionService {
    */
   private async logAnomaliesToAudit(companyId: string, anomalies: AnomalyResult[]) {
     try {
-      await this.prisma.audit_logs.create({
+      await this.prisma.auditLog.create({
         data: {
           action: 'ANOMALY_DETECTION_RUN',
           module: 'ANALYTICS_ENGINE',

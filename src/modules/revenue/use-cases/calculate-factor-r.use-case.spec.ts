@@ -17,6 +17,7 @@ class MockRevenueRepository {
       _sum: { totalAmount: new Prisma.Decimal(28000) },
     });
   }
+  upsertTaxCalculation = jest.fn(() => Promise.resolve({ id: 'tax-calc-id' }));
 }
 
 describe('CalculateFactorRUseCase', () => {
@@ -33,10 +34,17 @@ describe('CalculateFactorRUseCase', () => {
     const result = await sut.execute('company-id-uuid');
 
     // Validações técnicas
-    expect(Number(result.factorR.toFixed(2))).toBe(0.28);
+    expect(Number(result.value.toFixed(2))).toBe(0.28);
     expect(result.isEligibleForAnexoIII).toBe(true);
-    expect(result.revenue12).toBe(100000);
-    expect(result.payroll12).toBe(28000);
+    expect(result.revenueLast12Months).toBe(100000);
+    expect(result.payrollLast12Months).toBe(28000);
+    expect(repository.upsertTaxCalculation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: 'company-id-uuid',
+        totalAmount: 100000,
+        fatorR: 0.28,
+      }),
+    );
   });
 
   it('deve identificar quando a empresa NÃO é elegível ao Anexo III (< 28%)', async () => {
@@ -50,21 +58,31 @@ describe('CalculateFactorRUseCase', () => {
 
     const result = await sut.execute('company-id-uuid');
 
-    expect(Number(result.factorR.toFixed(2))).toBe(0.2);
+    expect(Number(result.value.toFixed(2))).toBe(0.2);
     expect(result.isEligibleForAnexoIII).toBe(false);
-    expect(result.suggestion).toContain('Alerta: Fator R abaixo de 28%');
+    expect(result.analysis).toContain('Fator R abaixo de 28%');
   });
 
-  it('deve retornar elegibilidade falsa se o faturamento nos últimos 12 meses for zero', async () => {
-    // Cenário crítico: Empresa sem faturamento (divisão por zero evitada logicamente)
+  it('deve aplicar a regra oficial quando há folha e não há faturamento nos últimos 12 meses', async () => {
     jest.spyOn(repository, 'getRevenueLast12Months').mockResolvedValueOnce({
       _sum: { amount: new Prisma.Decimal(0) },
     });
 
     const result = await sut.execute('company-id-uuid');
 
-    expect(result.factorR).toBe(0);
+    expect(result.value).toBe(0.28);
+    expect(result.isEligibleForAnexoIII).toBe(true);
+    expect(result.analysis).toContain('Elegível ao Anexo III');
+  });
+
+  it('deve aplicar fator R de 1% quando não há folha', async () => {
+    jest.spyOn(repository, 'getPayrollLast12Months').mockResolvedValueOnce({
+      _sum: { totalAmount: new Prisma.Decimal(0) },
+    });
+
+    const result = await sut.execute('company-id-uuid');
+
+    expect(result.value).toBe(0.01);
     expect(result.isEligibleForAnexoIII).toBe(false);
-    expect(result.suggestion).toContain('Sem faturamento detectado');
   });
 });

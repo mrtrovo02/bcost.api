@@ -345,7 +345,9 @@ export class BankingEnterpriseService {
     const and: Record<string, unknown>[] = [{ companyId }];
 
     if (query.bankAccountId) and.push({ bankAccountId: query.bankAccountId });
-    if (query.type && query.type !== 'ALL') and.push({ type: query.type });
+    if (query.type) {
+      and.push({ type: query.type });
+    }
     if (query.invoiceId) and.push({ invoiceId: query.invoiceId });
     if (query.taxObligationId) and.push({ taxObligationId: query.taxObligationId });
 

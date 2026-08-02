@@ -76,7 +76,7 @@ import { FinanceOperationsEnterpriseModule } from './modules/finance-operations-
 
         DATABASE_URL: Joi.string().required(),
 
-        REDIS_HOST: Joi.string().required(),
+        REDIS_HOST: Joi.string().default('localhost'),
         REDIS_PORT: Joi.number().default(6379),
         REDIS_PASSWORD: Joi.string().allow('').default(''),
 
@@ -117,11 +117,13 @@ import { FinanceOperationsEnterpriseModule } from './modules/finance-operations-
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          host: config.getOrThrow<string>('REDIS_HOST'),
-          port: config.getOrThrow<number>('REDIS_PORT'),
+          host: config.get<string>('REDIS_HOST', 'localhost'),
+          port: config.get<number>('REDIS_PORT', 6379),
           password: config.get<string>('REDIS_PASSWORD') || undefined,
-          enableOfflineQueue: false,
-          maxRetriesPerRequest: null,
+          enableOfflineQueue: true,
+          lazyConnect: true,
+          maxRetriesPerRequest: 0,
+          retryStrategy: () => null,
           connectTimeout: 5000,
         },
         defaultJobOptions: {

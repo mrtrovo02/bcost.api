@@ -47,8 +47,9 @@ export class DfeProcessor extends WorkerHost {
         `[Worker] ✅ Nota ID ${invoice.id} processada com sucesso.`,
       );
       return { id: invoice.id };
-    } catch (error) {
-      this.logger.error(`[Worker] ❌ Erro no processamento: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[Worker] ❌ Erro no processamento: ${message}`);
       throw error;
     }
   }

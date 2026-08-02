@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectQueue } from '@nestjs/bull';
-import { Queue } from 'bull';
+import type { Queue } from 'bull';
 
 @Injectable()
 export class BillingScheduler {

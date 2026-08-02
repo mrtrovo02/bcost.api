@@ -1054,7 +1054,7 @@ export class PayrollEnterpriseService {
         await tx.payrollEntry.deleteMany({ where: { payrollId: payroll.id } });
       }
 
-      const entries = [];
+      const entries: Array<any> = [];
 
       for (const employee of employees) {
         const amounts = this.calculateAmounts(employee);

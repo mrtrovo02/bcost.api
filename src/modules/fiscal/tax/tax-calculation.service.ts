@@ -30,8 +30,31 @@ export interface TaxCalculationResult {
   effectiveRate: number;
   taxAmount: number;
   updatedAt: Date;
-  // 🚀 CORREÇÃO TS2352: Assinatura de índice para garantir compatibilidade com JsonValue
-  [key: string]: any;
+}
+
+const SIMPLES_TABLES = {
+  3: [
+    { limit: 180_000, rate: 0.06, deduction: 0 },
+    { limit: 360_000, rate: 0.112, deduction: 9_360 },
+    { limit: 720_000, rate: 0.135, deduction: 17_640 },
+    { limit: 1_800_000, rate: 0.16, deduction: 35_640 },
+    { limit: 3_600_000, rate: 0.21, deduction: 125_640 },
+    { limit: 4_800_000, rate: 0.33, deduction: 648_000 },
+  ],
+  5: [
+    { limit: 180_000, rate: 0.155, deduction: 0 },
+    { limit: 360_000, rate: 0.18, deduction: 4_500 },
+    { limit: 720_000, rate: 0.195, deduction: 9_900 },
+    { limit: 1_800_000, rate: 0.205, deduction: 17_100 },
+    { limit: 3_600_000, rate: 0.23, deduction: 62_100 },
+    { limit: 4_800_000, rate: 0.305, deduction: 540_000 },
+  ],
+} as const;
+
+function calculateOfficialFactorR(payroll12: Prisma.Decimal, rbt12: Prisma.Decimal): Prisma.Decimal {
+  if (payroll12.gt(0) && rbt12.isZero()) return new Prisma.Decimal(0.28);
+  if (payroll12.isZero()) return new Prisma.Decimal(0.01);
+  return payroll12.div(rbt12);
 }
 
 @Injectable()
@@ -82,7 +105,7 @@ export class TaxCalculationService {
     const startDate = new Date(Date.UTC(year, month - 1, 1));
     const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
 
-    const [rbt12, aggregateInvoices, payroll] = await Promise.all([
+    const [rbt12, aggregateInvoices, payroll12] = await Promise.all([
       this.calculateRBT12(companyId, month, year),
 
       this.prisma.invoice.aggregate({
@@ -95,23 +118,17 @@ export class TaxCalculationService {
         _sum: { amount: true },
       }),
 
-      // FIX: referenceMonth: referenceStr → month + year como Int
-      this.prisma.payroll.findFirst({
-        where: { companyId, month, year },
-      }),
+      this.calculatePayroll12(companyId, month, year),
     ]);
 
     const revenue = new Prisma.Decimal(aggregateInvoices._sum.amount ?? 0); // FIX: || → ??
-    const payrollValue = new Prisma.Decimal(payroll?.totalAmount ?? 0); // FIX: || → ??
 
     // 3. Motor de Decisão: Fator R
-    const factorRValue = revenue.isZero()
-      ? 0
-      : payrollValue.div(revenue).toNumber();
+    const factorRValue = calculateOfficialFactorR(payroll12, rbt12);
 
     let appliedAnexo = company.anexo ?? 3;
 
-    if (company.anexo === 5 && factorRValue >= 0.28) {
+    if (company.anexo === 5 && factorRValue.gte(0.28)) {
       appliedAnexo = 3;
       this.logger.debug(
         '[Tax-Engine] Benefício Fator R aplicado: migrado para Anexo III.',
@@ -130,8 +147,8 @@ export class TaxCalculationService {
       companyName: company.name,
       revenue: revenue.toNumber(),
       rbt12: rbt12.toNumber(),
-      payroll: payrollValue.toNumber(),
-      factorR: Number((factorRValue * 100).toFixed(2)),
+      payroll: payroll12.toNumber(),
+      factorR: Number(factorRValue.mul(100).toFixed(2)),
       appliedAnexo,
       effectiveRate: Number((effectiveRate.toNumber() * 100).toFixed(4)),
       taxAmount: Number(taxValue.toFixed(2)),
@@ -248,6 +265,25 @@ export class TaxCalculationService {
     return new Prisma.Decimal(rbtAggr._sum.amount ?? 0); // FIX: || → ??
   }
 
+  private async calculatePayroll12(
+    companyId: string,
+    month: number,
+    year: number,
+  ): Promise<Prisma.Decimal> {
+    const payrollAggr = await this.prisma.payroll.aggregate({
+      where: {
+        companyId,
+        OR: [
+          { year, month: { lt: month } },
+          { year: year - 1, month: { gte: month } },
+        ],
+      },
+      _sum: { totalAmount: true },
+    });
+
+    return new Prisma.Decimal(payrollAggr._sum.totalAmount ?? 0);
+  }
+
   /**
    * Alíquotas Progressivas Simples Nacional 2026.
    * Fórmula: (RBT12 × Alíquota Nominal − Parcela a Deduzir) / RBT12
@@ -258,20 +294,15 @@ export class TaxCalculationService {
   ): Prisma.Decimal {
     const rbt = rbt12.toNumber();
 
-    if (anexo === 3) {
-      if (rbt <= 180_000) return new Prisma.Decimal(0.06);
-      if (rbt <= 360_000) return rbt12.mul(0.112).minus(9_360).div(rbt12);
-      if (rbt <= 720_000) return rbt12.mul(0.135).minus(17_640).div(rbt12);
-      if (rbt <= 1_800_000) return rbt12.mul(0.16).minus(35_640).div(rbt12);
-      return new Prisma.Decimal(0.19);
+    if (anexo !== 3 && anexo !== 5) {
+      return new Prisma.Decimal(0.04);
     }
 
-    if (anexo === 5) {
-      if (rbt <= 180_000) return new Prisma.Decimal(0.155);
-      if (rbt <= 360_000) return rbt12.mul(0.18).minus(4_500).div(rbt12);
-      return new Prisma.Decimal(0.205);
-    }
+    const table = SIMPLES_TABLES[anexo];
+    const bracket = table.find((item) => rbt <= item.limit) ?? table[table.length - 1];
 
-    return new Prisma.Decimal(0.04);
+    if (rbt12.isZero()) return new Prisma.Decimal(bracket.rate);
+
+    return rbt12.mul(bracket.rate).minus(bracket.deduction).div(rbt12);
   }
 }

@@ -17,6 +17,9 @@ export class ContextMiddleware implements NestMiddleware {
     // Adicionamos o requestId no header para rastreabilidade (Tracing)
     res.setHeader('x-request-id', requestId);
 
-    contextStorage.run({ userId, companyId, requestId }, () => next());
+    contextStorage.run(
+      { userId, companyId, requestId, traceId: requestId, startedAt: Date.now() },
+      () => next(),
+    );
   }
 }

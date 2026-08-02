@@ -77,8 +77,8 @@ export class FiscalService implements OnModuleInit {
 
   private async verifyRedisConnectivity(): Promise<void> {
     try {
-      const client = await this.xmlQueue.client;
-      await client.ping();
+      const client = await this.xmlQueue.client as { ping?: () => Promise<unknown> } | undefined;
+      await client?.ping?.();
       this.logger.log('✅ Conexão Redis para Faturas ativa.');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
@@ -543,7 +543,7 @@ export class FiscalService implements OnModuleInit {
 
   async enqueueXmlUpload(
     companyId: string,
-    files: Array<Express.Multer.File>,
+    files: Array<{ buffer: Buffer; originalname?: string; mimetype?: string; size?: number }>,
     details: UploadXmlDto,
   ) {
     const company = await this.prisma.extended.company.findUnique({

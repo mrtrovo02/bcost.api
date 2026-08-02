@@ -162,9 +162,10 @@ export class InsightsService {
         const health = await this.getFinancialHealth(company.id);
         await this.syncFinancialSnapshot(company.id, health);
         processed++;
-      } catch (err) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         this.logger.error(
-          `❌ Falha na empresa ${company.name}: ${err.message}`,
+          `❌ Falha na empresa ${company.name}: ${message}`,
         );
         errors++;
       }

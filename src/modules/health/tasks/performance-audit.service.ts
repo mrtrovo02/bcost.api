@@ -47,11 +47,9 @@ export class PerformanceAuditService {
           '✅ Todos os índices críticos operando com eficiência acima de 80%.',
         );
       }
-    } catch (error) {
-      this.logger.error(
-        '❌ Falha ao realizar auditoria de performance',
-        error.stack,
-      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.stack : String(error);
+      this.logger.error('❌ Falha ao realizar auditoria de performance', message);
     }
   }
 

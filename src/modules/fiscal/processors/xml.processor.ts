@@ -47,26 +47,21 @@ export class XmlProcessor extends WorkerHost {
 
       // 3. Montagem do objeto de persistência seguindo RIGOROSAMENTE o CreateInvoiceDto
       const invoiceData = {
-        companyId: companyId,
-        amount: extractedData.amount,
-        issuedAt: extractedData.issuedAt,
-
-        // Mapeamento de ENUMs (Garante que não sejam tratados como strings puras)
+        companyId,
+        number: extractedData.number,
+        accessKey: extractedData.accessKey,
+        issueDate: extractedData.issuedAt.toISOString(),
+        totalValue: Number(extractedData.amount),
+        taxableValue: Number(extractedData.amount),
         type:
           extractedData.type === 'PRODUCT'
             ? InvoiceType.PRODUCT
             : InvoiceType.SERVICE,
-        status: InvoiceStatus.NORMAL, // FIX: Usando o Enum em vez da string 'NORMAL'
-
+        status: InvoiceStatus.NORMAL,
         customerDocument: extractedData.customerDocument,
         customerName: extractedData.customerName,
-
-        // Campos opcionais tratados para evitar erro de tipagem
-        number: extractedData.number,
-        accessKey: extractedData.accessKey,
         reconciled: false,
-
-        metadata: {
+        rawJson: {
           retentions: extractedData.retentions,
           rawJson: extractedData.rawJson || {},
         },

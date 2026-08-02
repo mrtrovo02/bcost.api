@@ -26,6 +26,7 @@ import {
 import { IsUUID, IsNumber, Min } from 'class-validator';
 import { TaxService } from './tax.service.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
+import { CbsIbsEngineService } from '../services/cbs-ibs-engine.service.js';
 
 /**
  * DTO para simulação de cenários projetados
@@ -62,7 +63,10 @@ export class SimulationDto {
   }),
 )
 export class TaxController {
-  constructor(private readonly taxService: TaxService) {}
+  constructor(
+    private readonly taxService: TaxService,
+    private readonly cbsIbsEngine: CbsIbsEngineService,
+  ) {}
 
   @Get('calculate')
   @HttpCode(HttpStatus.OK)
@@ -77,7 +81,7 @@ export class TaxController {
     status: 404,
     description: 'Empresa não encontrada no banco de dados.',
   })
-  @ApiQuery({ name: 'companyId', type: String, format: 'uuid' })
+  @ApiQuery({ name: 'companyId', type: String })
   @ApiQuery({
     name: 'month',
     type: Number,
@@ -118,6 +122,19 @@ export class TaxController {
       data.companyId,
       data.projectedRevenue,
     );
+  }
+
+  @Post('simulate-cbs-ibs')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Simula CBS/IBS e retenção por Split Payment',
+    description:
+      'Calcula os destaques gerenciais de CBS 0,9% e IBS 0,1% para a fase de teste da Reforma Tributária, incluindo estimativa de caixa líquido se houver retenção no pagamento.',
+  })
+  @ApiBody({ type: SimulationDto })
+  @ApiResponse({ status: 200, description: 'Simulação CBS/IBS processada com sucesso.' })
+  async simulateCbsIbs(@Body() data: SimulationDto) {
+    return this.cbsIbsEngine.calculateTransitionalTax(data.projectedRevenue);
   }
 
   @Get('history')

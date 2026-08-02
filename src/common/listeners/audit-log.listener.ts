@@ -49,14 +49,16 @@ export class AuditLogListener {
           `[AUDIT] ${data.action} - ${data.module} (${data.statusCode})`,
         );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       /**
        * 🔴 REGRA DE OURO:
        * Auditoria NUNCA pode derrubar a API
        */
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
         '❌ Falha ao gravar log de auditoria em background:',
-        error?.stack || error?.message,
+        stack ?? message,
       );
     }
   }

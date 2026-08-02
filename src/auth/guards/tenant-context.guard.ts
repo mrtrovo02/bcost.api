@@ -61,7 +61,12 @@ export class TenantContextGuard implements CanActivate {
   }
 
   private extractTokenFromHeader(request: any): string | undefined {
-    const [type, token] = redactSensitiveHeaders(request.headers as Record<string, unknown>).authorization?.split(' ') ?? [];
+    const authorizationHeader = redactSensitiveHeaders(
+      request.headers as Record<string, unknown>,
+    ).authorization;
+    const authorization =
+      typeof authorizationHeader === 'string' ? authorizationHeader : '';
+    const [type, token] = authorization.split(' ');
     return type === 'Bearer' ? token : undefined;
   }
 }

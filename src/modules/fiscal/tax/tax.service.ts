@@ -30,6 +30,13 @@ const ANEXO_V = [
   { limite: 4800000, aliq: 0.305, deducao: 540000 },
 ];
 
+function calculateFactorRPercent(payroll12: number, rbt12: number): number {
+  if (payroll12 > 0 && rbt12 === 0) return 28;
+  if (payroll12 === 0 && rbt12 === 0) return 1;
+  if (payroll12 === 0 && rbt12 > 0) return 1;
+  return (payroll12 / rbt12) * 100;
+}
+
 @Injectable()
 export class TaxService {
   private readonly logger = new Logger(TaxService.name);
@@ -76,7 +83,7 @@ export class TaxService {
             where: {
               companyId,
               OR: [
-                { year: year, month: { lte: month } },
+                { year: year, month: { lt: month } },
                 { year: year - 1, month: { gte: month } },
               ],
             },
@@ -104,9 +111,10 @@ export class TaxService {
         folha12 = (folha12 / activeMonths) * 12;
       }
 
-      const fatorRPercent = rbt12 > 0 ? (folha12 / rbt12) * 100 : 0;
+      const fatorRPercent = calculateFactorRPercent(folha12, rbt12);
       const anexoEfetivo = fatorRPercent >= 28 ? 3 : 5;
       const { aliqEfetiva, faixa } = this.getEffectiveRate(rbt12, anexoEfetivo);
+      const anexoIIIRate = this.getEffectiveRate(rbt12, 3).aliqEfetiva;
       const taxAmount = totalRevenue * aliqEfetiva;
 
       return {
@@ -131,10 +139,12 @@ export class TaxService {
           gapFolhaMensal: Number(
             (Math.max(rbt12 * 0.28 - folha12, 0) / 12).toFixed(2),
           ),
-          economiaFatorR:
-            anexoEfetivo === 5
-              ? totalRevenue * aliqEfetiva - totalRevenue * 0.06
-              : 0,
+          economiaFatorR: Number(
+            (anexoEfetivo === 5
+              ? totalRevenue * (aliqEfetiva - anexoIIIRate)
+              : 0
+            ).toFixed(2),
+          ),
         },
         audit: integrity,
       };
@@ -225,7 +235,7 @@ export class TaxService {
       rbt12 > 0 ? (rbt12 * faixa.aliq - faixa.deducao) / rbt12 : tabela[0].aliq;
 
     return {
-      aliqEfetiva: Math.max(aliqEfetiva, 0.06), // Mínimo de 6% no Anexo III
+      aliqEfetiva: Math.max(aliqEfetiva, 0),
       faixa: faixaIdx === -1 ? 6 : faixaIdx + 1,
     };
   }

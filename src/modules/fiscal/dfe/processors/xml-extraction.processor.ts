@@ -108,9 +108,10 @@ export class XmlExtractionProcessor extends WorkerHost {
         amount: Number(nfe.total.ICMSTot.vNF),
         status: InvoiceStatus.NORMAL,
       };
-    } catch (e) {
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
       this.logger.error(
-        `[Parser Error] Erro ao navegar no JSON do XML: ${e.message}`,
+        `[Parser Error] Erro ao navegar no JSON do XML: ${message}`,
       );
       return null;
     }

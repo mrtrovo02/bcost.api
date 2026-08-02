@@ -132,11 +132,10 @@ export class LoggingInterceptor implements NestInterceptor {
   private emitAudit(payload: Record<string, any>): void {
     try {
       this.eventEmitter.emit('audit.log', payload);
-    } catch (error) {
-      this.logger.error(
-        `Falha ao emitir evento audit.log: ${error?.message}`,
-        error?.stack,
-      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`Falha ao emitir evento audit.log: ${message}`, stack);
     }
   }
 

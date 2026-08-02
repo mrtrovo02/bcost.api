@@ -494,7 +494,7 @@ export class BankingController {
   async uploadOfx(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('bankAccountId', new ParseUUIDPipe()) bankAccountId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: { buffer: Buffer; originalname?: string; mimetype?: string; size?: number },
   ) {
     if (!file) {
       throw new BadRequestException('O arquivo OFX é obrigatório.');

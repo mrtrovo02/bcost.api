@@ -445,7 +445,7 @@ export class FiscalController {
   @ApiOperation({ summary: 'AUTOMAÇÃO: Upload em massa de XML (Queue-based)' })
   async uploadXml(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles() files: Array<{ buffer: Buffer; originalname?: string; mimetype?: string; size?: number }>,
     @Query('type') type: XmlDocumentType = XmlDocumentType.NFE,
   ) {
     if (!files || files.length === 0) {

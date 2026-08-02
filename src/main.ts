@@ -49,21 +49,33 @@ async function listenWithTimeout(
   port: number,
   host: string,
   timeoutMs = 30000,
-): Promise<void> {
-  await Promise.race([
-    app.listen(port, host),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(
-            new Error(
-              `Timeout ao iniciar listener HTTP em ${host}:${port} após ${timeoutMs}ms`,
+): Promise<number> {
+  try {
+    await Promise.race([
+      app.listen(port, host),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                `Timeout ao iniciar listener HTTP em ${host}:${port} após ${timeoutMs}ms`,
+              ),
             ),
-          ),
-        timeoutMs,
+          timeoutMs,
+        ),
       ),
-    ),
-  ]);
+    ]);
+    return port;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('EADDRINUSE')) {
+      const fallbackPort = port + 1;
+      console.warn(`⚠️ Porta ${port} ocupada. Tentando ${fallbackPort}...`);
+      await app.listen(fallbackPort, host);
+      return fallbackPort;
+    }
+    throw error;
+  }
 }
 
 async function bootstrap(): Promise<void> {
@@ -260,12 +272,12 @@ async function bootstrap(): Promise<void> {
     console.log(`[BOOT-004] inicializando Nest`);
     await app.init();
 
-    console.log(`[BOOT-005] iniciando listener em 0.0.0.0:${PORT}`);
-    await listenWithTimeout(app, PORT, '0.0.0.0', 30000);
+    const effectivePort = await listenWithTimeout(app, PORT, '0.0.0.0', 30000);
 
+    console.log(`[BOOT-005] iniciando listener em 0.0.0.0:${effectivePort}`);
     console.log('[BOOT-006] listener iniciado');
 
-    logger.log(`🚀 API local: http://127.0.0.1:${PORT}/api/v1`);
+    logger.log(`🚀 API local: http://127.0.0.1:${effectivePort}/api/v1`);
     logger.log(`🚀 API pública: ${publicBaseUrl}/api/v1`);
     logger.log(`📖 Swagger: ${publicBaseUrl}/docs`);
     logger.log(`❤️ Health: ${publicBaseUrl}/health`);

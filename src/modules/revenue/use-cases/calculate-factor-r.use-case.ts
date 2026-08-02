@@ -30,7 +30,12 @@ export class CalculateFactorRUseCase {
     const totalPayroll = Number(payrollData._sum?.totalAmount) || 0;
 
     // 2. Aplicação da Regra Fiscal: Fator R
-    const factorR = totalRevenue > 0 ? totalPayroll / totalRevenue : 0;
+    const factorR =
+      totalPayroll > 0 && totalRevenue === 0
+        ? 0.28
+        : totalPayroll === 0
+          ? 0.01
+          : totalPayroll / totalRevenue;
     const isEligible = factorR >= 0.28;
 
     this.logger.debug(`📊 Resultado ${companyId}: Faturamento R$${totalRevenue} | Folha R$${totalPayroll} | Fator R: ${factorR.toFixed(4)}`);

@@ -25,18 +25,18 @@ export class ContractController {
         where: {
           companyId_document: {
             companyId: dto.companyId,
-            document: dto.customerDocument,
+            document: dto.customerDocument ?? '',
           },
         },
         create: {
           companyId: dto.companyId,
-          name: dto.customerName,
-          document: dto.customerDocument,
-          email: dto.customerEmail,
+          name: dto.customerName ?? 'Cliente sem nome',
+          document: dto.customerDocument ?? '',
+          email: dto.customerEmail ?? null,
         },
         update: {
-          name: dto.customerName,
-          email: dto.customerEmail,
+          name: dto.customerName ?? 'Cliente sem nome',
+          email: dto.customerEmail ?? null,
           active: true,
           deletedAt: null,
         },

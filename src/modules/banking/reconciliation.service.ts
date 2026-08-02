@@ -21,4 +21,28 @@ export class ReconciliationService {
       return result;
     });
   }
+
+  async runAutoMatch(companyId: string) {
+    this.logger.log(`[RECONCILE] Auto-match iniciado para companyId=${companyId}`);
+
+    return {
+      companyId,
+      reconciled: 0,
+      accuracy: 0,
+      message: 'Auto-match não implementado no serviço atual.',
+    };
+  }
+
+  async undoMatch(transactionId: string, userId: string) {
+    this.logger.log(
+      `[RECONCILE] Desfazendo conciliação transactionId=${transactionId} userId=${userId}`,
+    );
+
+    await this.prisma.bankTransaction.update({
+      where: { id: transactionId },
+      data: { reconciled: false, taxObligationId: null },
+    });
+
+    return { transactionId, undone: true, userId };
+  }
 }

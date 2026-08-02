@@ -117,7 +117,7 @@ export class InvoiceService {
         customer: {
           select: { name: true, document: true },
         },
-        sefazEvents: true, // Rastreabilidade total
+        sefazEvents: true as const, // Rastreabilidade total
       },
       orderBy: { issuedAt: 'desc' },
       take: filters?.limit ? Number(filters.limit) : 100,
@@ -132,7 +132,7 @@ export class InvoiceService {
       where: { id },
       include: {
         customer: true,
-        sefazEvents: { orderBy: { createdAt: 'desc' } },
+        sefazEvents: true,
       },
     });
 

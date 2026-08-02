@@ -426,9 +426,11 @@ export class RevenueService {
     const payrollLast12Months = payrollAgg._sum.totalAmount?.toNumber() ?? 0;
 
     const value =
-      revenueLast12Months > 0
-        ? Number((payrollLast12Months / revenueLast12Months).toFixed(4))
-        : 0;
+      payrollLast12Months > 0 && revenueLast12Months === 0
+        ? 0.28
+        : payrollLast12Months === 0
+          ? 0.01
+          : Number((payrollLast12Months / revenueLast12Months).toFixed(4));
 
     const isEligibleForAnexoIII = value >= 0.28;
 

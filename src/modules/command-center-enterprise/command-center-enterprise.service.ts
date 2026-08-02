@@ -1528,13 +1528,18 @@ export class CommandCenterEnterpriseService {
     const startedAt = Date.now();
 
     const payload = await this.summary(companyId, query, user);
+    const summaryPayload = payload as {
+      executiveSummary?: unknown;
+      risks?: unknown;
+      modules?: unknown;
+    };
 
-    return {
+    const response = {
       status: 'OK',
       module: 'executive-command-center-risks',
       companyId,
-      executiveSummary: payload.executiveSummary,
-      risks: payload.risks,
+      executiveSummary: summaryPayload.executiveSummary,
+      risks: summaryPayload.risks,
       cache: {
         hit: false,
         ttlMs: this.COMMAND_CENTER_CACHE_TTL_MS,
@@ -1546,7 +1551,7 @@ export class CommandCenterEnterpriseService {
       generatedAt: new Date().toISOString(),
     };
 
-    this.setCommandCenterCache(cacheKey, response);
+    this.setCommandCenterCache(cacheKey, response as Record<string, unknown>);
 
     return response;
   }
@@ -1557,13 +1562,17 @@ export class CommandCenterEnterpriseService {
     user?: AuthUser,
   ) {
     const payload = await this.summary(companyId, query, user);
+    const summaryPayload = payload as {
+      executiveSummary?: unknown;
+      modules?: unknown;
+    };
 
     return {
       status: 'OK',
       module: 'executive-command-center-modules',
       companyId,
-      executiveSummary: payload.executiveSummary,
-      modules: payload.modules,
+      executiveSummary: summaryPayload.executiveSummary,
+      modules: summaryPayload.modules,
       generatedAt: new Date().toISOString(),
     };
   }

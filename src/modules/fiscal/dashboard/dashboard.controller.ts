@@ -43,7 +43,6 @@ export class DashboardController {
     name: 'companyId',
     required: true,
     type: 'string',
-    format: 'uuid',
     description: 'ID da empresa',
   })
   @ApiQuery({
@@ -135,7 +134,6 @@ export class DashboardController {
     name: 'companyId',
     required: true,
     type: 'string',
-    format: 'uuid',
     description: 'ID da empresa',
   })
   @ApiResponse({ status: 200, description: 'Métricas retornadas com sucesso.' })

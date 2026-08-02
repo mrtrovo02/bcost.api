@@ -29,9 +29,10 @@ export class InsightsCronService {
       this.logger.log(
         `✅ [Cron] Sucesso: ${result.processed} empresas processadas.`,
       );
-    } catch (err) {
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
       this.logger.error(
-        `❌ [Cron] Falha crítica no lote diário: ${err.message}`,
+        `❌ [Cron] Falha crítica no lote diário: ${message}`,
       );
     }
   }

@@ -93,40 +93,64 @@ export class PrismaService
   }
 
   private applyExtensions() {
+    const prismaService = this;
+
     return this.$extends({
       query: {
         $allModels: {
           async $allOperations({ model, operation, args, query }) {
             const tenantId = TenantContext.getTenantId();
+            const operationArgs = args as Record<string, unknown>;
 
             // 1. Multi-tenancy Isolation
             if (tenantId && COMPANY_SCOPED_MODELS.has(model)) {
               if (['create', 'createMany'].includes(operation)) {
-                args.data = { ...(args.data as any), companyId: tenantId };
-              } else if (['findMany', 'findFirst', 'findUnique', 'update', 'updateMany', 'delete', 'deleteMany'].includes(operation)) {
-                args.where = { ...(args.where as any), companyId: tenantId };
+                operationArgs.data = {
+                  ...((operationArgs.data as Record<string, unknown>) ?? {}),
+                  companyId: tenantId,
+                };
+              } else if (
+                [
+                  'findMany',
+                  'findFirst',
+                  'findUnique',
+                  'update',
+                  'updateMany',
+                  'delete',
+                  'deleteMany',
+                ].includes(operation)
+              ) {
+                operationArgs.where = {
+                  ...((operationArgs.where as Record<string, unknown>) ?? {}),
+                  companyId: tenantId,
+                };
               }
             }
 
             // 2. Soft Delete Filter (Global)
             if (['findMany', 'findFirst', 'findUnique', 'count'].includes(operation)) {
-              if ((args.where as any)?.deletedAt === undefined) {
-                args.where = { ...(args.where as any), deletedAt: null };
+              const where =
+                (operationArgs.where as Record<string, unknown> | undefined) ?? {};
+              if (where.deletedAt === undefined) {
+                operationArgs.where = {
+                  ...where,
+                  deletedAt: null,
+                };
               }
             }
 
             // 3. Interceptador de Delete (Soft Delete com Fallback)
             if (operation === 'delete' || operation === 'deleteMany') {
               try {
-                // Tenta fazer o update para setar deletedAt
                 const action = operation === 'delete' ? 'update' : 'updateMany';
-                return await (this as any)[model][action]({
-                  where: args.where,
+                return await (prismaService as any)[model][action]({
+                  where: operationArgs.where,
                   data: { deletedAt: new Date() },
                 });
-              } catch (e) {
-                // Se o model não suportar deletedAt, executa o delete real
-                this.logger.debug(`Soft-delete não suportado para ${model}, executando hard-delete.`);
+              } catch {
+                prismaService.logger.debug(
+                  `Soft-delete não suportado para ${model}, executando hard-delete.`,
+                );
                 return query(args);
               }
             }
@@ -136,6 +160,14 @@ export class PrismaService
         },
       },
     });
+  }
+
+  setCompanyScope(companyId: string): void {
+    TenantContext.patch({ tenantId: companyId });
+  }
+
+  clearCompanyScope(): void {
+    TenantContext.patch({ tenantId: undefined });
   }
 
   private registerEventListeners() {

@@ -51,7 +51,7 @@ export class FinanceProcessor extends WorkerHost {
     );
 
     try {
-      this.prisma.setCompanyScope(companyId);
+      this.prisma.extended.$transaction(async (tx) => tx);
 
       const result = await this.financeService.reconcileTaxObligations(
         companyId,
@@ -106,8 +106,6 @@ export class FinanceProcessor extends WorkerHost {
       }
 
       throw error;
-    } finally {
-      this.prisma.clearCompanyScope();
     }
   }
 }

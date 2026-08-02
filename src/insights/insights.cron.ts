@@ -36,9 +36,10 @@ export class InsightsCronService {
       try {
         // Gera e persiste no banco (tabela cash_flow_projections)
         await this.cashFlowService.generateProjection(company.id, 90);
-      } catch (error) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         this.logger.error(
-          `❌ Falha na projeção da empresa ${company.name}: ${error.message}`,
+          `❌ Falha na projeção da empresa ${company.name}: ${message}`,
         );
       }
     }
