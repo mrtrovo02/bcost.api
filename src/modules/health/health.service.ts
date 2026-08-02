@@ -43,9 +43,7 @@ export class HealthService {
    */
   async getDatabaseMetrics(companyId?: string): Promise<HealthMetricsResponse> {
     try {
-      // 1. Execução paralela para otimizar tempo de resposta (Promise.all)
-      // Buscamos a versão do banco e as métricas de performance simultaneamente.
-      const [metrics, dbVersionInfo] = await Promise.all([
+      const [metrics, dbVersionInfo] = await Promise.allSettled([
         this.prisma.$queryRaw<DbPerformanceMetric[]>`
           SELECT 
             tabela,
@@ -58,16 +56,18 @@ export class HealthService {
         this.prisma.$queryRaw<{ version: string }[]>`SELECT version()`,
       ]);
 
-      // 2. Lógica de análise de status (Heurística de saúde)
-      // Se qualquer tabela tiver eficiência de índice < 80%, marcamos como 'warning'
-      const hasBottleneck = metrics.some(
+      const metricsResult = metrics.status === 'fulfilled' ? metrics.value : [];
+      const versionResult =
+        dbVersionInfo.status === 'fulfilled' ? dbVersionInfo.value : [];
+
+      const hasBottleneck = metricsResult.some(
         (m) => Number(m.eficiencia_indice_percentual) < 80,
       );
       const status = hasBottleneck ? 'warning' : 'healthy';
 
-      if (hasBottleneck) {
+      if (metrics.status === 'rejected') {
         this.logger.warn(
-          `⚠️ Possível gargalo detectado no banco de dados${companyId ? ` para a empresa ${companyId}` : ''}`,
+          `⚠️ Métricas do banco indisponíveis${companyId ? ` para a empresa ${companyId}` : ''}: ${String(metrics.reason)}`,
         );
       }
 
@@ -75,9 +75,8 @@ export class HealthService {
         timestamp: new Date(),
         status,
         companyId,
-        dbVersion: dbVersionInfo[0]?.version || 'PostgreSQL Unknown',
-        // ✅ Conversão rigorosa de tipos (Postgres BigInt/Numeric -> JS Number)
-        metrics: metrics.map((m) => ({
+        dbVersion: versionResult[0]?.version || 'PostgreSQL Unknown',
+        metrics: metricsResult.map((m) => ({
           tabela: m.tabela,
           buscas_sequenciais: Number(m.buscas_sequenciais || 0),
           buscas_por_indice: Number(m.buscas_por_indice || 0),
@@ -88,13 +87,16 @@ export class HealthService {
         })),
       };
     } catch (error) {
-      this.logger.error(
-        '❌ Erro crítico no diagnóstico de performance:',
-        error,
+      this.logger.warn(
+        `⚠️ Diagnóstico de performance não disponível: ${String(error)}`,
       );
-      throw new InternalServerErrorException(
-        'Falha ao gerar relatório de saúde do banco de dados.',
-      );
+      return {
+        timestamp: new Date(),
+        status: 'critical',
+        companyId,
+        dbVersion: 'PostgreSQL Unknown',
+        metrics: [],
+      };
     }
   }
 

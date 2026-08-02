@@ -32,7 +32,11 @@ export class PerformanceAuditService {
     try {
       const { metrics } = await this.healthService.getDatabaseMetrics();
 
-      // Filtro refinado: Foca em tabelas críticas ou em qualquer tabela com volumetria considerável
+      if (metrics.length === 0) {
+        this.logger.warn('⚠️ Auditoria pulada: métricas de banco indisponíveis no momento.');
+        return;
+      }
+
       const bottlenecks = metrics.filter(
         (m: DbPerformanceMetric) =>
           (this.CRITICAL_TABLES.includes(m.tabela) || m.total_linhas > 1000) &&
@@ -49,7 +53,7 @@ export class PerformanceAuditService {
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.stack : String(error);
-      this.logger.error('❌ Falha ao realizar auditoria de performance', message);
+      this.logger.warn(`⚠️ Auditoria de performance ignorada: ${message}`);
     }
   }
 
