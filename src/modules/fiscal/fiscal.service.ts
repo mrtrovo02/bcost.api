@@ -55,6 +55,30 @@ type FiscalPerformancePoint = {
   isSnapshot: boolean;
 };
 
+type SimplesAnnex = 'III' | 'V';
+
+const SIMPLES_TABLES: Record<
+  SimplesAnnex,
+  Array<{ limit: number; rate: number; deduction: number }>
+> = {
+  III: [
+    { limit: 180_000, rate: 0.06, deduction: 0 },
+    { limit: 360_000, rate: 0.112, deduction: 9_360 },
+    { limit: 720_000, rate: 0.135, deduction: 17_640 },
+    { limit: 1_800_000, rate: 0.16, deduction: 35_640 },
+    { limit: 3_600_000, rate: 0.21, deduction: 125_640 },
+    { limit: 4_800_000, rate: 0.33, deduction: 648_000 },
+  ],
+  V: [
+    { limit: 180_000, rate: 0.155, deduction: 0 },
+    { limit: 360_000, rate: 0.18, deduction: 4_500 },
+    { limit: 720_000, rate: 0.195, deduction: 9_900 },
+    { limit: 1_800_000, rate: 0.205, deduction: 17_100 },
+    { limit: 3_600_000, rate: 0.23, deduction: 62_100 },
+    { limit: 4_800_000, rate: 0.305, deduction: 540_000 },
+  ],
+};
+
 @Injectable()
 export class FiscalService implements OnModuleInit {
   private readonly logger = new Logger(FiscalService.name);
@@ -77,7 +101,9 @@ export class FiscalService implements OnModuleInit {
 
   private async verifyRedisConnectivity(): Promise<void> {
     try {
-      const client = await this.xmlQueue.client as { ping?: () => Promise<unknown> } | undefined;
+      const client = (await this.xmlQueue.client) as
+        | { ping?: () => Promise<unknown> }
+        | undefined;
       await client?.ping?.();
       this.logger.log('✅ Conexão Redis para Faturas ativa.');
     } catch (error: unknown) {
@@ -86,7 +112,9 @@ export class FiscalService implements OnModuleInit {
     }
   }
 
-  private toNumber(value: Prisma.Decimal | number | string | null | undefined): number {
+  private toNumber(
+    value: Prisma.Decimal | number | string | null | undefined,
+  ): number {
     if (value === null || value === undefined) return 0;
 
     if (value instanceof Prisma.Decimal) {
@@ -114,6 +142,26 @@ export class FiscalService implements OnModuleInit {
     ];
 
     return names[Math.max(0, Math.min(11, month - 1))] ?? String(month);
+  }
+
+  private getEffectiveSimplesRate(rbt12: number, annex: SimplesAnnex) {
+    const table = SIMPLES_TABLES[annex];
+    const bracket = table.find((item) => rbt12 <= item.limit) ?? table.at(-1)!;
+    const effectiveRate =
+      rbt12 > 0
+        ? (rbt12 * bracket.rate - bracket.deduction) / rbt12
+        : bracket.rate;
+
+    return {
+      effectiveRate: Math.max(effectiveRate, 0),
+      bracket,
+    };
+  }
+
+  private calculateFactorRPercent(payroll12: number, rbt12: number): number {
+    if (payroll12 > 0 && rbt12 === 0) return 28;
+    if (payroll12 === 0) return 1;
+    return (payroll12 / rbt12) * 100;
   }
 
   private getFiscalWarning(params: {
@@ -210,34 +258,36 @@ export class FiscalService implements OnModuleInit {
     const rbtStart = new Date(now);
     rbtStart.setMonth(rbtStart.getMonth() - 12);
 
-    const [rbtInvoices, unreconciled, openComplianceIssues] = await Promise.all([
-      this.prisma.extended.invoice.findMany({
-        where: {
-          companyId,
-          issuedAt: {
-            gte: rbtStart,
-            lte: now,
+    const [rbtInvoices, unreconciled, openComplianceIssues] = await Promise.all(
+      [
+        this.prisma.extended.invoice.findMany({
+          where: {
+            companyId,
+            issuedAt: {
+              gte: rbtStart,
+              lte: now,
+            },
+            status: InvoiceStatus.NORMAL,
           },
-          status: InvoiceStatus.NORMAL,
-        },
-        select: {
-          amount: true,
-        },
-      }),
-      this.prisma.extended.invoice.count({
-        where: {
-          companyId,
-          reconciled: false,
-          status: InvoiceStatus.NORMAL,
-        },
-      }),
-      this.prisma.complianceCheck.count({
-        where: {
-          companyId,
-          resolved: false,
-        },
-      }),
-    ]);
+          select: {
+            amount: true,
+          },
+        }),
+        this.prisma.extended.invoice.count({
+          where: {
+            companyId,
+            reconciled: false,
+            status: InvoiceStatus.NORMAL,
+          },
+        }),
+        this.prisma.complianceCheck.count({
+          where: {
+            companyId,
+            resolved: false,
+          },
+        }),
+      ],
+    );
 
     const rbt12 = rbtInvoices.reduce(
       (acc, invoice) => acc.plus(invoice.amount),
@@ -274,9 +324,7 @@ export class FiscalService implements OnModuleInit {
         fatorR,
         unreconciled,
       }),
-      lastUpdate:
-        company.lastSyncAt?.toISOString() ??
-        new Date().toISOString(),
+      lastUpdate: company.lastSyncAt?.toISOString() ?? new Date().toISOString(),
     };
   }
 
@@ -303,7 +351,15 @@ export class FiscalService implements OnModuleInit {
       const monthNumber = Number(item.month);
       const faturamento = this.toNumber(item.faturamento);
       const impostoComBcost = this.toNumber(item.imposto);
-      const impostoSemBcost = Number((faturamento * 0.155).toFixed(2));
+      const estimatedRbt12 = Math.min(
+        this.simplesLimit,
+        Math.max(faturamento * 12, faturamento),
+      );
+      const anexoVRate = this.getEffectiveSimplesRate(
+        estimatedRbt12,
+        'V',
+      ).effectiveRate;
+      const impostoSemBcost = Number((faturamento * anexoVRate).toFixed(2));
       const taxSaved = Math.max(0, impostoSemBcost - impostoComBcost);
 
       return {
@@ -480,7 +536,7 @@ export class FiscalService implements OnModuleInit {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0, 23, 59, 59);
 
-    const [invoices, payrolls] = await Promise.all([
+    const [invoices, rbtInvoices, payroll12] = await Promise.all([
       this.prisma.extended.invoice.findMany({
         where: {
           companyId,
@@ -488,8 +544,24 @@ export class FiscalService implements OnModuleInit {
           status: InvoiceStatus.NORMAL,
         },
       }),
+      this.prisma.extended.invoice.findMany({
+        where: {
+          companyId,
+          issuedAt: {
+            gte: new Date(year - 1, month - 1, 1),
+            lt: startDate,
+          },
+          status: InvoiceStatus.NORMAL,
+        },
+      }),
       this.prisma.payroll.findMany({
-        where: { companyId, month, year },
+        where: {
+          companyId,
+          OR: [
+            { year, month: { lt: month } },
+            { year: year - 1, month: { gte: month } },
+          ],
+        },
       }),
     ]);
 
@@ -498,19 +570,34 @@ export class FiscalService implements OnModuleInit {
       new Prisma.Decimal(0),
     );
 
-    const folhaMes = payrolls.reduce(
+    const rbt12 = rbtInvoices.reduce(
+      (acc, inv) => acc.plus(inv.amount),
+      new Prisma.Decimal(0),
+    );
+
+    const folha12 = payroll12.reduce(
       (acc, p) => acc.plus(p.totalAmount),
       new Prisma.Decimal(0),
     );
 
-    let fatorR = 0;
-
-    if (!faturamentoMes.isZero()) {
-      fatorR = folhaMes.div(faturamentoMes).mul(100).toNumber();
-    }
+    const fatorR = this.calculateFactorRPercent(
+      folha12.toNumber(),
+      rbt12.toNumber(),
+    );
 
     const anexoUtilizado = fatorR >= 28 ? 'III' : 'V';
-    const aliqEfetiva = anexoUtilizado === 'III' ? 0.06 : 0.155;
+    const { effectiveRate: aliqEfetiva } = this.getEffectiveSimplesRate(
+      rbt12.toNumber(),
+      anexoUtilizado,
+    );
+    const anexoIIIRate = this.getEffectiveSimplesRate(
+      rbt12.toNumber(),
+      'III',
+    ).effectiveRate;
+    const anexoVRate = this.getEffectiveSimplesRate(
+      rbt12.toNumber(),
+      'V',
+    ).effectiveRate;
     const impostoAPagar = faturamentoMes.mul(aliqEfetiva);
 
     const period = `${year}-${String(month).padStart(2, '0')}`;
@@ -518,16 +605,22 @@ export class FiscalService implements OnModuleInit {
     return {
       metrics: {
         faturamentoMes: faturamentoMes.toNumber(),
-        folhaMes: folhaMes.toNumber(),
+        folhaMes: folha12.toNumber(),
+        folha12: folha12.toNumber(),
+        rbt12: rbt12.toNumber(),
         fatorR: Number(fatorR.toFixed(2)),
         anexoUtilizado,
-        aliqEfetiva: aliqEfetiva * 100,
+        aliqEfetiva: Number((aliqEfetiva * 100).toFixed(4)),
       },
       financial: {
-        impostoAPagar: impostoAPagar.toNumber(),
+        impostoAPagar: Number(impostoAPagar.toFixed(2)),
         economiaFatorR:
           anexoUtilizado === 'III'
-            ? faturamentoMes.mul(0.155).minus(impostoAPagar).toNumber()
+            ? Number(
+                faturamentoMes
+                  .mul(Math.max(anexoVRate - anexoIIIRate, 0))
+                  .toFixed(2),
+              )
             : 0,
       },
       integrity: {
@@ -543,7 +636,12 @@ export class FiscalService implements OnModuleInit {
 
   async enqueueXmlUpload(
     companyId: string,
-    files: Array<{ buffer: Buffer; originalname?: string; mimetype?: string; size?: number }>,
+    files: Array<{
+      buffer: Buffer;
+      originalname?: string;
+      mimetype?: string;
+      size?: number;
+    }>,
     details: UploadXmlDto,
   ) {
     const company = await this.prisma.extended.company.findUnique({
@@ -623,7 +721,16 @@ export class FiscalService implements OnModuleInit {
         inv.amount,
       );
 
-      monthlyMap[idx].imposto = monthlyMap[idx].faturamento.mul(0.06);
+      const estimatedRbt12 = Math.min(
+        this.simplesLimit,
+        Math.max(
+          monthlyMap[idx].faturamento.toNumber() * 12,
+          monthlyMap[idx].faturamento.toNumber(),
+        ),
+      );
+      monthlyMap[idx].imposto = monthlyMap[idx].faturamento.mul(
+        this.getEffectiveSimplesRate(estimatedRbt12, 'III').effectiveRate,
+      );
     }
 
     return monthlyMap.map((m) => ({
@@ -651,15 +758,30 @@ export class FiscalService implements OnModuleInit {
     }
 
     const faturamentoDecimal = new Prisma.Decimal(faturamentoMes);
-    const folhaIdeal = faturamentoDecimal.mul(0.28).toNumber();
+    const rbt12 = new Prisma.Decimal(stats.metrics.rbt12 || faturamentoMes);
+    const folha12 = new Prisma.Decimal(stats.metrics.folha12 || folhaMes);
+    const folhaIdeal = rbt12.mul(0.28).toNumber();
+    const anexoVRate = this.getEffectiveSimplesRate(
+      rbt12.toNumber(),
+      'V',
+    ).effectiveRate;
+    const anexoIIIRate = this.getEffectiveSimplesRate(
+      rbt12.toNumber(),
+      'III',
+    ).effectiveRate;
 
     return {
       optimized: false,
       message: 'Alerta: Empresa enquadrada no Anexo V (Alíquota cara).',
-      action: `Ajuste o Pró-labore para R$ ${(folhaIdeal - folhaMes).toFixed(
-        2,
-      )} para migrar ao Anexo III.`,
-      potentialSaving: faturamentoDecimal.mul(0.095).toNumber(),
+      action: `Ajuste a folha dos 12 meses anteriores em R$ ${Math.max(
+        folhaIdeal - folha12.toNumber(),
+        0,
+      ).toFixed(2)} para migrar ao Anexo III.`,
+      potentialSaving: Number(
+        faturamentoDecimal
+          .mul(Math.max(anexoVRate - anexoIIIRate, 0))
+          .toFixed(2),
+      ),
     };
   }
 

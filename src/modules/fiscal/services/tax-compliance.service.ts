@@ -45,8 +45,20 @@ export class TaxComplianceService {
       if (!invoice)
         throw new BadRequestException('Nota fiscal não encontrada.');
 
-      // 2. Lógica de cálculo (18% sobre o amount decimal)
-      const taxAmount = Number(invoice.amount) * 0.18;
+      const taxAmount = invoice.taxAmount ? Number(invoice.taxAmount) : 0;
+
+      if (taxAmount <= 0) {
+        this.logger.warn(
+          `Nota ${invoiceId} sem imposto informado. Provisao automatica pulada ate haver parametrizacao fiscal por UF/CST/CNAE.`,
+        );
+
+        return {
+          status: 'skipped',
+          reason: 'missing_tax_amount',
+          message:
+            'Imposto nao provisionado automaticamente sem valor fiscal extraido/informado.',
+        };
+      }
 
       // 3. Registro no Ledger
       // FIX: Usando 'TAX_PAID' ou 'MANUAL_ADJUSTMENT' que são tipos válidos no seu Enum
@@ -59,7 +71,10 @@ export class TaxComplianceService {
           referenceId: invoice.id,
           referenceType: 'Invoice',
           occurredAt: new Date(),
-          metadata: { taxType: 'ICMS', engine: 'v1' },
+          metadata: {
+            taxType: 'INVOICE_TAX_AMOUNT',
+            engine: 'invoice-extracted',
+          },
         },
         tx,
       );
@@ -70,8 +85,7 @@ export class TaxComplianceService {
       await tx.invoice.update({
         where: { id: invoiceId },
         data: {
-          taxAmount: taxAmount,
-          // Ajuste para um status que exista no seu enum, ex: 'SENT' ou 'PAID'
+          taxAmount,
           status: invoice.status,
         },
       });

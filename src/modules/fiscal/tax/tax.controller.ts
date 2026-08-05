@@ -23,10 +23,14 @@ import {
   ApiBody,
   ApiProperty,
 } from '@nestjs/swagger';
-import { IsUUID, IsNumber, Min } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 import { TaxService } from './tax.service.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
 import { CbsIbsEngineService } from '../services/cbs-ibs-engine.service.js';
+import {
+  PresumedProfitActivity,
+  TaxRegimeSimulatorService,
+} from '../services/tax-regime-simulator.service.js';
 
 /**
  * DTO para simulação de cenários projetados
@@ -51,6 +55,83 @@ export class SimulationDto {
   projectedRevenue: number;
 }
 
+export class RegimeSimulationDto {
+  @ApiProperty({ example: 100000, description: 'Receita do período simulado.' })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  revenue: number;
+
+  @ApiProperty({
+    example: 1,
+    required: false,
+    description: 'Quantidade de meses no período.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  months?: number;
+
+  @ApiProperty({
+    example: 4900000,
+    required: false,
+    description:
+      'Receita bruta acumulada no ano-calendário antes do período simulado, usada para aplicar a regra de acréscimo da LC 224/2025 acima de R$ 5 milhões.',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  yearToDateRevenueBeforePeriod?: number;
+
+  @ApiProperty({
+    example: 30000,
+    required: false,
+    description: 'Lucro antes dos tributos para simulação do Lucro Real.',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  profitBeforeTaxes?: number;
+
+  @ApiProperty({
+    example: 'services_general',
+    required: false,
+    enum: ['services_general', 'commerce_industry'],
+  })
+  @IsOptional()
+  @IsIn(['services_general', 'commerce_industry'])
+  presumedActivity?: PresumedProfitActivity;
+
+  @ApiProperty({
+    example: 0.05,
+    required: false,
+    description: 'Alíquota ISS parametrizada.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  issRate?: number;
+
+  @ApiProperty({
+    example: 0.18,
+    required: false,
+    description: 'Alíquota ICMS parametrizada.',
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  icmsRate?: number;
+
+  @ApiProperty({
+    example: 20000,
+    required: false,
+    description: 'Base de créditos PIS/Cofins não cumulativos no Lucro Real.',
+  })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  pisCofinsCreditBase?: number;
+}
+
 @ApiTags('Fiscal - Tax Engine')
 @ApiBearerAuth()
 @Controller('tax')
@@ -66,6 +147,7 @@ export class TaxController {
   constructor(
     private readonly taxService: TaxService,
     private readonly cbsIbsEngine: CbsIbsEngineService,
+    private readonly taxRegimeSimulator: TaxRegimeSimulatorService,
   ) {}
 
   @Get('calculate')
@@ -132,9 +214,28 @@ export class TaxController {
       'Calcula os destaques gerenciais de CBS 0,9% e IBS 0,1% para a fase de teste da Reforma Tributária, incluindo estimativa de caixa líquido se houver retenção no pagamento.',
   })
   @ApiBody({ type: SimulationDto })
-  @ApiResponse({ status: 200, description: 'Simulação CBS/IBS processada com sucesso.' })
+  @ApiResponse({
+    status: 200,
+    description: 'Simulação CBS/IBS processada com sucesso.',
+  })
   async simulateCbsIbs(@Body() data: SimulationDto) {
     return this.cbsIbsEngine.calculateTransitionalTax(data.projectedRevenue);
+  }
+
+  @Post('simulate-regimes')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Simula Lucro Presumido e Lucro Real',
+    description:
+      'Compara regimes usando regras federais gerais oficiais e alíquotas parametrizadas para ISS/ICMS, créditos e margens.',
+  })
+  @ApiBody({ type: RegimeSimulationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Simulação de regimes processada com sucesso.',
+  })
+  async simulateRegimes(@Body() data: RegimeSimulationDto) {
+    return this.taxRegimeSimulator.simulate(data);
   }
 
   @Get('history')

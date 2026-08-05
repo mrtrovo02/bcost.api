@@ -5,6 +5,7 @@ export type PresumedProfitActivity = 'services_general' | 'commerce_industry';
 export interface RegimeSimulationInput {
   revenue: number;
   months?: number;
+  yearToDateRevenueBeforePeriod?: number;
   profitBeforeTaxes?: number;
   presumedActivity?: PresumedProfitActivity;
   issRate?: number;
@@ -42,12 +43,14 @@ export interface RegimeSimulationResult {
 }
 
 const MONEY_PRECISION = 2;
+const PRESUMED_PROFIT_ANNUAL_REVENUE_THRESHOLD = 5_000_000;
 
 const OFFICIAL_SOURCES = [
   'Receita Federal - IRPJ: aliquota geral de 15% e adicional de 10% sobre lucro acima de R$ 20.000,00 por mes.',
   'Receita Federal - CSLL: aliquota geral de 9% para pessoas juridicas em geral.',
   'Lei 9.718/1998 e regime cumulativo: PIS 0,65% e Cofins 3% como regra geral no Lucro Presumido.',
   'Leis 10.637/2002 e 10.833/2003: PIS 1,65% e Cofins 7,6% no regime nao cumulativo como regra geral.',
+  'LC 224/2025: em 2026, acrescimo de 10% nos percentuais de presuncao do Lucro Presumido sobre a parcela da receita bruta anual que exceder R$ 5.000.000,00.',
 ] as const;
 
 @Injectable()
@@ -55,16 +58,23 @@ export class TaxRegimeSimulatorService {
   simulate(input: RegimeSimulationInput): RegimeSimulationResult {
     const revenue = Math.max(0, input.revenue);
     const months = Math.max(1, Math.trunc(input.months || 1));
+    const yearToDateRevenueBeforePeriod = Math.max(
+      0,
+      input.yearToDateRevenueBeforePeriod || 0,
+    );
     const issRate = this.normalizeRate(input.issRate);
     const icmsRate = this.normalizeRate(input.icmsRate);
     const profitBeforeTaxes =
       typeof input.profitBeforeTaxes === 'number'
         ? Math.max(0, input.profitBeforeTaxes)
-        : revenue * this.getPresumption(input.presumedActivity || 'services_general').irpj;
+        : revenue *
+          this.getPresumption(input.presumedActivity || 'services_general')
+            .irpj;
 
     const presumed = this.calculateLucroPresumido({
       revenue,
       months,
+      yearToDateRevenueBeforePeriod,
       activity: input.presumedActivity || 'services_general',
       issRate,
       icmsRate,
@@ -93,13 +103,22 @@ export class TaxRegimeSimulatorService {
   private calculateLucroPresumido(params: {
     revenue: number;
     months: number;
+    yearToDateRevenueBeforePeriod: number;
     activity: PresumedProfitActivity;
     issRate: number;
     icmsRate: number;
   }) {
     const presumption = this.getPresumption(params.activity);
-    const irpjBase = params.revenue * presumption.irpj;
-    const csllBase = params.revenue * presumption.csll;
+    const irpjBase = this.calculatePresumedBase({
+      revenue: params.revenue,
+      yearToDateRevenueBeforePeriod: params.yearToDateRevenueBeforePeriod,
+      presumptionRate: presumption.irpj,
+    });
+    const csllBase = this.calculatePresumedBase({
+      revenue: params.revenue,
+      yearToDateRevenueBeforePeriod: params.yearToDateRevenueBeforePeriod,
+      presumptionRate: presumption.csll,
+    });
 
     const irpj = irpjBase * 0.15;
     const irpjAdditional = Math.max(0, irpjBase - 20_000 * params.months) * 0.1;
@@ -132,10 +151,13 @@ export class TaxRegimeSimulatorService {
     pisCofinsCreditBase: number;
   }) {
     const irpj = params.profitBeforeTaxes * 0.15;
-    const irpjAdditional = Math.max(0, params.profitBeforeTaxes - 20_000 * params.months) * 0.1;
+    const irpjAdditional =
+      Math.max(0, params.profitBeforeTaxes - 20_000 * params.months) * 0.1;
     const csll = params.profitBeforeTaxes * 0.09;
-    const pis = Math.max(0, params.revenue - params.pisCofinsCreditBase) * 0.0165;
-    const cofins = Math.max(0, params.revenue - params.pisCofinsCreditBase) * 0.076;
+    const pis =
+      Math.max(0, params.revenue - params.pisCofinsCreditBase) * 0.0165;
+    const cofins =
+      Math.max(0, params.revenue - params.pisCofinsCreditBase) * 0.076;
     const iss = params.revenue * params.issRate;
     const icms = params.revenue * params.icmsRate;
     const total = irpj + irpjAdditional + csll + pis + cofins + iss + icms;
@@ -159,6 +181,25 @@ export class TaxRegimeSimulatorService {
     }
 
     return { irpj: 0.32, csll: 0.32 };
+  }
+
+  private calculatePresumedBase(params: {
+    revenue: number;
+    yearToDateRevenueBeforePeriod: number;
+    presumptionRate: number;
+  }) {
+    const remainingStandardRevenue = Math.max(
+      0,
+      PRESUMED_PROFIT_ANNUAL_REVENUE_THRESHOLD -
+        params.yearToDateRevenueBeforePeriod,
+    );
+    const standardRevenue = Math.min(params.revenue, remainingStandardRevenue);
+    const increasedRevenue = Math.max(0, params.revenue - standardRevenue);
+
+    return (
+      standardRevenue * params.presumptionRate +
+      increasedRevenue * params.presumptionRate * 1.1
+    );
   }
 
   private normalizeRate(rate?: number): number {
@@ -190,7 +231,10 @@ export class TaxRegimeSimulatorService {
       iss: this.money(values.iss),
       icms: this.money(values.icms),
       total: this.money(values.total),
-      effectiveRate: values.revenue > 0 ? this.money((values.total / values.revenue) * 100) : 0,
+      effectiveRate:
+        values.revenue > 0
+          ? this.money((values.total / values.revenue) * 100)
+          : 0,
     };
   }
 }

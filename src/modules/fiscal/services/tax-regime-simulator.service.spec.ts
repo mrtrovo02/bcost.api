@@ -43,4 +43,23 @@ describe('TaxRegimeSimulatorService', () => {
       effectiveRate: 15.6,
     });
   });
+
+  it('aplica o acrescimo da LC 224/2025 apenas na parcela anual acima de R$ 5 milhoes', () => {
+    const result = service.simulate({
+      revenue: 200000,
+      months: 1,
+      presumedActivity: 'commerce_industry',
+      yearToDateRevenueBeforePeriod: 4900000,
+    });
+
+    expect(result.lucroPresumido).toMatchObject({
+      irpj: 2520,
+      irpjAdditional: 0,
+      csll: 2268,
+      pis: 1300,
+      cofins: 6000,
+      total: 12088,
+      effectiveRate: 6.04,
+    });
+  });
 });

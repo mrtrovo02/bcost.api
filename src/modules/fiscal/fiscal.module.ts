@@ -21,6 +21,7 @@ import { DfeProcessorService } from './dfe/dfe-processor.service';
 import { FiscalCronService } from './fiscal-cron.service';
 import { ReportService } from './reports/report.service';
 import { CbsIbsEngineService } from './services/cbs-ibs-engine.service';
+import { TaxRegimeSimulatorService } from './services/tax-regime-simulator.service';
 
 import { XmlProcessor } from './processors/xml.processor';
 import { DigitalCertificatesModule } from './digital-certificates/digital-certificates.module';
@@ -66,6 +67,7 @@ import { DigitalCertificatesModule } from './digital-certificates/digital-certif
     DfeProcessorService,
     ReportService,
     CbsIbsEngineService,
+    TaxRegimeSimulatorService,
 
     XmlProcessor,
   ],
@@ -83,6 +85,7 @@ import { DigitalCertificatesModule } from './digital-certificates/digital-certif
     DfeService,
     DfeProcessorService,
     CbsIbsEngineService,
+    TaxRegimeSimulatorService,
     BullModule,
     DigitalCertificatesModule,
   ],

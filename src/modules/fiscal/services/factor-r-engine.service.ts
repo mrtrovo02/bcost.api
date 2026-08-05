@@ -94,8 +94,8 @@ export class FactorREngineService {
       payroll12m: totalPayroll12m.toNumber(),
       recommendation,
       potentialTaxSaving: isEnquadradoAnexoIII
-        ? 'Alíquota 6%'
-        : 'Alíquota 15.5%',
+        ? 'Elegivel ao Anexo III; aliquota efetiva depende da faixa RBT12.'
+        : 'Sujeito ao Anexo V; aliquota efetiva depende da faixa RBT12.',
     };
   }
 }
