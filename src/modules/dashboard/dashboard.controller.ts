@@ -52,6 +52,19 @@ export class DashboardController {
     return await this.dashboardService.getCompanyOverview(companyId);
   }
 
+  @Get('management-cockpit')
+  @Roles(CompanyRole.OWNER, CompanyRole.ACCOUNTANT, CompanyRole.MANAGER)
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(300)
+  @ApiOperation({
+    summary:
+      'Cockpit de controladoria com DRE, caixa, balanço, orçamento e conciliação',
+  })
+  async getManagementCockpit(@GetUser('companyId') companyId: string) {
+    this.logger.log(`📈 Management Cockpit solicitado: Empresa ${companyId}`);
+    return await this.dashboardService.getManagementCockpit(companyId);
+  }
+
   @Get('alerts')
   @Roles(CompanyRole.OWNER, CompanyRole.ACCOUNTANT)
   @ApiOperation({ summary: 'Alertas financeiros e fiscais críticos' })

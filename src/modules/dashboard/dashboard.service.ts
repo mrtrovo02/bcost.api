@@ -10,6 +10,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import {
+  AccountType,
   JobStatus,
   ObligationStatus,
   ComplianceStatus,
@@ -144,6 +145,306 @@ export class DashboardService {
     }
   }
 
+  async getManagementCockpit(companyId: string) {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+    const yearStart = new Date(currentYear, 0, 1);
+    const monthStart = new Date(currentYear, currentMonth - 1, 1);
+    const monthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+
+    const [
+      company,
+      invoices,
+      taxObligations,
+      fiscalObligations,
+      bankTransactions,
+      accountingEntries,
+      accountPlan,
+      automationJobs,
+      complianceChecks,
+      financialSnapshots,
+    ] = await Promise.all([
+      this.prisma.company.findUnique({
+        where: { id: companyId },
+        select: { id: true, name: true, settings: true },
+      }),
+      this.prisma.invoice.findMany({
+        where: {
+          companyId,
+          issuedAt: { gte: yearStart, lte: monthEnd },
+        },
+        select: {
+          id: true,
+          amount: true,
+          taxAmount: true,
+          issuedAt: true,
+          reconciled: true,
+          status: true,
+        },
+      }),
+      this.prisma.taxObligation.findMany({
+        where: { companyId },
+        select: { id: true, amount: true, dueDate: true, status: true },
+      }),
+      this.prisma.fiscalObligation.findMany({
+        where: { companyId },
+        select: { id: true, status: true, dueDate: true, type: true },
+      }),
+      this.prisma.bankTransaction.findMany({
+        where: { companyId, occurredAt: { gte: yearStart, lte: monthEnd } },
+        select: {
+          id: true,
+          amount: true,
+          type: true,
+          occurredAt: true,
+          reconciled: true,
+          description: true,
+        },
+      }),
+      this.prisma.accountingEntry.findMany({
+        where: { companyId, year: currentYear },
+        select: {
+          id: true,
+          amount: true,
+          month: true,
+          debitCode: true,
+          creditCode: true,
+          description: true,
+        },
+      }),
+      this.prisma.accountPlan.findMany({
+        where: { OR: [{ companyId }, { companyId: null }] },
+        select: { code: true, name: true, type: true },
+      }),
+      this.prisma.automationJob.findMany({
+        where: { companyId, createdAt: { gte: yearStart } },
+        select: { id: true, status: true, name: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
+      }),
+      this.prisma.complianceCheck.findMany({
+        where: { companyId, resolved: false },
+        select: {
+          id: true,
+          severity: true,
+          checkName: true,
+          description: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+      this.prisma.financialSnapshot.findMany({
+        where: { companyId, year: currentYear },
+        select: {
+          month: true,
+          revenue: true,
+          expenses: true,
+          taxPayable: true,
+          netProfit: true,
+        },
+        orderBy: { month: 'asc' },
+      }),
+    ]);
+
+    if (!company) {
+      throw new InternalServerErrorException(
+        'Empresa não encontrada para o dashboard.',
+      );
+    }
+
+    const accountByCode = new Map(
+      accountPlan.map((account) => [account.code, account]),
+    );
+    const revenueYtd = this.sumMoney(invoices.map((invoice) => invoice.amount));
+    const taxProvisionYtd = this.sumMoney(
+      invoices.map((invoice) => invoice.taxAmount ?? 0),
+    );
+    const paidTaxesYtd = this.sumMoney(
+      taxObligations
+        .filter((item) => item.status === ObligationStatus.PAID)
+        .map((item) => item.amount),
+    );
+
+    const cashInYtd = this.sumMoney(
+      bankTransactions
+        .filter((transaction) => transaction.type === 'CREDIT')
+        .map((transaction) => transaction.amount),
+    );
+    const cashOutYtd = this.sumMoney(
+      bankTransactions
+        .filter((transaction) => transaction.type === 'DEBIT')
+        .map((transaction) => transaction.amount),
+    );
+    const expenseEntries = accountingEntries.filter((entry) => {
+      const debitAccount = accountByCode.get(entry.debitCode);
+      return (
+        debitAccount?.type === AccountType.DESPESA ||
+        debitAccount?.type === AccountType.CUSTO
+      );
+    });
+    const accountingExpensesYtd = this.sumMoney(
+      expenseEntries.map((entry) => entry.amount),
+    );
+    const expensesYtd = accountingExpensesYtd || cashOutYtd + paidTaxesYtd;
+    const grossMargin =
+      revenueYtd > 0 ? ((revenueYtd - expensesYtd) / revenueYtd) * 100 : 0;
+    const netIncome =
+      revenueYtd - expensesYtd - Math.max(taxProvisionYtd - paidTaxesYtd, 0);
+
+    const monthly = Array.from({ length: currentMonth }, (_, index) => {
+      const month = index + 1;
+      const monthRevenue = this.sumMoney(
+        invoices
+          .filter((invoice) => invoice.issuedAt.getMonth() + 1 === month)
+          .map((invoice) => invoice.amount),
+      );
+      const monthCashIn = this.sumMoney(
+        bankTransactions
+          .filter(
+            (transaction) =>
+              transaction.type === 'CREDIT' &&
+              transaction.occurredAt.getMonth() + 1 === month,
+          )
+          .map((transaction) => transaction.amount),
+      );
+      const monthCashOut = this.sumMoney(
+        bankTransactions
+          .filter(
+            (transaction) =>
+              transaction.type === 'DEBIT' &&
+              transaction.occurredAt.getMonth() + 1 === month,
+          )
+          .map((transaction) => transaction.amount),
+      );
+
+      return {
+        month,
+        revenue: monthRevenue,
+        cashIn: monthCashIn,
+        cashOut: monthCashOut,
+        netCash: monthCashIn - monthCashOut,
+      };
+    });
+
+    const budget = this.readBudget(company.settings);
+    const actualMonth = monthly.find((item) => item.month === currentMonth) ?? {
+      revenue: 0,
+      cashOut: 0,
+      netCash: 0,
+    };
+
+    const costCenters = this.buildCostCenters(
+      expenseEntries,
+      accountByCode,
+      budget.costCenters,
+    );
+    const reconciliationTotal = invoices.length + bankTransactions.length;
+    const reconciliationDone =
+      invoices.filter((invoice) => invoice.reconciled).length +
+      bankTransactions.filter((transaction) => transaction.reconciled).length;
+    const openFiscalObligations = fiscalObligations.filter(
+      (item) => item.status !== 'ACCEPTED',
+    ).length;
+
+    return {
+      company: { id: company.id, name: company.name },
+      period: {
+        year: currentYear,
+        month: currentMonth,
+        generatedAt: new Date().toISOString(),
+      },
+      kpis: {
+        revenueYtd: this.money(revenueYtd),
+        expensesYtd: this.money(expensesYtd),
+        netIncome: this.money(netIncome),
+        grossMargin: this.money(grossMargin),
+        cashInYtd: this.money(cashInYtd),
+        cashOutYtd: this.money(cashOutYtd),
+        netCashYtd: this.money(cashInYtd - cashOutYtd),
+        reconciliationRate:
+          reconciliationTotal > 0
+            ? this.money((reconciliationDone / reconciliationTotal) * 100)
+            : 100,
+        openFiscalObligations,
+        criticalIssues: complianceChecks.filter(
+          (item) => item.severity === 'CRITICAL',
+        ).length,
+      },
+      dre: {
+        revenue: this.money(revenueYtd),
+        taxes: this.money(Math.max(taxProvisionYtd, paidTaxesYtd)),
+        operatingExpenses: this.money(expensesYtd),
+        ebitda: this.money(revenueYtd - expensesYtd),
+        netIncome: this.money(netIncome),
+      },
+      cashFlow: {
+        monthly,
+        projectedClosingCash: this.money(cashInYtd - cashOutYtd),
+      },
+      balance: {
+        assets: this.money(cashInYtd + revenueYtd),
+        liabilities: this.money(cashOutYtd + paidTaxesYtd),
+        equity: this.money(revenueYtd - expensesYtd),
+        snapshots: financialSnapshots.map((snapshot) => ({
+          month: snapshot.month,
+          revenue: this.toNumber(snapshot.revenue),
+          expenses: this.toNumber(snapshot.expenses),
+          taxPayable: this.toNumber(snapshot.taxPayable),
+          netProfit: this.toNumber(snapshot.netProfit),
+        })),
+      },
+      reconciliation: {
+        invoices: {
+          total: invoices.length,
+          reconciled: invoices.filter((invoice) => invoice.reconciled).length,
+          pending: invoices.filter((invoice) => !invoice.reconciled).length,
+        },
+        bankTransactions: {
+          total: bankTransactions.length,
+          reconciled: bankTransactions.filter(
+            (transaction) => transaction.reconciled,
+          ).length,
+          pending: bankTransactions.filter(
+            (transaction) => !transaction.reconciled,
+          ).length,
+        },
+      },
+      costCenters,
+      budgetVsActual: {
+        revenue: this.compareBudget(
+          'Receita',
+          budget.monthlyRevenue,
+          actualMonth.revenue,
+        ),
+        expenses: this.compareBudget(
+          'Despesas',
+          budget.monthlyExpenses,
+          actualMonth.cashOut,
+        ),
+        netCash: this.compareBudget(
+          'Caixa líquido',
+          budget.monthlyNetCash,
+          actualMonth.netCash,
+        ),
+      },
+      automation: {
+        running: automationJobs.filter(
+          (job) => job.status === JobStatus.RUNNING,
+        ).length,
+        failed: automationJobs.filter((job) => job.status === JobStatus.FAILED)
+          .length,
+        recent: automationJobs,
+      },
+      compliance: complianceChecks,
+      assumptions: [
+        'DRE, fluxo de caixa e balanço são consolidados gerenciais para cockpit executivo.',
+        'Centro de custos usa contas contábeis de despesa/custo e pode ser refinado com Company.settings.budget.costCenters.',
+        'Orçamento previsto lê Company.settings.budget quando configurado; caso contrário usa metas zeradas.',
+      ],
+    };
+  }
+
   // ---------------------------------------------------------------------------
   // ALERTAS FINANCEIROS — Vencimentos próximos
   // ---------------------------------------------------------------------------
@@ -215,6 +516,93 @@ export class DashboardService {
         ),
       })),
     };
+  }
+
+  private readBudget(settings: unknown) {
+    const budget =
+      settings && typeof settings === 'object' && 'budget' in settings
+        ? (settings as { budget?: Record<string, unknown> }).budget
+        : undefined;
+
+    return {
+      monthlyRevenue: this.safeNumber(budget?.monthlyRevenue),
+      monthlyExpenses: this.safeNumber(budget?.monthlyExpenses),
+      monthlyNetCash: this.safeNumber(budget?.monthlyNetCash),
+      costCenters: Array.isArray(budget?.costCenters)
+        ? (budget.costCenters as Array<{ name?: unknown; planned?: unknown }>)
+        : [],
+    };
+  }
+
+  private buildCostCenters(
+    entries: Array<{ amount: unknown; debitCode: string; description: string }>,
+    accountByCode: Map<string, { name: string }>,
+    planned: Array<{ name?: unknown; planned?: unknown }>,
+  ) {
+    const plannedByName = new Map(
+      planned
+        .filter((item) => typeof item.name === 'string')
+        .map((item) => [String(item.name), this.safeNumber(item.planned)]),
+    );
+    const grouped = new Map<string, number>();
+
+    for (const entry of entries) {
+      const accountName =
+        accountByCode.get(entry.debitCode)?.name ||
+        entry.description ||
+        'Sem centro';
+      grouped.set(
+        accountName,
+        (grouped.get(accountName) ?? 0) + this.toNumber(entry.amount),
+      );
+    }
+
+    return Array.from(grouped.entries())
+      .map(([name, actual]) => {
+        const plannedValue = plannedByName.get(name) ?? 0;
+
+        return {
+          name,
+          actual: this.money(actual),
+          planned: this.money(plannedValue),
+          variance: this.money(actual - plannedValue),
+          usagePercent:
+            plannedValue > 0 ? this.money((actual / plannedValue) * 100) : 0,
+        };
+      })
+      .sort((a, b) => b.actual - a.actual)
+      .slice(0, 8);
+  }
+
+  private compareBudget(label: string, planned: number, actual: number) {
+    return {
+      label,
+      planned: this.money(planned),
+      actual: this.money(actual),
+      variance: this.money(actual - planned),
+      achievement: planned > 0 ? this.money((actual / planned) * 100) : 0,
+    };
+  }
+
+  private safeNumber(value: unknown): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private toNumber(value: unknown): number {
+    if (value && typeof value === 'object' && 'toNumber' in value) {
+      return Number((value as { toNumber: () => number }).toNumber());
+    }
+
+    return this.safeNumber(value);
+  }
+
+  private sumMoney(values: unknown[]): number {
+    return values.reduce((sum, value) => sum + this.toNumber(value), 0);
+  }
+
+  private money(value: number): number {
+    return Number(value.toFixed(2));
   }
 
   // ---------------------------------------------------------------------------
