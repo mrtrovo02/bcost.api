@@ -48,7 +48,7 @@ export class TaxDataQueryDto {
 @Controller()
 @UseGuards(TenantContextGuard, CompanyAccessGuard)
 export class RevenueCompatibilityController {
-  @Get('revenue/stats/:companyId')
+  @Get('revenue/compatibility/stats/:companyId')
   async getRevenueStats(
     @Param('companyId') companyId: string,
   ): Promise<RevenueStatsResponse> {
@@ -64,7 +64,7 @@ export class RevenueCompatibilityController {
     };
   }
 
-  @Get('billing/entitlements/:companyId')
+  @Get('revenue/compatibility/billing-entitlements/:companyId')
   async getBillingEntitlements(
     @Param('companyId') companyId: string,
   ): Promise<BillingEntitlementsResponse> {
@@ -83,10 +83,9 @@ export class RevenueCompatibilityController {
 
   @Get('revenue/compatibility/tax-data')
   async getTaxData(
-    @Query('company_id') companyIdFromQuery?: string,
-    @Query('companyId') companyId?: string,
+    @Query() query: TaxDataQueryDto,
   ): Promise<TaxDataResponse> {
-    const activeCompanyId: string | undefined = companyIdFromQuery || companyId;
+    const activeCompanyId: string | undefined = query.company_id || query.companyId;
     return {
       success: true,
       companyId: activeCompanyId,
