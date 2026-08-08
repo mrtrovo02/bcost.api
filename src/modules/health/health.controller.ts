@@ -40,6 +40,26 @@ export class HealthController {
     ]);
   }
 
+  @Get('live')
+  async live() {
+    return {
+      status: 'alive',
+      service: 'bcost-api',
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('ready')
+  async ready() {
+    return await this.performance.getReadiness();
+  }
+
+  @Get('runtime')
+  async runtime() {
+    return await this.performance.getRuntimeDiagnostics();
+  }
+
   /**
    * Endpoint de Performance do Dashboard
    * Retorna métricas avançadas da saúde do banco de dados (Eficiência de índices).

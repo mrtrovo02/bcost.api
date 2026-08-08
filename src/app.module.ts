@@ -87,6 +87,7 @@ import { FinanceOperationsEnterpriseModule } from './modules/finance-operations-
 
         ENABLE_SWAGGER: Joi.string().valid('true', 'false').default('false'),
         CORS_ORIGINS: Joi.string().default(''),
+        METRICS_API_KEY: Joi.string().allow('').default(''),
 
         CACHE_TTL: Joi.number().default(600),
         THROTTLE_TTL: Joi.number().default(60),

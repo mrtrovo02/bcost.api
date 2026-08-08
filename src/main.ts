@@ -25,7 +25,12 @@ import fastifyCompress from '@fastify/compress';
 import { AppModule } from './app.module.js';
 import { PrismaModule } from './database/prisma.module.js';
 import { PrismaService } from './database/prisma.service.js';
+import { HealthService } from './modules/health/health.service.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
+import {
+  resolveCorsOriginsFromConfig,
+  shouldEnableSwagger,
+} from './common/config/http-runtime.config.js';
 import {
   contextStorage,
   RequestContextStore,
@@ -129,6 +134,10 @@ async function bootstrap(): Promise<void> {
     const PORT = Number(config.get<number>('PORT') ?? process.env.PORT ?? 5000);
     const publicBaseUrl =
       config.get<string>('PUBLIC_BASE_URL') || 'https://api.bcost.com.br';
+    const swaggerEnabled = shouldEnableSwagger(
+      isProd,
+      config.get<string>('ENABLE_SWAGGER'),
+    );
 
     await app.register(fastifyHelmet, {
       crossOriginEmbedderPolicy: false,
@@ -154,7 +163,9 @@ async function bootstrap(): Promise<void> {
 
     // ⚡ Ajuste no ciclo de vida do AsyncLocalStorage para evitar vazamentos de escopo assíncrono
     fastifyInstance.addHook('onRequest', (request, reply, done) => {
-      const redactedHeaders = redactSensitiveHeaders(request.headers as Record<string, unknown>);
+      const redactedHeaders = redactSensitiveHeaders(
+        request.headers as Record<string, unknown>,
+      );
       const rawTraceId = redactedHeaders['x-bcost-trace-id'];
 
       const traceId =
@@ -198,7 +209,7 @@ async function bootstrap(): Promise<void> {
 
     // 🔐 ALINHAMENTO DO CORS: Tratamento das variações léxicas de cabeçalhos de organização requisitados pelo front
     app.enableCors({
-      origin: isProd ? [/bcost\.com\.br$/, /peers\.company$/] : true,
+      origin: resolveCorsOriginsFromConfig(config, isProd),
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
       allowedHeaders: [
@@ -207,7 +218,7 @@ async function bootstrap(): Promise<void> {
         'x-bcost-trace-id',
         'x-company-id',
         'companyid',
-        'CompanyId'
+        'CompanyId',
       ],
       exposedHeaders: [
         'x-bcost-trace-id',
@@ -219,6 +230,7 @@ async function bootstrap(): Promise<void> {
     });
 
     const prismaService = app.select(PrismaModule).get(PrismaService);
+    const healthService = app.get(HealthService);
     const httpAdapterHost = app.get(HttpAdapterHost);
 
     app.useGlobalFilters(
@@ -237,21 +249,25 @@ async function bootstrap(): Promise<void> {
       }),
     );
 
-    const swaggerConfig = new DocumentBuilder()
-      .setTitle('bCost API')
-      .setDescription('Core Engine para Gestão de Custos e Consultoria Digital')
-      .setVersion('1.0.0')
-      .addServer(publicBaseUrl, 'Servidor Produção')
-      .addServer(`http://127.0.0.1:${PORT}`, 'Servidor Local')
-      .addBearerAuth()
-      .build();
+    if (swaggerEnabled) {
+      const swaggerConfig = new DocumentBuilder()
+        .setTitle('bCost API')
+        .setDescription(
+          'Core Engine para Gestão de Custos e Consultoria Digital',
+        )
+        .setVersion('1.0.0')
+        .addServer(publicBaseUrl, 'Servidor Produção')
+        .addServer(`http://127.0.0.1:${PORT}`, 'Servidor Local')
+        .addBearerAuth()
+        .build();
 
-    const document = SwaggerModule.createDocument(app, swaggerConfig);
+      const document = SwaggerModule.createDocument(app, swaggerConfig);
 
-    SwaggerModule.setup('docs', app, document, {
-      swaggerOptions: { persistAuthorization: true },
-      customSiteTitle: 'bCost API Documentation',
-    });
+      SwaggerModule.setup('docs', app, document, {
+        swaggerOptions: { persistAuthorization: true },
+        customSiteTitle: 'bCost API Documentation',
+      });
+    }
 
     fastifyInstance.get('/health', async (_request, reply) => {
       const dbStatus = await prismaService.isHealthy().catch(() => false);
@@ -262,7 +278,35 @@ async function bootstrap(): Promise<void> {
       });
     });
 
-    fastifyInstance.get('/metrics', async (_request, reply) => {
+    fastifyInstance.get('/live', async (_request, reply) =>
+      reply.status(200).send({
+        status: 'alive',
+        service: 'bcost-api',
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+      }),
+    );
+
+    fastifyInstance.get('/ready', async (_request, reply) => {
+      const readiness = await healthService.getReadiness().catch((error) => ({
+        status: 'not_ready' as const,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      }));
+
+      return reply
+        .status(readiness.status === 'ready' ? 200 : 503)
+        .send(readiness);
+    });
+
+    fastifyInstance.get('/metrics', async (request, reply) => {
+      const metricsApiKey = config.get<string>('METRICS_API_KEY');
+      const providedApiKey = request.headers['x-api-key'];
+
+      if (metricsApiKey && providedApiKey !== metricsApiKey) {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
       reply.header('Content-Type', register.contentType);
       return reply.send(await register.metrics());
     });
@@ -279,8 +323,13 @@ async function bootstrap(): Promise<void> {
 
     logger.log(`🚀 API local: http://127.0.0.1:${effectivePort}/api/v1`);
     logger.log(`🚀 API pública: ${publicBaseUrl}/api/v1`);
-    logger.log(`📖 Swagger: ${publicBaseUrl}/docs`);
+    logger.log(
+      swaggerEnabled
+        ? `📖 Swagger: ${publicBaseUrl}/docs`
+        : '📖 Swagger: desabilitado',
+    );
     logger.log(`❤️ Health: ${publicBaseUrl}/health`);
+    logger.log(`✅ Readiness: ${publicBaseUrl}/ready`);
     logger.log(`📊 Metrics: ${publicBaseUrl}/metrics`);
     logger.log(`🧪 Diagnostics: ${publicBaseUrl}/api/v1/diagnostics`);
   } catch (error: unknown) {

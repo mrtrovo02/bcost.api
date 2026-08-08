@@ -97,7 +97,9 @@ export class BankingController {
     const parsed = Number(value);
 
     if (!Number.isInteger(parsed) || parsed <= 0) {
-      throw new BadRequestException('limit deve ser um número inteiro positivo.');
+      throw new BadRequestException(
+        'limit deve ser um número inteiro positivo.',
+      );
     }
 
     return Math.min(parsed, 500);
@@ -150,20 +152,13 @@ export class BankingController {
         tx.history ??
         'Transação bancária',
       amount,
-      type:
-        tx.type ??
-        tx.transactionType ??
-        (amount >= 0 ? 'CREDIT' : 'DEBIT'),
+      type: tx.type ?? tx.transactionType ?? (amount >= 0 ? 'CREDIT' : 'DEBIT'),
       direction: amount >= 0 ? 'IN' : 'OUT',
       status: tx.status ?? 'POSTED',
       category: tx.category ?? tx.categoryName ?? null,
       document: tx.document ?? tx.documentNumber ?? tx.cpfCnpj ?? null,
       externalId:
-        tx.externalId ??
-        tx.providerId ??
-        tx.ofxId ??
-        tx.fitId ??
-        null,
+        tx.externalId ?? tx.providerId ?? tx.ofxId ?? tx.fitId ?? null,
       reconciled: Boolean(tx.reconciled ?? tx.isReconciled ?? false),
       reconciliationId: tx.reconciliationId ?? null,
       date,
@@ -185,10 +180,7 @@ export class BankingController {
       bankCode: account.bankCode ?? account.code ?? null,
       agency: account.agency ?? null,
       accountNumber:
-        account.accountNumber ??
-        account.number ??
-        account.account ??
-        null,
+        account.accountNumber ?? account.number ?? account.account ?? null,
       type: account.type ?? account.accountType ?? 'CHECKING',
       status: account.status ?? 'ACTIVE',
       balance: this.toNumber(account.balance ?? account.currentBalance ?? 0),
@@ -259,7 +251,9 @@ export class BankingController {
           take: limit,
         });
 
-        return Array.isArray(rows) ? rows.map((tx) => this.normalizeTransaction(tx)) : [];
+        return Array.isArray(rows)
+          ? rows.map((tx) => this.normalizeTransaction(tx))
+          : [];
       } catch {
         // tenta próximo formato de orderBy/campo
       }
@@ -271,7 +265,9 @@ export class BankingController {
         take: limit,
       });
 
-      return Array.isArray(rows) ? rows.map((tx) => this.normalizeTransaction(tx)) : [];
+      return Array.isArray(rows)
+        ? rows.map((tx) => this.normalizeTransaction(tx))
+        : [];
     } catch (error) {
       this.logger.warn(
         `[Banking] Não foi possível listar transações para company=${companyId}: ${
@@ -302,7 +298,9 @@ export class BankingController {
         take: 100,
       });
 
-      return Array.isArray(rows) ? rows.map((account) => this.normalizeAccount(account)) : [];
+      return Array.isArray(rows)
+        ? rows.map((account) => this.normalizeAccount(account))
+        : [];
     } catch {
       try {
         const rows = await model.findMany({
@@ -310,7 +308,9 @@ export class BankingController {
           take: 100,
         });
 
-        return Array.isArray(rows) ? rows.map((account) => this.normalizeAccount(account)) : [];
+        return Array.isArray(rows)
+          ? rows.map((account) => this.normalizeAccount(account))
+          : [];
       } catch (error) {
         this.logger.warn(
           `[Banking] Não foi possível listar contas para company=${companyId}: ${
@@ -403,9 +403,7 @@ export class BankingController {
    * GET /api/v1/banking/summary/:companyId
    */
   @Get('summary/:companyId')
-  async getSummary(
-    @Param('companyId', new ParseUUIDPipe()) companyId: string,
-  ) {
+  async getSummary(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     const transactions = await this.findTransactions({
       companyId,
       limit: 500,
@@ -420,9 +418,7 @@ export class BankingController {
    * GET /api/v1/banking/status/:companyId
    */
   @Get('status/:companyId')
-  async getStatus(
-    @Param('companyId', new ParseUUIDPipe()) companyId: string,
-  ) {
+  async getStatus(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     const [accounts, transactions] = await Promise.all([
       this.findAccounts(companyId),
       this.findTransactions({
@@ -454,9 +450,7 @@ export class BankingController {
    * GET /api/v1/banking/health/:companyId
    */
   @Get('health/:companyId')
-  async getHealth(
-    @Param('companyId', new ParseUUIDPipe()) companyId: string,
-  ) {
+  async getHealth(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     const [accounts, transactions] = await Promise.all([
       this.findAccounts(companyId),
       this.findTransactions({
@@ -494,10 +488,49 @@ export class BankingController {
   async uploadOfx(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('bankAccountId', new ParseUUIDPipe()) bankAccountId: string,
-    @UploadedFile() file: { buffer: Buffer; originalname?: string; mimetype?: string; size?: number },
+    @UploadedFile()
+    file: {
+      buffer: Buffer;
+      originalname?: string;
+      mimetype?: string;
+      size?: number;
+    },
   ) {
     if (!file) {
       throw new BadRequestException('O arquivo OFX é obrigatório.');
+    }
+
+    return await this.importService.importOfx(
+      companyId,
+      bankAccountId,
+      file.buffer,
+    );
+  }
+
+  @Post('upload/:companyId')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadStatementLegacy(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @UploadedFile()
+    file: {
+      buffer: Buffer;
+      originalname?: string;
+      mimetype?: string;
+      size?: number;
+    },
+    @Query('bankAccountId') bankAccountIdFromQuery?: string,
+    @Body('bankAccountId') bankAccountIdFromBody?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('O arquivo OFX é obrigatório.');
+    }
+
+    const bankAccountId = bankAccountIdFromQuery || bankAccountIdFromBody;
+
+    if (!bankAccountId) {
+      throw new BadRequestException(
+        'bankAccountId é obrigatório para importar extrato bancário. Use /banking/import/:companyId/:bankAccountId ou informe ?bankAccountId=...',
+      );
     }
 
     return await this.importService.importOfx(

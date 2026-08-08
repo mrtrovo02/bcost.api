@@ -238,10 +238,7 @@ export class FiscalController {
       `[Fiscal Intelligence] Performance solicitada: company=${companyId}, year=${targetYear}`,
     );
 
-    return await this.fiscalService.getFiscalPerformance(
-      companyId,
-      targetYear,
-    );
+    return await this.fiscalService.getFiscalPerformance(companyId, targetYear);
   }
 
   @Get('payroll/:companyId')
@@ -445,7 +442,13 @@ export class FiscalController {
   @ApiOperation({ summary: 'AUTOMAÇÃO: Upload em massa de XML (Queue-based)' })
   async uploadXml(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @UploadedFiles() files: Array<{ buffer: Buffer; originalname?: string; mimetype?: string; size?: number }>,
+    @UploadedFiles()
+    files: Array<{
+      buffer: Buffer;
+      originalname?: string;
+      mimetype?: string;
+      size?: number;
+    }>,
     @Query('type') type: XmlDocumentType = XmlDocumentType.NFE,
   ) {
     if (!files || files.length === 0) {
@@ -455,6 +458,27 @@ export class FiscalController {
     return await this.fiscalService.enqueueXmlUpload(companyId, files, {
       type,
     });
+  }
+
+  @Post('upload-xml/:companyId')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @UseInterceptors(FilesInterceptor('files', 50))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'COMPATIBILIDADE: Alias legado para upload em massa de XML',
+  })
+  async uploadXmlLegacy(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @UploadedFiles()
+    files: Array<{
+      buffer: Buffer;
+      originalname?: string;
+      mimetype?: string;
+      size?: number;
+    }>,
+    @Query('type') type: XmlDocumentType = XmlDocumentType.NFE,
+  ) {
+    return await this.uploadXml(companyId, files, type);
   }
 
   // ---------------------------------------------------------------------------

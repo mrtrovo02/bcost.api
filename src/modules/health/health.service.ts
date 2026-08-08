@@ -1,10 +1,9 @@
 'use strict';
 
-import {
-  Injectable,
-  Logger,
-  InternalServerErrorException,
-} from '@nestjs/common';
+import { statfs } from 'node:fs/promises';
+import os from 'node:os';
+import { performance } from 'node:perf_hooks';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 
 /**
@@ -30,11 +29,157 @@ export interface HealthMetricsResponse {
   metrics: DbPerformanceMetric[];
 }
 
+export interface RuntimeDiagnosticsResponse {
+  status: 'healthy' | 'warning';
+  timestamp: string;
+  process: {
+    pid: number;
+    nodeVersion: string;
+    platform: NodeJS.Platform;
+    arch: string;
+    uptimeSeconds: number;
+    environment: string;
+  };
+  resources: {
+    cpuCount: number;
+    loadAverage: number[];
+    memory: {
+      rssMb: number;
+      heapUsedMb: number;
+      heapTotalMb: number;
+      externalMb: number;
+      systemFreeMb: number;
+      systemTotalMb: number;
+    };
+    eventLoop: {
+      utilization: number;
+      active: number;
+      idle: number;
+    };
+    filesystem?: {
+      path: string;
+      freeMb: number;
+      totalMb: number;
+      usedPercent: number;
+    };
+  };
+}
+
+export interface ReadinessResponse {
+  status: 'ready' | 'not_ready';
+  checks: {
+    database: 'up' | 'down';
+    heap: 'ok' | 'warning';
+    eventLoop: 'ok' | 'warning';
+  };
+  runtime: Pick<RuntimeDiagnosticsResponse, 'process' | 'resources'>;
+  timestamp: string;
+}
+
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  private toMb(bytes: number): number {
+    return Number((bytes / 1024 / 1024).toFixed(2));
+  }
+
+  private async getFilesystemSnapshot(path = process.cwd()) {
+    try {
+      const stats = await statfs(path);
+      const free = stats.bavail * stats.bsize;
+      const total = stats.blocks * stats.bsize;
+      const usedPercent =
+        total > 0 ? Number((((total - free) / total) * 100).toFixed(2)) : 0;
+
+      return {
+        path,
+        freeMb: this.toMb(free),
+        totalMb: this.toMb(total),
+        usedPercent,
+      };
+    } catch (error) {
+      this.logger.warn(
+        `Filesystem snapshot indisponível: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return undefined;
+    }
+  }
+
+  async getRuntimeDiagnostics(): Promise<RuntimeDiagnosticsResponse> {
+    const memory = process.memoryUsage();
+    const eventLoop = performance.eventLoopUtilization();
+    const filesystem = await this.getFilesystemSnapshot();
+
+    const heapUsedPercent =
+      memory.heapTotal > 0 ? (memory.heapUsed / memory.heapTotal) * 100 : 0;
+    const isHeapWarning = heapUsedPercent >= 90;
+    const isEventLoopWarning = eventLoop.utilization >= 0.95;
+
+    return {
+      status: isHeapWarning || isEventLoopWarning ? 'warning' : 'healthy',
+      timestamp: new Date().toISOString(),
+      process: {
+        pid: process.pid,
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        uptimeSeconds: Math.floor(process.uptime()),
+        environment: process.env.NODE_ENV || 'development',
+      },
+      resources: {
+        cpuCount: os.cpus().length,
+        loadAverage: os.loadavg().map((value) => Number(value.toFixed(2))),
+        memory: {
+          rssMb: this.toMb(memory.rss),
+          heapUsedMb: this.toMb(memory.heapUsed),
+          heapTotalMb: this.toMb(memory.heapTotal),
+          externalMb: this.toMb(memory.external),
+          systemFreeMb: this.toMb(os.freemem()),
+          systemTotalMb: this.toMb(os.totalmem()),
+        },
+        eventLoop: {
+          utilization: Number(eventLoop.utilization.toFixed(4)),
+          active: Number(eventLoop.active.toFixed(2)),
+          idle: Number(eventLoop.idle.toFixed(2)),
+        },
+        ...(filesystem ? { filesystem } : {}),
+      },
+    };
+  }
+
+  async getReadiness(): Promise<ReadinessResponse> {
+    const [database, runtime] = await Promise.all([
+      this.prisma.isHealthy(),
+      this.getRuntimeDiagnostics(),
+    ]);
+
+    const heapWarning =
+      runtime.resources.memory.heapTotalMb > 0 &&
+      runtime.resources.memory.heapUsedMb /
+        runtime.resources.memory.heapTotalMb >=
+        0.9;
+    const eventLoopWarning = runtime.resources.eventLoop.utilization >= 0.95;
+
+    return {
+      status:
+        database && !heapWarning && !eventLoopWarning ? 'ready' : 'not_ready',
+      checks: {
+        database: database ? 'up' : 'down',
+        heap: heapWarning ? 'warning' : 'ok',
+        eventLoop: eventLoopWarning ? 'warning' : 'ok',
+      },
+      runtime: {
+        process: runtime.process,
+        resources: runtime.resources,
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
 
   /**
    * Obtém métricas de eficiência de índices e saúde geral do banco.

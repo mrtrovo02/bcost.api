@@ -4,10 +4,9 @@ import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 
-@Controller('api/v1')
+@Controller()
 @UseGuards(TenantContextGuard, CompanyAccessGuard)
 export class RevenueCompatibilityController {
-
   @Get('revenue/stats/:companyId')
   async getRevenueStats(@Param('companyId') companyId: string) {
     return {
@@ -38,7 +37,10 @@ export class RevenueCompatibilityController {
   }
 
   @Get('modules/fiscal/tax-data')
-  async getTaxData(@Query('company_id') companyIdFromQuery?: string, @Query('companyId') companyId?: string) {
+  async getTaxData(
+    @Query('company_id') companyIdFromQuery?: string,
+    @Query('companyId') companyId?: string,
+  ) {
     const activeCompanyId = companyIdFromQuery || companyId;
     return {
       success: true,
