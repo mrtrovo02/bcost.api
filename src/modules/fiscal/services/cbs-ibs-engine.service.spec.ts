@@ -20,4 +20,67 @@ describe('CbsIbsEngineService', () => {
       },
     });
   });
+
+  it('calcula o Grupo UB com destino fiscal, créditos e net tax', () => {
+    const result = service.calculateReform2026({
+      destination: {
+        stateIbgeCode: '35',
+        municipalityIbgeCode: '3550308',
+      },
+      items: [
+        {
+          itemId: 'item-1',
+          baseAmount: 100000,
+          cstCode: '000',
+          cClassTribCode: '000001',
+        },
+      ],
+      credits: [{ taxType: 'CBS', amount: 250, documentKey: 'entrada-1' }],
+    });
+
+    expect(result.xmlGroup).toBe('UB');
+    expect(result.xmlSchema).toBe('DFeTiposBasicos_v1.00.xsd');
+    expect(result.totals).toMatchObject({
+      baseAmount: 100000,
+      cbsValue: 900,
+      ibsValue: 100,
+      grossTax: 1000,
+      creditsApplied: 250,
+      netTax: 750,
+    });
+  });
+
+  it('aplica alíquota zero para item marcado como Cesta Básica Nacional', () => {
+    const result = service.calculateReform2026({
+      destination: { stateIbgeCode: '35' },
+      items: [
+        {
+          itemId: 'basic-basket',
+          baseAmount: 500,
+          isNationalBasicBasket: true,
+          cstCode: '400',
+          cClassTribCode: '100001',
+        },
+      ],
+    });
+
+    expect(result.items[0].applied.zeroRate).toBe(true);
+    expect(result.totals.grossTax).toBe(0);
+  });
+
+  it('bloqueia impostos legados em Nota de Crédito/Débito', () => {
+    expect(() =>
+      service.calculateReform2026({
+        issuePurpose: 'CREDIT_NOTE',
+        destination: { stateIbgeCode: '35' },
+        items: [
+          {
+            itemId: 'credit-note-item',
+            baseAmount: 100,
+            legacyTaxAmount: 18,
+          },
+        ],
+      }),
+    ).toThrow('Notas de débito/crédito');
+  });
 });

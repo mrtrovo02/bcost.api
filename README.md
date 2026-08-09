@@ -21,7 +21,14 @@ cp .env.example .env
 npm install
 ```
 
-3. Execute migrations/seed (se aplicável):
+3. Para desenvolvimento local com Postgres/pgvector e Redis:
+
+```bash
+copy .env.local.example .env
+npm run infra:local
+```
+
+4. Execute migrations/seed (se aplicável):
 
 ```bash
 npm run prisma:generate
@@ -29,7 +36,7 @@ npm run prisma:migrate
 npm run prisma:seed
 ```
 
-4. Suba o servidor:
+5. Suba o servidor:
 
 ```bash
 npm run start:dev
@@ -39,6 +46,7 @@ npm run start:dev
 - `npm run start:dev`
 - `npm run build`
 - `npm run test`
+- `npm run infra:local`
 - `npm run prisma:generate`
 - `npm run prisma:migrate`
 - `npm run prisma:seed`

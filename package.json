@@ -15,6 +15,8 @@
     "start:prod": "node --max-old-space-size=1024 dist/main.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
+    "prisma:seed": "node scripts/run-prisma-seed.cjs",
+    "infra:local": "docker compose -f docker-compose.local.yml up -d postgres redis",
     "postinstall": "prisma generate",
     "test": "jest",
     "test:watch": "jest --watch",

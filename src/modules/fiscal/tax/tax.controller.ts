@@ -23,14 +23,29 @@ import {
   ApiBody,
   ApiProperty,
 } from '@nestjs/swagger';
-import { IsIn, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { TaxService } from './tax.service.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
 import { CbsIbsEngineService } from '../services/cbs-ibs-engine.service.js';
-import {
-  PresumedProfitActivity,
-  TaxRegimeSimulatorService,
-} from '../services/tax-regime-simulator.service.js';
+import type {
+  NFeIssuePurpose,
+  TaxReformTaxType,
+} from '../services/cbs-ibs-engine.service.js';
+import { TaxReformXmlService } from '../services/tax-reform-xml.service.js';
+import { TaxRegimeSimulatorService } from '../services/tax-regime-simulator.service.js';
+import type { PresumedProfitActivity } from '../services/tax-regime-simulator.service.js';
 
 /**
  * DTO para simulação de cenários projetados
@@ -132,6 +147,159 @@ export class RegimeSimulationDto {
   pisCofinsCreditBase?: number;
 }
 
+class TaxReformDestinationDto {
+  @ApiProperty({ example: '35', description: 'Código IBGE da UF de destino.' })
+  @IsString()
+  @Length(2, 2)
+  stateIbgeCode: string;
+
+  @ApiProperty({
+    example: '3550308',
+    required: false,
+    description: 'Código IBGE do município de destino.',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(7, 7)
+  municipalityIbgeCode?: string;
+}
+
+class TaxReformItemDto {
+  @ApiProperty({ example: 'item-1' })
+  @IsString()
+  itemId: string;
+
+  @ApiProperty({ example: 'Serviço de consultoria fiscal', required: false })
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: 100000 })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  baseAmount: number;
+
+  @ApiProperty({ example: '000', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  cstCode?: string;
+
+  @ApiProperty({ example: '000001', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  cClassTribCode?: string;
+
+  @ApiProperty({ example: '10063021', required: false })
+  @IsOptional()
+  @IsString()
+  ncm?: string;
+
+  @ApiProperty({ example: false, required: false })
+  @IsOptional()
+  @IsBoolean()
+  isNationalBasicBasket?: boolean;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  reductionRate?: number;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  legacyTaxAmount?: number;
+}
+
+class TaxCreditDto {
+  @ApiProperty({ example: 'CBS', enum: ['CBS', 'IBS', 'IS'] })
+  @IsIn(['CBS', 'IBS', 'IS'])
+  taxType: TaxReformTaxType;
+
+  @ApiProperty({ example: 250 })
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  amount: number;
+
+  @ApiProperty({ example: '352601...', required: false })
+  @IsOptional()
+  @IsString()
+  documentKey?: string;
+}
+
+class TaxReformRatesDto {
+  @ApiProperty({ example: 0.009, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  CBS?: number;
+
+  @ApiProperty({ example: 0.001, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  IBS?: number;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  IS?: number;
+}
+
+export class TaxReformSimulationDto {
+  @ApiProperty({
+    example: 'NORMAL',
+    required: false,
+    enum: [
+      'NORMAL',
+      'COMPLEMENTARY',
+      'ADJUSTMENT',
+      'RETURN',
+      'DEBIT_NOTE',
+      'CREDIT_NOTE',
+    ],
+  })
+  @IsOptional()
+  @IsIn([
+    'NORMAL',
+    'COMPLEMENTARY',
+    'ADJUSTMENT',
+    'RETURN',
+    'DEBIT_NOTE',
+    'CREDIT_NOTE',
+  ])
+  issuePurpose?: NFeIssuePurpose;
+
+  @ApiProperty({ type: TaxReformDestinationDto, required: false })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TaxReformDestinationDto)
+  destination?: TaxReformDestinationDto;
+
+  @ApiProperty({ type: [TaxReformItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TaxReformItemDto)
+  items: TaxReformItemDto[];
+
+  @ApiProperty({ type: [TaxCreditDto], required: false })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => TaxCreditDto)
+  credits?: TaxCreditDto[];
+
+  @ApiProperty({ type: TaxReformRatesDto, required: false })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => TaxReformRatesDto)
+  rates?: TaxReformRatesDto;
+}
+
 @ApiTags('Fiscal - Tax Engine')
 @ApiBearerAuth()
 @Controller('tax')
@@ -147,6 +315,7 @@ export class TaxController {
   constructor(
     private readonly taxService: TaxService,
     private readonly cbsIbsEngine: CbsIbsEngineService,
+    private readonly taxReformXml: TaxReformXmlService,
     private readonly taxRegimeSimulator: TaxRegimeSimulatorService,
   ) {}
 
@@ -220,6 +389,39 @@ export class TaxController {
   })
   async simulateCbsIbs(@Body() data: SimulationDto) {
     return this.cbsIbsEngine.calculateTransitionalTax(data.projectedRevenue);
+  }
+
+  @Post('simulate-reform-2026')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Simula IBS/CBS/IS por item conforme NT 2025.002',
+    description:
+      'Calcula o Grupo UB para a fase de transição 2026, com destino IBGE, créditos da cadeia anterior, redutores, cesta básica e validação de Nota de Débito/Crédito sem impostos legados.',
+  })
+  @ApiBody({ type: TaxReformSimulationDto })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Simulação detalhada da Reforma Tributária processada com sucesso.',
+  })
+  async simulateTaxReform2026(@Body() data: TaxReformSimulationDto) {
+    return this.cbsIbsEngine.calculateReform2026(data);
+  }
+
+  @Post('build-grupo-ub')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Gera XML do Grupo UB para IBS/CBS/IS',
+    description:
+      'Serializa o Grupo UB com tags exclusivas de IBS, CBS e Imposto Seletivo, usando DFeTiposBasicos_v1.00.xsd e validação pré-envio para Notas de Crédito/Débito.',
+  })
+  @ApiBody({ type: TaxReformSimulationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Grupo UB serializado com sucesso.',
+  })
+  async buildGrupoUB(@Body() data: TaxReformSimulationDto) {
+    return this.taxReformXml.buildGrupoUB(data);
   }
 
   @Post('simulate-regimes')

@@ -41,6 +41,6 @@ export default defineConfig({
 
   migrations: {
     // Comando executado pelo `prisma migrate dev --seed` ou `prisma db seed`
-    seed: 'npx tsx prisma/seed.ts',
+    seed: 'node scripts/run-prisma-seed.cjs',
   },
 });

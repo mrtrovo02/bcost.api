@@ -19,20 +19,20 @@ datasource db {
 // =============================================================================
 
 model User {
-  id                         String            @id @default(uuid())
-  email                      String            @unique
-  password                   String
-  name                       String
-  active                     Boolean           @default(true)
-  twoFactor                  Boolean           @default(false)
-  createdAt                  DateTime          @default(now())
-  updatedAt                  DateTime          @updatedAt
-  deletedAt                  DateTime?
-  logs                       AuditLog[]
-  companies                  CompanyUser[]
+  id                        String            @id @default(uuid())
+  email                     String            @unique
+  password                  String
+  name                      String
+  active                    Boolean           @default(true)
+  twoFactor                 Boolean           @default(false)
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+  deletedAt                 DateTime?
+  logs                      AuditLog[]
+  companies                 CompanyUser[]
   acknowledgerNotifications NotificationLog[] @relation("notification_acknowledger")
   recipientNotifications    NotificationLog[] @relation("notification_recipient")
-  sessions                   UserSession[]
+  sessions                  UserSession[]
 
   @@index([email])
   @@map("users")
@@ -58,22 +58,22 @@ model UserSession {
 // =============================================================================
 
 model Company {
-  id                   String                @id @default(uuid())
-  cnpj                 String                @unique
-  name                 String
-  taxRegime            TaxRegime             @default(SIMPLES_NACIONAL)
-  anexo                Int                   @default(3)
-  cnae                 String?
-  cnae2                String?
-  municipalCode        String?
-  active               Boolean               @default(true)
-  planLevel            String                @default("FREE")
-  lastSyncAt           DateTime?
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  deletedAt            DateTime?
-  version              Int                   @default(1)
-  settings             Json?                 @default("{}")
+  id            String    @id @default(uuid())
+  cnpj          String    @unique
+  name          String
+  taxRegime     TaxRegime @default(SIMPLES_NACIONAL)
+  anexo         Int       @default(3)
+  cnae          String?
+  cnae2         String?
+  municipalCode String?
+  active        Boolean   @default(true)
+  planLevel     String    @default("FREE")
+  lastSyncAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+  version       Int       @default(1)
+  settings      Json?     @default("{}")
 
   logs                 AuditLog[]
   automationJobs       AutomationJob[]
@@ -100,6 +100,8 @@ model Company {
   fiscalObligations    FiscalObligation[]
   accountPlans         AccountPlan[]
   fiscalSimulationLogs FiscalSimulationLog[]
+  taxReformRates       TaxReformRate[]
+  taxDestinationRules  TaxDestinationRule[]
 
   @@index([cnpj])
   @@index([active])
@@ -127,51 +129,144 @@ model CompanyUser {
 // =============================================================================
 
 model Invoice {
-  id              String                 @id @default(uuid())
-  companyId       String
-  customerId      String
-  type            InvoiceType
-  status          InvoiceStatus          @default(NORMAL)
-  nfeStatus       NFeStatus              @default(DRAFT)
-  amount          Decimal                @db.Decimal(18, 2)
-  taxAmount       Decimal?               @db.Decimal(18, 2)
-  issuedAt        DateTime
-  accessKey       String?                @unique
-  number          String?
-  serie           String?                @default("1")
-  xmlUrl          String?
-  reconciled      Boolean                @default(false)
-  version         Int                    @default(1)
-  vectorData      Unsupported("vector")?
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
-  deletedAt       DateTime?
+  id                          String                 @id @default(uuid())
+  companyId                   String
+  customerId                  String
+  type                        InvoiceType
+  status                      InvoiceStatus          @default(NORMAL)
+  nfeStatus                   NFeStatus              @default(DRAFT)
+  amount                      Decimal                @db.Decimal(18, 2)
+  taxAmount                   Decimal?               @db.Decimal(18, 2)
+  issuedAt                    DateTime
+  accessKey                   String?                @unique
+  number                      String?
+  serie                       String?                @default("1")
+  finNFe                      String                 @default("1") @db.VarChar(1)
+  issuePurpose                NFeIssuePurpose        @default(NORMAL)
+  cstCode                     String?                @db.VarChar(3)
+  cClassTribCode              String?                @db.VarChar(6)
+  destinationStateIbge        String?                @db.VarChar(2)
+  destinationMunicipalityIbge String?                @db.VarChar(7)
+  hasLegacyTaxes              Boolean                @default(true)
+  taxReformPayload            Json?
+  xmlUrl                      String?
+  reconciled                  Boolean                @default(false)
+  version                     Int                    @default(1)
+  vectorData                  Unsupported("vector")?
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
+  deletedAt                   DateTime?
 
-  bankTransaction BankTransaction?       @relation("InvoiceBankTransaction")
-  company         Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer        Customer               @relation(fields: [customerId], references: [id])
+  bankTransaction BankTransaction?    @relation("InvoiceBankTransaction")
+  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer        Customer            @relation(fields: [customerId], references: [id])
   sefazEvents     InvoiceSefazEvent[]
 
   @@unique([companyId, accessKey])
   @@index([companyId, issuedAt])
   @@index([companyId, status, type])
   @@index([companyId, nfeStatus])
+  @@index([companyId, cstCode, cClassTribCode])
+  @@index([destinationStateIbge, destinationMunicipalityIbge])
   @@map("invoices")
 }
 
 model InvoiceSefazEvent {
-  id         String     @id @default(uuid())
-  invoiceId  String
-  event      SefazEvent
-  protocol   String?
-  statusCode String?
-  message    String?
-  occurredAt DateTime   @default(now())
-  invoice    Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  id             String     @id @default(uuid())
+  invoiceId      String
+  event          SefazEvent
+  protocol       String?
+  protocolLength Int?
+  statusCode     String?
+  message        String?
+  occurredAt     DateTime   @default(now())
+  invoice        Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@index([invoiceId, event])
   @@index([invoiceId, occurredAt])
   @@map("invoice_sefaz_events")
+}
+
+model TaxClassification {
+  id             String           @id @default(uuid())
+  cstCode        String           @db.VarChar(3)
+  cClassTribCode String           @db.VarChar(6)
+  description    String
+  taxType        TaxReformTaxType
+  isZeroRate     Boolean          @default(false)
+  reductionRate  Decimal          @default(0) @db.Decimal(9, 6)
+  creditAllowed  Boolean          @default(true)
+  legalBasis     String?
+  sourceVersion  String           @default("NT_2025_002")
+  validFrom      DateTime
+  validTo        DateTime?
+  active         Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  rates TaxReformRate[]
+
+  @@unique([cstCode, cClassTribCode, taxType, validFrom])
+  @@index([cstCode, cClassTribCode])
+  @@index([taxType, active])
+  @@map("tax_classifications")
+}
+
+model TaxReformRate {
+  id               String               @id @default(uuid())
+  companyId        String?
+  taxType          TaxReformTaxType
+  scope            TaxJurisdictionScope
+  jurisdictionCode String?              @db.VarChar(7)
+  cstCode          String?              @db.VarChar(3)
+  cClassTribCode   String?              @db.VarChar(6)
+  classificationId String?
+  rate             Decimal              @db.Decimal(9, 6)
+  reductionRate    Decimal              @default(0) @db.Decimal(9, 6)
+  creditRate       Decimal?             @db.Decimal(9, 6)
+  validFrom        DateTime
+  validTo          DateTime?
+  sourceVersion    String               @default("NT_2025_002")
+  legalBasis       String?
+  active           Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  classification TaxClassification? @relation(fields: [classificationId], references: [id])
+  company        Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([taxType, scope, jurisdictionCode])
+  @@index([cstCode, cClassTribCode])
+  @@index([validFrom, validTo])
+  @@map("tax_reform_rates")
+}
+
+model TaxDestinationRule {
+  id                          String    @id @default(uuid())
+  companyId                   String?
+  originStateIbge             String?   @db.VarChar(2)
+  destinationStateIbge        String    @db.VarChar(2)
+  destinationMunicipalityIbge String?   @db.VarChar(7)
+  cstCode                     String?   @db.VarChar(3)
+  cClassTribCode              String?   @db.VarChar(6)
+  appliesIbs                  Boolean   @default(true)
+  appliesCbs                  Boolean   @default(true)
+  appliesSelectiveTax         Boolean   @default(false)
+  priority                    Int       @default(100)
+  validFrom                   DateTime
+  validTo                     DateTime?
+  sourceVersion               String    @default("NT_2025_002")
+  legalBasis                  String?
+  active                      Boolean   @default(true)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([destinationStateIbge, destinationMunicipalityIbge])
+  @@index([cstCode, cClassTribCode])
+  @@index([validFrom, validTo])
+  @@map("tax_destination_rules")
 }
 
 // =============================================================================
@@ -179,24 +274,24 @@ model InvoiceSefazEvent {
 // =============================================================================
 
 model BankTransaction {
-  id              String           @id @default(uuid())
+  id              String          @id @default(uuid())
   companyId       String
   bankAccountId   String
-  reconciled      Boolean          @default(false)
-  invoiceId       String?          @unique
-  taxObligationId String?          @unique
+  reconciled      Boolean         @default(false)
+  invoiceId       String?         @unique
+  taxObligationId String?         @unique
   type            TransactionType
-  amount          Decimal          @db.Decimal(18, 2)
+  amount          Decimal         @db.Decimal(18, 2)
   description     String
   occurredAt      DateTime
   metadata        Json?
-  createdAt       DateTime         @default(now())
-  version         Int              @default(1)
+  createdAt       DateTime        @default(now())
+  version         Int             @default(1)
 
-  bankAccount     BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  invoice         Invoice?         @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
-  taxObligation   TaxObligation?   @relation("TaxObligationBankTransaction", fields: [taxObligationId], references: [id])
+  bankAccount   BankAccount    @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice       Invoice?       @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
+  taxObligation TaxObligation? @relation("TaxObligationBankTransaction", fields: [taxObligationId], references: [id])
 
   @@index([companyId, occurredAt])
   @@index([bankAccountId, reconciled])
@@ -284,15 +379,15 @@ model Contract {
 // =============================================================================
 
 model TaxObligation {
-  id              String           @id @default(uuid())
-  companyId       String
-  name            String
-  dueDate         DateTime
-  amount          Decimal          @db.Decimal(18, 2)
-  status          ObligationStatus @default(PENDING)
-  fileUrl         String?
-  createdAt       DateTime         @default(now())
-  version         Int              @default(1)
+  id        String           @id @default(uuid())
+  companyId String
+  name      String
+  dueDate   DateTime
+  amount    Decimal          @db.Decimal(18, 2)
+  status    ObligationStatus @default(PENDING)
+  fileUrl   String?
+  createdAt DateTime         @default(now())
+  version   Int              @default(1)
 
   bankTransaction BankTransaction? @relation("TaxObligationBankTransaction")
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -352,7 +447,7 @@ model FiscalSimulationLog {
   netRevenue           Float    @map("net_revenue")
   createdAt            DateTime @default(now()) @map("created_at")
 
-  company              Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
   @@map("fiscal_simulation_logs")
@@ -428,15 +523,15 @@ model PayrollEntry {
 // =============================================================================
 
 model AccountPlan {
-  id          String      @id @default(uuid())
-  companyId   String?
-  code        String
-  name        String
-  type        AccountType
-  parentCode  String?
-  active      Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  company     Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id         String      @id @default(uuid())
+  companyId  String?
+  code       String
+  name       String
+  type       AccountType
+  parentCode String?
+  active     Boolean     @default(true)
+  createdAt  DateTime    @default(now())
+  company    Company?    @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@unique([companyId, code])
   @@index([type])
@@ -574,9 +669,9 @@ model NotificationLog {
   createdAt        DateTime             @default(now())
   sentAt           DateTime?
 
-  acknowledger     User?                @relation("notification_acknowledger", fields: [acknowledgedById], references: [id])
-  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user             User?                @relation("notification_recipient", fields: [userId], references: [id])
+  acknowledger User?   @relation("notification_acknowledger", fields: [acknowledgedById], references: [id])
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user         User?   @relation("notification_recipient", fields: [userId], references: [id])
 
   @@index([companyId, status])
   @@index([userId, read])
@@ -820,6 +915,29 @@ enum SefazEvent {
   CONTINGENCIA_RESOLVIDA
   CARTA_CORRECAO
   EPEC
+  SOLICITACAO_APROPRIACAO_CREDITO
+  DESTINACAO_CONSUMO_PESSOAL
+}
+
+enum NFeIssuePurpose {
+  NORMAL
+  COMPLEMENTARY
+  ADJUSTMENT
+  RETURN
+  DEBIT_NOTE
+  CREDIT_NOTE
+}
+
+enum TaxReformTaxType {
+  IBS
+  CBS
+  IS
+}
+
+enum TaxJurisdictionScope {
+  FEDERAL
+  STATE
+  MUNICIPAL
 }
 
 enum EmployeeRegime {

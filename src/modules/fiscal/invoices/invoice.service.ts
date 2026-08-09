@@ -71,6 +71,14 @@ export class InvoiceService {
           customerId: customer.id,
           accessKey: dto.accessKey,
           number: dto.number,
+          finNFe: dto.finNFe || '1',
+          issuePurpose: dto.issuePurpose || 'NORMAL',
+          cstCode: dto.cstCode,
+          cClassTribCode: dto.cClassTribCode,
+          destinationStateIbge: dto.destinationStateIbge,
+          destinationMunicipalityIbge: dto.destinationMunicipalityIbge,
+          hasLegacyTaxes: dto.hasLegacyTaxes ?? true,
+          taxReformPayload: dto.taxReformPayload as Prisma.InputJsonValue,
           type: dto.type,
           status: dto.status || InvoiceStatus.NORMAL,
           nfeStatus: dto.nfeStatus || NFeStatus.AUTHORIZED,
@@ -94,7 +102,9 @@ export class InvoiceService {
           `Conflito: A Nota Fiscal com Chave ${dto.accessKey} já está registrada.`,
         );
       }
-      this.logger.error(`[InvoiceService] Falha crítica na criação: ${error.message}`);
+      this.logger.error(
+        `[InvoiceService] Falha crítica na criação: ${error.message}`,
+      );
       throw error;
     }
   }
