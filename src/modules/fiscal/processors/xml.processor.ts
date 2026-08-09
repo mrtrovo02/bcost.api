@@ -58,11 +58,20 @@ export class XmlProcessor extends WorkerHost {
             ? InvoiceType.PRODUCT
             : InvoiceType.SERVICE,
         status: InvoiceStatus.NORMAL,
+        finNFe: extractedData.finNFe,
+        issuePurpose: extractedData.issuePurpose,
+        cstCode: extractedData.cstCode,
+        cClassTribCode: extractedData.cClassTribCode,
+        destinationStateIbge: extractedData.destinationStateIbge,
+        destinationMunicipalityIbge: extractedData.destinationMunicipalityIbge,
+        hasLegacyTaxes: extractedData.hasLegacyTaxes,
+        taxReformPayload: extractedData.taxReformPayload,
         customerDocument: extractedData.customerDocument,
         customerName: extractedData.customerName,
         reconciled: false,
         rawJson: {
           retentions: extractedData.retentions,
+          taxReformPayload: extractedData.taxReformPayload,
           rawJson: extractedData.rawJson || {},
         },
       };

@@ -41,6 +41,12 @@ const toStringSafe = (value: unknown): string | undefined => {
   return undefined;
 };
 
+const toFixedCode = (value: unknown, length: number): string | undefined => {
+  const normalized = toStringSafe(value);
+  if (!normalized) return undefined;
+  return normalized.padStart(length, '0').slice(-length);
+};
+
 const toNumberSafe = (value: unknown, fallback = 0): number => {
   if (typeof value === 'number') return value;
   if (typeof value === 'string' && value.trim().length > 0) {
@@ -77,6 +83,26 @@ export interface NormalizedInvoiceData {
   amount: number; // Corrigido: era totalValue
   taxableValue: number;
   type: 'PRODUCT' | 'SERVICE';
+  finNFe?: string;
+  issuePurpose?:
+    | 'NORMAL'
+    | 'COMPLEMENTARY'
+    | 'ADJUSTMENT'
+    | 'RETURN'
+    | 'DEBIT_NOTE'
+    | 'CREDIT_NOTE';
+  cstCode?: string;
+  cClassTribCode?: string;
+  destinationStateIbge?: string;
+  destinationMunicipalityIbge?: string;
+  hasLegacyTaxes?: boolean;
+  taxReformPayload?: {
+    group: 'UB';
+    cbsValue: number;
+    ibsValue: number;
+    selectiveTaxValue: number;
+    raw: unknown;
+  };
   customerDocument: string;
   customerName: string;
   retentions: {
@@ -88,6 +114,18 @@ export interface NormalizedInvoiceData {
   };
   rawJson: unknown;
 }
+
+const FIN_NFE_PURPOSE_MAP: Record<
+  string,
+  NormalizedInvoiceData['issuePurpose']
+> = {
+  '1': 'NORMAL',
+  '2': 'COMPLEMENTARY',
+  '3': 'ADJUSTMENT',
+  '4': 'RETURN',
+  '5': 'DEBIT_NOTE',
+  '6': 'CREDIT_NOTE',
+};
 
 @Injectable()
 export class XmlService {
@@ -164,6 +202,16 @@ export class XmlService {
       total && isRecord(total.retTrib) ? total.retTrib : undefined;
     const dest = isRecord(info.dest) ? info.dest : undefined;
     const ide = isRecord(info.ide) ? info.ide : undefined;
+    const firstDet = firstRecord(info.det);
+    const firstImposto = firstDet ? firstRecord(firstDet.imposto) : undefined;
+    const groupUB =
+      firstRecord(getPath(firstImposto, ['IBSCBS'])) ??
+      firstRecord(getPath(firstImposto, ['gIBSCBS'])) ??
+      firstRecord(getPath(firstImposto, ['UB']));
+    const firstCbs = groupUB && firstRecord(groupUB.gCBS);
+    const firstIbs = groupUB && firstRecord(groupUB.gIBS);
+    const firstIs = groupUB && firstRecord(groupUB.gIS);
+    const finNFe = toStringSafe(ide?.finNFe);
 
     const accessKeyRaw = toStringSafe(info['@_Id']);
     const accessKey =
@@ -178,6 +226,38 @@ export class XmlService {
       amount: toNumberSafe(totais?.vNF, 0),
       taxableValue: toNumberSafe(totais?.vBC ?? totais?.vNF, 0),
       type: 'PRODUCT',
+      finNFe,
+      issuePurpose: finNFe ? FIN_NFE_PURPOSE_MAP[finNFe] : undefined,
+      cstCode:
+        toFixedCode(getPath(groupUB, ['CST']), 3) ??
+        toFixedCode(getPath(firstCbs, ['CST']), 3) ??
+        toFixedCode(getPath(firstIbs, ['CST']), 3),
+      cClassTribCode:
+        toFixedCode(getPath(groupUB, ['cClassTrib']), 6) ??
+        toFixedCode(getPath(firstCbs, ['cClassTrib']), 6) ??
+        toFixedCode(getPath(firstIbs, ['cClassTrib']), 6),
+      destinationStateIbge:
+        toStringSafe(dest?.cUF) ??
+        toStringSafe(getPath(dest, ['enderDest', 'UF'])),
+      destinationMunicipalityIbge: toFixedCode(
+        getPath(dest, ['enderDest', 'cMun']),
+        7,
+      ),
+      hasLegacyTaxes: Boolean(
+        firstImposto?.ICMS ||
+        firstImposto?.PIS ||
+        firstImposto?.COFINS ||
+        firstImposto?.IPI,
+      ),
+      taxReformPayload: groupUB
+        ? {
+            group: 'UB',
+            cbsValue: toNumberSafe(firstCbs?.vCBS ?? groupUB.vCBS, 0),
+            ibsValue: toNumberSafe(firstIbs?.vIBS ?? groupUB.vIBS, 0),
+            selectiveTaxValue: toNumberSafe(firstIs?.vIS ?? groupUB.vIS, 0),
+            raw: groupUB,
+          }
+        : undefined,
       customerDocument: toStringSafe(dest?.CNPJ ?? dest?.CPF) ?? '00000000000',
       customerName: toStringSafe(dest?.xNome) ?? 'Cliente Consumidor',
       retentions: {

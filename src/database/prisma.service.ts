@@ -16,13 +16,48 @@ import { TenantContext } from '#common/tenant/tenant.context.js';
  * Models que obrigatoriamente filtram por companyId.
  */
 const COMPANY_SCOPED_MODELS = new Set<string>([
-  'CompanyUser', 'Invoice', 'BankTransaction', 'BankAccount',
-  'BalanceLock', 'Customer', 'Contract', 'TaxObligation',
-  'TaxCalculation', 'FiscalObligation', 'Payroll', 'PayrollEntry',
-  'Employee', 'NotificationLog', 'AuditLog', 'ComplianceCheck',
-  'AutomationJob', 'BusinessRule', 'DigitalCertificate', 'WebhookConfig',
-  'FinancialEvent', 'FinancialSnapshot', 'CashFlowProjection',
-  'AccountingEntry', 'AccountPlan', 'Asset', 'Budget', 'CostCenter'
+  'CompanyUser',
+  'Invoice',
+  'BankTransaction',
+  'BankAccount',
+  'BalanceLock',
+  'Customer',
+  'Contract',
+  'TaxObligation',
+  'TaxCalculation',
+  'FiscalObligation',
+  'Payroll',
+  'PayrollEntry',
+  'Employee',
+  'NotificationLog',
+  'AuditLog',
+  'ComplianceCheck',
+  'AutomationJob',
+  'BusinessRule',
+  'DigitalCertificate',
+  'WebhookConfig',
+  'FinancialEvent',
+  'FinancialSnapshot',
+  'CashFlowProjection',
+  'AccountingEntry',
+  'AccountPlan',
+  'TaxReformRate',
+  'TaxDestinationRule',
+  'Asset',
+  'Budget',
+  'CostCenter',
+]);
+
+const SOFT_DELETE_MODELS = new Set<string>([
+  'User',
+  'Company',
+  'CompanyUser',
+  'Invoice',
+  'BankAccount',
+  'Customer',
+  'Contract',
+  'Employee',
+  'AccountingEntry',
 ]);
 
 @Injectable()
@@ -38,7 +73,9 @@ export class PrismaService
 
   constructor(private readonly config: ConfigService) {
     const connectionString = config.getOrThrow<string>('DATABASE_URL');
-    const usesPgBouncer = connectionString.includes('pgbouncer=true') || connectionString.includes('pgbouncer=1');
+    const usesPgBouncer =
+      connectionString.includes('pgbouncer=true') ||
+      connectionString.includes('pgbouncer=1');
 
     const pool = new pg.Pool({
       connectionString,
@@ -72,7 +109,7 @@ export class PrismaService
 
   private connectInBackground() {
     const maxAttempts = 5;
-    
+
     const tryConnect = async (attempt = 1) => {
       try {
         await this.$connect();
@@ -82,10 +119,14 @@ export class PrismaService
         const error = err as Error;
         if (attempt <= maxAttempts) {
           const delay = Math.pow(2, attempt) * 1000;
-          this.logger.warn(`⚠️ Falha na conexão (${error.message}). Tentativa ${attempt}/${maxAttempts} em ${delay}ms...`);
+          this.logger.warn(
+            `⚠️ Falha na conexão (${error.message}). Tentativa ${attempt}/${maxAttempts} em ${delay}ms...`,
+          );
           setTimeout(() => tryConnect(attempt + 1), delay);
         } else {
-          this.logger.error('🚨 Limite de tentativas de conexão excedido. O banco pode estar inacessível.');
+          this.logger.error(
+            '🚨 Limite de tentativas de conexão excedido. O banco pode estar inacessível.',
+          );
         }
       }
     };
@@ -128,9 +169,15 @@ export class PrismaService
             }
 
             // 2. Soft Delete Filter (Global)
-            if (['findMany', 'findFirst', 'findUnique', 'count'].includes(operation)) {
+            if (
+              SOFT_DELETE_MODELS.has(model) &&
+              ['findMany', 'findFirst', 'findUnique', 'count'].includes(
+                operation,
+              )
+            ) {
               const where =
-                (operationArgs.where as Record<string, unknown> | undefined) ?? {};
+                (operationArgs.where as Record<string, unknown> | undefined) ??
+                {};
               if (where.deletedAt === undefined) {
                 operationArgs.where = {
                   ...where,
@@ -140,7 +187,10 @@ export class PrismaService
             }
 
             // 3. Interceptador de Delete (Soft Delete com Fallback)
-            if (operation === 'delete' || operation === 'deleteMany') {
+            if (
+              SOFT_DELETE_MODELS.has(model) &&
+              (operation === 'delete' || operation === 'deleteMany')
+            ) {
               try {
                 const action = operation === 'delete' ? 'update' : 'updateMany';
                 return await (prismaService as any)[model][action]({
@@ -173,7 +223,9 @@ export class PrismaService
   private registerEventListeners() {
     (this as any).$on('query', (e: any) => {
       if (e.duration > 500) {
-        this.logger.warn(`🐌 Slow Query (${e.duration}ms): ${e.query.substring(0, 200)}...`);
+        this.logger.warn(
+          `🐌 Slow Query (${e.duration}ms): ${e.query.substring(0, 200)}...`,
+        );
       }
     });
   }

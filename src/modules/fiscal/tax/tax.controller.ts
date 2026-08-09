@@ -44,6 +44,7 @@ import type {
   TaxReformTaxType,
 } from '../services/cbs-ibs-engine.service.js';
 import { TaxReformXmlService } from '../services/tax-reform-xml.service.js';
+import { TaxReformParametersService } from '../services/tax-reform-parameters.service.js';
 import { TaxRegimeSimulatorService } from '../services/tax-regime-simulator.service.js';
 import type { PresumedProfitActivity } from '../services/tax-regime-simulator.service.js';
 
@@ -300,6 +301,21 @@ export class TaxReformSimulationDto {
   rates?: TaxReformRatesDto;
 }
 
+export class TaxReformResolvedSimulationDto extends TaxReformSimulationDto {
+  @ApiProperty({
+    example: 'd290f1ee-6c54-4b01-90e6-d701748f0851',
+    required: false,
+  })
+  @IsOptional()
+  @IsUUID('4')
+  companyId?: string;
+
+  @ApiProperty({ example: '2026-01-01T00:00:00.000Z', required: false })
+  @IsOptional()
+  @IsString()
+  operationDate?: string;
+}
+
 @ApiTags('Fiscal - Tax Engine')
 @ApiBearerAuth()
 @Controller('tax')
@@ -316,6 +332,7 @@ export class TaxController {
     private readonly taxService: TaxService,
     private readonly cbsIbsEngine: CbsIbsEngineService,
     private readonly taxReformXml: TaxReformXmlService,
+    private readonly taxReformParameters: TaxReformParametersService,
     private readonly taxRegimeSimulator: TaxRegimeSimulatorService,
   ) {}
 
@@ -406,6 +423,59 @@ export class TaxController {
   })
   async simulateTaxReform2026(@Body() data: TaxReformSimulationDto) {
     return this.cbsIbsEngine.calculateReform2026(data);
+  }
+
+  @Get('reform-parameters')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Resolve parâmetros vigentes de CBS/IBS/IS',
+    description:
+      'Consulta classificação, regra de destino e alíquotas vigentes por data, empresa e códigos CST/cClassTrib. Aplica fallback transitório de 2026 quando a carga oficial ainda não estiver persistida.',
+  })
+  async getTaxReformParameters(
+    @Query('companyId') companyId?: string,
+    @Query('operationDate') operationDate?: string,
+    @Query('destinationStateIbge') destinationStateIbge?: string,
+    @Query('destinationMunicipalityIbge') destinationMunicipalityIbge?: string,
+    @Query('cstCode') cstCode?: string,
+    @Query('cClassTribCode') cClassTribCode?: string,
+  ) {
+    return await this.taxReformParameters.resolveParameters({
+      companyId,
+      operationDate: operationDate ? new Date(operationDate) : undefined,
+      destinationStateIbge,
+      destinationMunicipalityIbge,
+      cstCode,
+      cClassTribCode,
+    });
+  }
+
+  @Post('simulate-reform-2026/resolved')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Simula IBS/CBS/IS com parâmetros vigentes do banco',
+    description:
+      'Resolve alíquotas e classificação fiscal por vigência temporal antes de executar o motor CBS/IBS/IS.',
+  })
+  @ApiBody({ type: TaxReformResolvedSimulationDto })
+  async simulateTaxReform2026Resolved(
+    @Body() data: TaxReformResolvedSimulationDto,
+  ) {
+    const firstItem = data.items?.[0];
+
+    return await this.taxReformParameters.calculateWithResolvedParameters({
+      companyId: data.companyId,
+      operationDate: data.operationDate
+        ? new Date(data.operationDate)
+        : undefined,
+      destinationStateIbge: data.destination?.stateIbgeCode,
+      destinationMunicipalityIbge: data.destination?.municipalityIbgeCode,
+      cstCode: firstItem?.cstCode,
+      cClassTribCode: firstItem?.cClassTribCode,
+      issuePurpose: data.issuePurpose,
+      items: data.items,
+      credits: data.credits,
+    });
   }
 
   @Post('build-grupo-ub')
