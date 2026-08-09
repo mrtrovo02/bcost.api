@@ -1,6 +1,21 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'crypto';
 
+/**
+ * Guard de autenticação por API Key para integrações machine-to-machine.
+ *
+ * SEGURANÇA:
+ * - Exige FISCAL_API_KEY configurado (sem fallback hardcoded).
+ * - Comparação em tempo constante (evita timing attack).
+ * - NÃO aceita mais "qualquer Bearer token" como bypass — isso permitia
+ *   autenticação com qualquer string arbitrária sem validar assinatura.
+ */
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
   constructor(private readonly configService: ConfigService) {}
@@ -8,18 +23,28 @@ export class ApiKeyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const apiKeyHeader = request.headers['x-api-key'];
+    const validApiKey = this.configService.get<string>('FISCAL_API_KEY');
 
-    const validApiKey = this.configService.get<string>('FISCAL_API_KEY') || 'bcost-fiscal-secret-2026';
+    if (!validApiKey) {
+      // Falha segura: sem chave configurada no ambiente, ninguém passa.
+      throw new UnauthorizedException(
+        'FISCAL_API_KEY não configurada no servidor.',
+      );
+    }
 
-    if (apiKeyHeader && apiKeyHeader === validApiKey) {
+    if (typeof apiKeyHeader === 'string' && this.safeCompare(apiKeyHeader, validApiKey)) {
       return true;
     }
 
-    const authHeader = request.headers['authorization'];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      return true;
-    }
+    throw new UnauthorizedException(
+      'Acesso negado: header x-api-key inválido ou ausente.',
+    );
+  }
 
-    throw new UnauthorizedException('Acesso negado: Requer header x-api-key válido ou autenticação JWT.');
+  private safeCompare(a: string, b: string): boolean {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
   }
 }

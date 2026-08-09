@@ -37,6 +37,7 @@ import {
 } from './common/context/context.storage.js';
 import { ZodValidationPipe } from 'nestjs-zod';
 import { redactSensitiveHeaders } from './common/security/redact-headers.util.js';
+import { TenantContext } from './common/tenant/tenant.context.js';
 
 collectDefaultMetrics();
 
@@ -188,7 +189,14 @@ async function bootstrap(): Promise<void> {
       };
 
       contextStorage.run(store, () => {
-        done();
+        // Inicializa também o TenantContext (AsyncLocalStorage separado,
+        // consultado pelo PrismaService para isolamento multi-tenant).
+        // Populado sem tenantId/userId aqui; o TenantContextGuard os
+        // preenche via patch() assim que req.user estiver disponível
+        // (pós-autenticação).
+        TenantContext.run({ requestId: traceId }, () => {
+          done();
+        });
       });
     });
 
