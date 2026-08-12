@@ -6,6 +6,7 @@ import type {
   NFeIssuePurpose,
   TaxCalculationInput,
   TaxCalculationResult,
+  TaxItemCalculationResult,
 } from './cbs-ibs-engine.service.js';
 import {
   CbsIbsEngineService,
@@ -29,6 +30,30 @@ export interface TaxReformXmlBuildResult {
 
 function isDebitOrCreditNote(issuePurpose?: NFeIssuePurpose): boolean {
   return issuePurpose === 'DEBIT_NOTE' || issuePurpose === 'CREDIT_NOTE';
+}
+
+function formatMoney(value: number): string {
+  return value.toFixed(2);
+}
+
+function formatPercent(rate: number): string {
+  return (rate * 100).toFixed(4);
+}
+
+function pruneUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => pruneUndefined(item)) as T;
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, pruneUndefined(entryValue)]);
+
+    return Object.fromEntries(entries) as T;
+  }
+
+  return value;
 }
 
 @Injectable()
@@ -68,6 +93,20 @@ export class TaxReformXmlService {
       if (item.cClassTribCode && !/^\d{6}$/.test(item.cClassTribCode)) {
         errors.push(`Item ${item.itemId}: cClassTrib deve ter 6 dígitos.`);
       }
+
+      if (
+        item.selectiveTaxCstCode &&
+        !/^\d{3}$/.test(item.selectiveTaxCstCode)
+      ) {
+        errors.push(`Item ${item.itemId}: CSTIS deve ter 3 dígitos.`);
+      }
+
+      if (
+        item.selectiveTaxClassCode &&
+        !/^\d{6}$/.test(item.selectiveTaxClassCode)
+      ) {
+        errors.push(`Item ${item.itemId}: cClassTribIS deve ter 6 dígitos.`);
+      }
     }
 
     if (errors.length > 0) {
@@ -82,41 +121,16 @@ export class TaxReformXmlService {
 
     const calculation = this.cbsIbsEngine.calculateReform2026(input);
 
-    const payload = {
+    const payload = pruneUndefined({
       UB: {
         '@_schema': TAX_REFORM_2026.dfeBasicTypesSchema,
         infNFeId: input.infNFeId,
-        detTrib: calculation.items.map((item) => ({
-          itemId: item.itemId,
-          CST: item.cstCode,
-          cClassTrib: item.cClassTribCode,
-          gCBS: {
-            pCBS: item.applied.cbsRate.toFixed(6),
-            vCBS: item.cbsValue.toFixed(2),
-          },
-          gIBS: {
-            pIBS: item.applied.ibsRate.toFixed(6),
-            vIBS: item.ibsValue.toFixed(2),
-          },
-          ...(item.selectiveTaxValue > 0
-            ? {
-                gIS: {
-                  pIS: item.applied.selectiveTaxRate.toFixed(6),
-                  vIS: item.selectiveTaxValue.toFixed(2),
-                },
-              }
-            : {}),
-        })),
-        total: {
-          vBC: calculation.totals.baseAmount.toFixed(2),
-          vCBS: calculation.totals.cbsValue.toFixed(2),
-          vIBS: calculation.totals.ibsValue.toFixed(2),
-          vIS: calculation.totals.selectiveTaxValue.toFixed(2),
-          vCred: calculation.totals.creditsApplied.toFixed(2),
-          vNFTribReforma: calculation.totals.netTax.toFixed(2),
-        },
+        det: calculation.items.map((item, index) =>
+          this.buildDetItem(item, index + 1, calculation),
+        ),
+        IBSCBSTot: this.buildTotals(calculation),
       },
-    };
+    });
 
     return {
       schema: TAX_REFORM_2026.dfeBasicTypesSchema,
@@ -124,6 +138,80 @@ export class TaxReformXmlService {
       xml: this.builder.build(payload),
       calculation,
       validations: calculation.validations,
+    };
+  }
+
+  private buildDetItem(
+    item: TaxItemCalculationResult,
+    itemNumber: number,
+    calculation: TaxCalculationResult,
+  ) {
+    const cMunFGIBS = calculation.destination?.municipalityIbgeCode;
+
+    return {
+      '@_nItem': itemNumber,
+      prod: {
+        itemId: item.itemId,
+        cMunFGIBS,
+      },
+      imposto: {
+        UB: {
+          ...(item.selectiveTaxValue > 0
+            ? {
+                IS: {
+                  CSTIS: item.selectiveTaxCstCode,
+                  cClassTribIS: item.selectiveTaxClassCode,
+                  vBCIS: formatMoney(item.taxableBaseAmount),
+                  pIS: formatPercent(item.applied.selectiveTaxRate),
+                  adRemIS:
+                    item.applied.selectiveTaxAdRemRate > 0
+                      ? formatMoney(item.applied.selectiveTaxAdRemRate)
+                      : undefined,
+                  uTrib:
+                    item.applied.selectiveTaxQuantity > 0
+                      ? (item.selectiveTaxUnit ?? 'UN')
+                      : undefined,
+                  qTrib:
+                    item.applied.selectiveTaxQuantity > 0
+                      ? item.applied.selectiveTaxQuantity.toFixed(4)
+                      : undefined,
+                  vIS: formatMoney(item.selectiveTaxValue),
+                },
+              }
+            : {}),
+          IBSCBS: {
+            CST: item.cstCode,
+            cClassTrib: item.cClassTribCode,
+            gIBSCBS: {
+              vBC: formatMoney(item.taxableBaseAmount),
+              gIBSUF: {
+                pIBSUF: formatPercent(item.applied.ibsStateRate),
+                vIBSUF: formatMoney(item.ibsStateValue),
+              },
+              gIBSMun: {
+                pIBSMun: formatPercent(item.applied.ibsMunicipalRate),
+                vIBSMun: formatMoney(item.ibsMunicipalValue),
+              },
+              vIBS: formatMoney(item.ibsValue),
+              gCBS: {
+                pCBS: formatPercent(item.applied.cbsRate),
+                vCBS: formatMoney(item.cbsValue),
+              },
+            },
+          },
+        },
+      },
+    };
+  }
+
+  private buildTotals(calculation: TaxCalculationResult) {
+    return {
+      vBC: formatMoney(calculation.totals.taxableBaseAmount),
+      vCBS: formatMoney(calculation.totals.cbsValue),
+      vIBS: formatMoney(calculation.totals.ibsValue),
+      vIS: formatMoney(calculation.totals.selectiveTaxValue),
+      vCred: formatMoney(calculation.totals.creditsApplied),
+      vNFTribReforma: formatMoney(calculation.totals.netTax),
     };
   }
 }

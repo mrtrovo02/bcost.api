@@ -213,6 +213,41 @@ class TaxReformItemDto {
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   legacyTaxAmount?: number;
+
+  @ApiProperty({ example: '000', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(3, 3)
+  selectiveTaxCstCode?: string;
+
+  @ApiProperty({ example: '000001', required: false })
+  @IsOptional()
+  @IsString()
+  @Length(6, 6)
+  selectiveTaxClassCode?: string;
+
+  @ApiProperty({ example: 100000, required: false })
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  selectiveTaxBaseAmount?: number;
+
+  @ApiProperty({ example: 'UN', required: false })
+  @IsOptional()
+  @IsString()
+  selectiveTaxUnit?: string;
+
+  @ApiProperty({ example: 10, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  selectiveTaxQuantity?: number;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  selectiveTaxAdRemRate?: number;
 }
 
 class TaxCreditDto {

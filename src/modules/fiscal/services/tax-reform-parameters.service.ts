@@ -279,18 +279,26 @@ export class TaxReformParametersService {
     operationDate: Date,
   ): Promise<RateRow[]> {
     const jurisdictionCodes = [
-      null,
       input.destinationStateIbge,
       input.destinationMunicipalityIbge,
-    ].filter((value): value is string | null => value !== undefined);
+    ].filter((value): value is string => value !== undefined);
 
     const rows = await this.prisma.taxReformRate.findMany({
       where: {
         active: true,
-        jurisdictionCode: { in: jurisdictionCodes },
-        ...(input.companyId
-          ? { OR: [{ companyId: input.companyId }, { companyId: null }] }
-          : { companyId: null }),
+        AND: [
+          {
+            OR: [
+              { jurisdictionCode: null },
+              ...(jurisdictionCodes.length > 0
+                ? [{ jurisdictionCode: { in: jurisdictionCodes } }]
+                : []),
+            ],
+          },
+          input.companyId
+            ? { OR: [{ companyId: input.companyId }, { companyId: null }] }
+            : { companyId: null },
+        ],
       },
       orderBy: [{ validFrom: 'desc' }],
       take: 100,

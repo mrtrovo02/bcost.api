@@ -59,6 +59,45 @@ describe('HealthService runtime diagnostics', () => {
     expect(readiness.checks.heap).toBe('ok');
   });
 
+  it('keeps readiness ready when only heap usage is warning', async () => {
+    const service = createService(true);
+    jest.spyOn(service, 'getRuntimeDiagnostics').mockResolvedValue({
+      status: 'warning',
+      timestamp: new Date().toISOString(),
+      process: {
+        pid: process.pid,
+        nodeVersion: process.version,
+        platform: process.platform,
+        arch: process.arch,
+        uptimeSeconds: 1,
+        environment: 'test',
+      },
+      resources: {
+        cpuCount: 2,
+        loadAverage: [0, 0, 0],
+        memory: {
+          rssMb: 100,
+          heapUsedMb: 95,
+          heapTotalMb: 100,
+          externalMb: 1,
+          systemFreeMb: 1000,
+          systemTotalMb: 2000,
+        },
+        eventLoop: {
+          utilization: 0.1,
+          active: 1,
+          idle: 9,
+        },
+      },
+    });
+
+    const readiness = await service.getReadiness();
+
+    expect(readiness.status).toBe('ready');
+    expect(readiness.checks.database).toBe('up');
+    expect(readiness.checks.heap).toBe('warning');
+  });
+
   it('marks readiness as not_ready when the database check fails', async () => {
     const service = createService(false);
 

@@ -2,9 +2,16 @@
 
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service.js';
-import { InvoiceType, InvoiceStatus, Prisma, SefazEvent } from '@prisma/client';
+import {
+  InvoiceStatus,
+  InvoiceType,
+  NFeStatus,
+  SefazEvent,
+} from '@prisma/client';
 import { XMLParser } from 'fast-xml-parser';
 import { SefazProtocolService } from './sefaz-protocol.service.js';
+import { XmlService } from '../xml/xml.service.js';
+import { InvoiceService } from '../invoices/invoice.service.js';
 
 @Injectable()
 export class DfeProcessorService {
@@ -17,11 +24,13 @@ export class DfeProcessorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sefazProtocol: SefazProtocolService,
+    private readonly xmlService: XmlService,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   /**
-   * Processa um XML de nota fiscal (NF-e ou NFS-e).
-   * Ajustado para o Schema Real: Usa create (sem accessKey unique) e campos simplificados.
+   * Processa XML de documento fiscal e persiste os campos canônicos da
+   * Reforma Tributária extraídos pelo XmlService.
    */
   async processXml(companyId: string, xmlContent: string) {
     this.logger.log(
@@ -30,40 +39,48 @@ export class DfeProcessorService {
 
     try {
       const jsonObj = this.xmlParser.parse(xmlContent);
-      const isProduct = !!jsonObj?.nfeProc || !!jsonObj?.NFe;
+      const extractedData = this.xmlService.parseInvoiceXml(xmlContent);
+      const authorization = this.resolveAuthorization(jsonObj);
 
-      const extractedData = isProduct
-        ? this.mapProductInvoice(jsonObj)
-        : this.mapServiceInvoice(jsonObj);
-
-      /**
-       * CORREÇÃO TÉCNICA:
-       * Como seu Schema não possui 'accessKey' como @unique, não podemos usar upsert.
-       * Além disso, mapeamos 'totalValue' para 'amount' e 'issueDate' para 'issuedAt'.
-       */
-      const invoice = await this.prisma.invoice.create({
-        data: {
-          amount: extractedData.amount,
-          issuedAt: extractedData.issuedAt,
-          type: extractedData.type,
-          status: extractedData.status,
-          reconciled: false,
-
-          // Relacionamentos obrigatórios
-          company: { connect: { id: companyId } },
-          customer: { connect: { id: companyId } }, // Fallback: associa à própria empresa para teste
+      const invoice = await this.invoiceService.create({
+        companyId,
+        number: extractedData.number,
+        accessKey: extractedData.accessKey,
+        issueDate: extractedData.issuedAt.toISOString(),
+        totalValue: extractedData.amount,
+        taxableValue: extractedData.taxableValue,
+        type:
+          extractedData.type === 'PRODUCT'
+            ? InvoiceType.PRODUCT
+            : InvoiceType.SERVICE,
+        status: authorization.invoiceStatus,
+        nfeStatus: authorization.nfeStatus,
+        finNFe: extractedData.finNFe,
+        issuePurpose: extractedData.issuePurpose,
+        cstCode: extractedData.cstCode,
+        cClassTribCode: extractedData.cClassTribCode,
+        destinationStateIbge: extractedData.destinationStateIbge,
+        destinationMunicipalityIbge: extractedData.destinationMunicipalityIbge,
+        hasLegacyTaxes: extractedData.hasLegacyTaxes,
+        taxReformPayload: extractedData.taxReformPayload,
+        customerDocument: extractedData.customerDocument,
+        customerName: extractedData.customerName,
+        rawJson: {
+          retentions: extractedData.retentions,
+          taxReformPayload: extractedData.taxReformPayload,
+          rawJson: extractedData.rawJson || {},
         },
       });
 
-      if (extractedData.protocol) {
+      if (authorization.protocol) {
         await this.prisma.invoiceSefazEvent.create({
           data: {
             invoiceId: invoice.id,
-            event: extractedData.sefazEvent,
-            protocol: extractedData.protocol.protocol,
-            protocolLength: extractedData.protocol.protocolLength,
-            statusCode: extractedData.protocol.statusCode,
-            message: extractedData.protocol.message,
+            event: authorization.sefazEvent,
+            protocol: authorization.protocol.protocol,
+            protocolLength: authorization.protocol.protocolLength,
+            statusCode: authorization.protocol.statusCode,
+            message: authorization.protocol.message,
           },
         });
       }
@@ -77,54 +94,46 @@ export class DfeProcessorService {
     }
   }
 
-  /**
-   * Mapeamento NF-e (Produtos)
-   */
-  private mapProductInvoice(json: any) {
-    const nfe = json.nfeProc?.NFe || json.NFe;
-    const infNFe = nfe?.infNFe;
-    const protNFe = json.nfeProc?.protNFe;
-    const cStat = protNFe?.infProt?.cStat;
+  private resolveAuthorization(jsonObj: unknown): {
+    invoiceStatus: InvoiceStatus;
+    nfeStatus: NFeStatus;
+    sefazEvent: SefazEvent;
+    protocol?: ReturnType<SefazProtocolService['parseAuthorizationReturn']>;
+  } {
+    try {
+      const protocol = this.sefazProtocol.parseAuthorizationReturn(jsonObj);
+      const statusCode = protocol.statusCode;
 
-    let status: InvoiceStatus = InvoiceStatus.NORMAL;
-    if (['101', '135', '155'].includes(String(cStat))) {
-      status = InvoiceStatus.CANCELLED;
+      if (['101', '135', '155'].includes(String(statusCode))) {
+        return {
+          invoiceStatus: InvoiceStatus.CANCELLED,
+          nfeStatus: NFeStatus.CANCELLED,
+          sefazEvent: SefazEvent.CANCELADA,
+          protocol,
+        };
+      }
+
+      if (String(statusCode) === '100') {
+        return {
+          invoiceStatus: InvoiceStatus.NORMAL,
+          nfeStatus: NFeStatus.AUTHORIZED,
+          sefazEvent: SefazEvent.AUTORIZADA,
+          protocol,
+        };
+      }
+
+      return {
+        invoiceStatus: InvoiceStatus.NORMAL,
+        nfeStatus: NFeStatus.DENIED,
+        sefazEvent: SefazEvent.DENEGADA,
+        protocol,
+      };
+    } catch {
+      return {
+        invoiceStatus: InvoiceStatus.NORMAL,
+        nfeStatus: NFeStatus.DRAFT,
+        sefazEvent: SefazEvent.AUTORIZADA,
+      };
     }
-
-    return {
-      issuedAt: new Date(infNFe?.ide?.dhEmi || new Date()),
-      type: InvoiceType.PRODUCT,
-      status: status,
-      sefazEvent:
-        String(cStat) === '100' ? SefazEvent.AUTORIZADA : SefazEvent.DENEGADA,
-      protocol: protNFe?.infProt?.nProt
-        ? this.sefazProtocol.parseAuthorizationReturn(json)
-        : undefined,
-      // Mapeia o total da nota para o campo 'amount' do Schema
-      amount: new Prisma.Decimal(infNFe?.total?.ICMSTot?.vNF || 0),
-    };
-  }
-
-  /**
-   * Mapeamento NFS-e (Serviços)
-   */
-  private mapServiceInvoice(json: any) {
-    const nfs = json.ComplNfse?.Nfse?.InfNfse || json.Nfse?.InfNfse || json;
-    const valores = nfs.Valores || nfs.Servico?.Valores;
-
-    let status: InvoiceStatus = InvoiceStatus.NORMAL;
-    if (String(nfs.Status) === '2') {
-      status = InvoiceStatus.CANCELLED;
-    }
-
-    return {
-      issuedAt: new Date(nfs.DataEmissao || new Date()),
-      type: InvoiceType.SERVICE,
-      status: status,
-      sefazEvent: SefazEvent.AUTORIZADA,
-      protocol: undefined,
-      // Mapeia o valor do serviço para o campo 'amount' do Schema
-      amount: new Prisma.Decimal(valores?.ValorServicos || 0),
-    };
   }
 }

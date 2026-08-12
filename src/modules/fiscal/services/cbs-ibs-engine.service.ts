@@ -55,6 +55,12 @@ export interface TaxReformItemInput {
   isNationalBasicBasket?: boolean;
   reductionRate?: number;
   legacyTaxAmount?: number;
+  selectiveTaxCstCode?: string;
+  selectiveTaxClassCode?: string;
+  selectiveTaxBaseAmount?: number;
+  selectiveTaxUnit?: string;
+  selectiveTaxQuantity?: number;
+  selectiveTaxAdRemRate?: number;
 }
 
 export interface TaxCalculationInput {
@@ -69,16 +75,26 @@ export interface TaxCalculationInput {
 export interface TaxItemCalculationResult {
   itemId: string;
   baseAmount: number;
+  taxableBaseAmount: number;
   cstCode?: string;
   cClassTribCode?: string;
+  selectiveTaxCstCode?: string;
+  selectiveTaxClassCode?: string;
+  selectiveTaxUnit?: string;
   cbsValue: number;
   ibsValue: number;
+  ibsStateValue: number;
+  ibsMunicipalValue: number;
   selectiveTaxValue: number;
   total: number;
   applied: {
     cbsRate: number;
     ibsRate: number;
+    ibsStateRate: number;
+    ibsMunicipalRate: number;
     selectiveTaxRate: number;
+    selectiveTaxAdRemRate: number;
+    selectiveTaxQuantity: number;
     reductionRate: number;
     zeroRate: boolean;
   };
@@ -93,6 +109,7 @@ export interface TaxCalculationResult {
   destination?: DestinationTaxContext;
   totals: {
     baseAmount: number;
+    taxableBaseAmount: number;
     cbsValue: number;
     ibsValue: number;
     selectiveTaxValue: number;
@@ -155,6 +172,7 @@ class LegacyTaxCalculator implements ITaxCalculator {
       destination: input.destination,
       totals: {
         baseAmount,
+        taxableBaseAmount: baseAmount,
         cbsValue: 0,
         ibsValue: 0,
         selectiveTaxValue: 0,
@@ -165,16 +183,26 @@ class LegacyTaxCalculator implements ITaxCalculator {
       items: input.items.map((item) => ({
         itemId: item.itemId,
         baseAmount: money(item.baseAmount),
+        taxableBaseAmount: money(item.baseAmount),
         cstCode: item.cstCode,
         cClassTribCode: item.cClassTribCode,
+        selectiveTaxCstCode: item.selectiveTaxCstCode,
+        selectiveTaxClassCode: item.selectiveTaxClassCode,
+        selectiveTaxUnit: item.selectiveTaxUnit,
         cbsValue: 0,
         ibsValue: 0,
+        ibsStateValue: 0,
+        ibsMunicipalValue: 0,
         selectiveTaxValue: 0,
         total: money(item.legacyTaxAmount ?? 0),
         applied: {
           cbsRate: 0,
           ibsRate: 0,
+          ibsStateRate: 0,
+          ibsMunicipalRate: 0,
           selectiveTaxRate: 0,
+          selectiveTaxAdRemRate: 0,
+          selectiveTaxQuantity: 0,
           reductionRate: 0,
           zeroRate: false,
         },
@@ -224,24 +252,47 @@ class TaxReform2026Calculator implements ITaxCalculator {
       const effectiveBase = zeroRate
         ? 0
         : item.baseAmount * (1 - reductionRate);
+      const selectiveTaxBaseAmount =
+        item.selectiveTaxBaseAmount ?? effectiveBase;
+      const selectiveTaxQuantity = item.selectiveTaxQuantity ?? 0;
+      const selectiveTaxAdRemRate = item.selectiveTaxAdRemRate ?? 0;
+
+      assertNonNegativeMoney(selectiveTaxBaseAmount, 'selectiveTaxBaseAmount');
+      assertNonNegativeMoney(selectiveTaxQuantity, 'selectiveTaxQuantity');
+      assertNonNegativeMoney(selectiveTaxAdRemRate, 'selectiveTaxAdRemRate');
 
       const cbsValue = money(effectiveBase * cbsRate);
       const ibsValue = money(effectiveBase * ibsRate);
-      const selectiveTaxValue = money(effectiveBase * selectiveTaxRate);
+      const ibsStateValue = ibsValue;
+      const ibsMunicipalValue = 0;
+      const selectiveTaxValue = money(
+        selectiveTaxBaseAmount * selectiveTaxRate +
+          selectiveTaxQuantity * selectiveTaxAdRemRate,
+      );
 
       return {
         itemId: item.itemId,
         baseAmount: money(item.baseAmount),
+        taxableBaseAmount: money(effectiveBase),
         cstCode: item.cstCode,
         cClassTribCode: item.cClassTribCode,
+        selectiveTaxCstCode: item.selectiveTaxCstCode,
+        selectiveTaxClassCode: item.selectiveTaxClassCode,
+        selectiveTaxUnit: item.selectiveTaxUnit,
         cbsValue,
         ibsValue,
+        ibsStateValue,
+        ibsMunicipalValue,
         selectiveTaxValue,
         total: money(cbsValue + ibsValue + selectiveTaxValue),
         applied: {
           cbsRate,
           ibsRate,
+          ibsStateRate: ibsRate,
+          ibsMunicipalRate: 0,
           selectiveTaxRate,
+          selectiveTaxAdRemRate,
+          selectiveTaxQuantity,
           reductionRate,
           zeroRate,
         },
@@ -250,6 +301,9 @@ class TaxReform2026Calculator implements ITaxCalculator {
 
     const baseAmount = money(
       items.reduce((sum, item) => sum + item.baseAmount, 0),
+    );
+    const taxableBaseAmount = money(
+      items.reduce((sum, item) => sum + item.taxableBaseAmount, 0),
     );
     const cbsValue = money(items.reduce((sum, item) => sum + item.cbsValue, 0));
     const ibsValue = money(items.reduce((sum, item) => sum + item.ibsValue, 0));
@@ -274,6 +328,7 @@ class TaxReform2026Calculator implements ITaxCalculator {
       destination: input.destination,
       totals: {
         baseAmount,
+        taxableBaseAmount,
         cbsValue,
         ibsValue,
         selectiveTaxValue,

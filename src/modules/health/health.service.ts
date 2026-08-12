@@ -166,8 +166,7 @@ export class HealthService {
     const eventLoopWarning = runtime.resources.eventLoop.utilization >= 0.95;
 
     return {
-      status:
-        database && !heapWarning && !eventLoopWarning ? 'ready' : 'not_ready',
+      status: database && !eventLoopWarning ? 'ready' : 'not_ready',
       checks: {
         database: database ? 'up' : 'down',
         heap: heapWarning ? 'warning' : 'ok',

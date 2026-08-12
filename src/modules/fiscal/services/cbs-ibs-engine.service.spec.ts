@@ -42,6 +42,7 @@ describe('CbsIbsEngineService', () => {
     expect(result.xmlSchema).toBe('DFeTiposBasicos_v1.00.xsd');
     expect(result.totals).toMatchObject({
       baseAmount: 100000,
+      taxableBaseAmount: 100000,
       cbsValue: 900,
       ibsValue: 100,
       grossTax: 1000,
@@ -65,7 +66,37 @@ describe('CbsIbsEngineService', () => {
     });
 
     expect(result.items[0].applied.zeroRate).toBe(true);
+    expect(result.items[0].taxableBaseAmount).toBe(0);
+    expect(result.totals.taxableBaseAmount).toBe(0);
     expect(result.totals.grossTax).toBe(0);
+  });
+
+  it('aplica redução de base antes de calcular CBS/IBS/IS', () => {
+    const result = service.calculateReform2026({
+      destination: { stateIbgeCode: '35' },
+      rates: { IS: 0.02 },
+      items: [
+        {
+          itemId: 'reduced-item',
+          baseAmount: 1000,
+          reductionRate: 0.4,
+        },
+      ],
+    });
+
+    expect(result.items[0]).toMatchObject({
+      baseAmount: 1000,
+      taxableBaseAmount: 600,
+      cbsValue: 5.4,
+      ibsValue: 0.6,
+      selectiveTaxValue: 12,
+      total: 18,
+    });
+    expect(result.totals).toMatchObject({
+      baseAmount: 1000,
+      taxableBaseAmount: 600,
+      grossTax: 18,
+    });
   });
 
   it('bloqueia impostos legados em Nota de Crédito/Débito', () => {
