@@ -14,7 +14,7 @@ import { ObligationsEnterpriseService } from './obligations-enterprise.service.j
  * - Criação, listagem, detalhe, atualização e ações de status.
  * - AuditLog schema-first.
  * - Sem migration.
- * - Base para competir com Domínio, Alterdata, SCI, Contimatic e Contabilizei.
+ * - Base para operar com maturidade de suite fiscal/contábil profissional.
  */
 @Module({
   imports: [PrismaModule],

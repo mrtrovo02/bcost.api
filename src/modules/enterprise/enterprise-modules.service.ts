@@ -21,6 +21,15 @@ type ModuleConfig = {
   statusField?: string;
 };
 
+type RoadmapModuleConfig = {
+  slug: string;
+  model: string;
+  label: string;
+  area: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  endpoint: string;
+};
+
 @Injectable()
 export class EnterpriseModulesService {
   private readonly logger = new Logger(EnterpriseModulesService.name);
@@ -378,12 +387,217 @@ export class EnterpriseModulesService {
     },
   };
 
+  private readonly roadmapCatalog: Record<string, RoadmapModuleConfig> = {
+    'finance-operations': {
+      slug: 'finance-operations',
+      model: 'FinanceOperationsEnterprise',
+      label: 'Finance Operations',
+      area: 'Banking',
+      priority: 'CRITICAL',
+      endpoint: '/finance/operations',
+    },
+    'command-center': {
+      slug: 'command-center',
+      model: 'CommandCenterEnterprise',
+      label: 'Command Center',
+      area: 'Automação',
+      priority: 'HIGH',
+      endpoint: '/operations/command-center',
+    },
+    'audit-intelligence': {
+      slug: 'audit-intelligence',
+      model: 'AuditIntelligenceEnterprise',
+      label: 'Audit Intelligence',
+      area: 'Automação',
+      priority: 'HIGH',
+      endpoint: '/audit/intelligence',
+    },
+    'accounting-journal': {
+      slug: 'accounting-journal',
+      model: 'AccountingJournal',
+      label: 'Diário Contábil',
+      area: 'Contábil',
+      priority: 'CRITICAL',
+      endpoint: '/accounting/journal',
+    },
+    'accounting-ledger': {
+      slug: 'accounting-ledger',
+      model: 'AccountingLedger',
+      label: 'Razão Contábil',
+      area: 'Contábil',
+      priority: 'CRITICAL',
+      endpoint: '/accounting/ledger',
+    },
+    'trial-balance': {
+      slug: 'trial-balance',
+      model: 'TrialBalance',
+      label: 'Balancete',
+      area: 'Contábil',
+      priority: 'CRITICAL',
+      endpoint: '/accounting/trial-balance',
+    },
+    'balance-sheet': {
+      slug: 'balance-sheet',
+      model: 'BalanceSheet',
+      label: 'Balanço Patrimonial',
+      area: 'Contábil',
+      priority: 'CRITICAL',
+      endpoint: '/accounting/balance-sheet',
+    },
+    'income-statement': {
+      slug: 'income-statement',
+      model: 'IncomeStatement',
+      label: 'DRE',
+      area: 'Contábil',
+      priority: 'CRITICAL',
+      endpoint: '/accounting/income-statement',
+    },
+    ecd: {
+      slug: 'ecd',
+      model: 'EcdFile',
+      label: 'SPED Contábil ECD',
+      area: 'Contábil',
+      priority: 'CRITICAL',
+      endpoint: '/accounting/ecd',
+    },
+    ecf: {
+      slug: 'ecf',
+      model: 'EcfFile',
+      label: 'ECF',
+      area: 'Fiscal',
+      priority: 'CRITICAL',
+      endpoint: '/fiscal/ecf',
+    },
+    'tax-regime-calculations': {
+      slug: 'tax-regime-calculations',
+      model: 'TaxRegimeCalculation',
+      label: 'Apuração por Regime Tributário',
+      area: 'Fiscal',
+      priority: 'CRITICAL',
+      endpoint: '/fiscal/tax-regimes',
+    },
+    'indirect-taxes': {
+      slug: 'indirect-taxes',
+      model: 'IndirectTaxCalculation',
+      label: 'ICMS, IPI, ISS e PIS/COFINS',
+      area: 'Fiscal',
+      priority: 'CRITICAL',
+      endpoint: '/fiscal/indirect-taxes',
+    },
+    'sped-fiscal': {
+      slug: 'sped-fiscal',
+      model: 'SpedFiscalFile',
+      label: 'SPED Fiscal',
+      area: 'Fiscal',
+      priority: 'CRITICAL',
+      endpoint: '/fiscal/sped-fiscal',
+    },
+    'efd-contributions': {
+      slug: 'efd-contributions',
+      model: 'EfdContributionsFile',
+      label: 'EFD Contribuições',
+      area: 'Fiscal',
+      priority: 'CRITICAL',
+      endpoint: '/fiscal/efd-contributions',
+    },
+    'federal-obligations': {
+      slug: 'federal-obligations',
+      model: 'FederalObligation',
+      label: 'DCTF, DCTFWeb, REINF e PER/DCOMP',
+      area: 'Fiscal',
+      priority: 'CRITICAL',
+      endpoint: '/fiscal/federal-obligations',
+    },
+    'fiscal-books': {
+      slug: 'fiscal-books',
+      model: 'FiscalBook',
+      label: 'Livros Fiscais',
+      area: 'Fiscal',
+      priority: 'HIGH',
+      endpoint: '/fiscal/books',
+    },
+    'payroll-lifecycle': {
+      slug: 'payroll-lifecycle',
+      model: 'PayrollLifecycle',
+      label: 'Ciclo de Folha',
+      area: 'Folha',
+      priority: 'CRITICAL',
+      endpoint: '/payroll/lifecycle',
+    },
+    sst: {
+      slug: 'sst',
+      model: 'OccupationalHealthSafety',
+      label: 'SST',
+      area: 'Folha',
+      priority: 'HIGH',
+      endpoint: '/payroll/sst',
+    },
+    'accounting-office': {
+      slug: 'accounting-office',
+      model: 'AccountingOfficeOperation',
+      label: 'Gestão de Escritório Contábil',
+      area: 'Escritório',
+      priority: 'CRITICAL',
+      endpoint: '/office/operations',
+    },
+    'document-management': {
+      slug: 'document-management',
+      model: 'DocumentManagement',
+      label: 'Gestão de Documentos',
+      area: 'Escritório',
+      priority: 'HIGH',
+      endpoint: '/documents',
+    },
+    'fixed-assets': {
+      slug: 'fixed-assets',
+      model: 'FixedAsset',
+      label: 'Patrimônio e Imobilizado',
+      area: 'Patrimônio',
+      priority: 'HIGH',
+      endpoint: '/assets/fixed',
+    },
+    'company-formation': {
+      slug: 'company-formation',
+      model: 'CompanyFormation',
+      label: 'Abertura de Empresa',
+      area: 'Societário',
+      priority: 'HIGH',
+      endpoint: '/corporate/company-formation',
+    },
+    'banking-products': {
+      slug: 'banking-products',
+      model: 'BankingProduct',
+      label: 'Banking e Fintech',
+      area: 'Banking',
+      priority: 'CRITICAL',
+      endpoint: '/banking/products',
+    },
+    'consulting-services': {
+      slug: 'consulting-services',
+      model: 'ConsultingService',
+      label: 'Consultoria e BPO',
+      area: 'Consultoria',
+      priority: 'HIGH',
+      endpoint: '/consulting/services',
+    },
+  };
+
   listCatalog() {
-    return Object.values(this.catalog).map((item) => ({
+    const persisted = Object.values(this.catalog).map((item) => ({
       slug: item.slug,
       model: item.model,
       label: item.label,
+      persistence: 'PRISMA',
     }));
+
+    const roadmap = Object.values(this.roadmapCatalog).map((item) => ({
+      slug: item.slug,
+      model: item.model,
+      label: item.label,
+      persistence: 'ROADMAP',
+    }));
+
+    return [...persisted, ...roadmap].sort((a, b) => a.slug.localeCompare(b.slug));
   }
 
   private getConfig(slug: string): ModuleConfig {
@@ -394,6 +608,50 @@ export class EnterpriseModulesService {
     }
 
     return config;
+  }
+
+  private getRoadmapConfig(slug: string): RoadmapModuleConfig | null {
+    return this.roadmapCatalog[slug] ?? null;
+  }
+
+  private buildRoadmapResponse(
+    slug: string,
+    companyId: string,
+    query: EnterpriseModuleQueryDto = {},
+  ) {
+    const config = this.getRoadmapConfig(slug);
+
+    if (!config) {
+      throw new NotFoundException(`Módulo enterprise não mapeado: ${slug}`);
+    }
+
+    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const offset = Math.max(Number(query.offset || 0), 0);
+
+    return {
+      slug,
+      model: config.model,
+      label: config.label,
+      companyId,
+      status: 'OK_ROADMAP',
+      items: [],
+      total: 0,
+      limit,
+      offset,
+      hasMore: false,
+      summary: {
+        count: 0,
+        status: {},
+        totals: {},
+        roadmap: true,
+        area: config.area,
+        priority: config.priority,
+        endpoint: config.endpoint,
+        nextStep:
+          'Criar modelo persistente, endpoints CRUD, auditoria e regras de permissão para este módulo.',
+      },
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   private getModel(config: ModuleConfig) {
@@ -658,7 +916,17 @@ export class EnterpriseModulesService {
     companyId: string,
     query: EnterpriseModuleQueryDto = {},
   ) {
-    const config = this.getConfig(slug);
+    const roadmapConfig = this.getRoadmapConfig(slug);
+    const config = this.catalog[slug];
+
+    if (!config && roadmapConfig) {
+      return this.buildRoadmapResponse(slug, companyId, query);
+    }
+
+    if (!config) {
+      throw new NotFoundException(`Módulo enterprise não mapeado: ${slug}`);
+    }
+
     const model = this.getModel(config);
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
     const offset = Math.max(Number(query.offset || 0), 0);
@@ -724,7 +992,27 @@ export class EnterpriseModulesService {
   }
 
   async health(slug: string, companyId: string) {
-    const config = this.getConfig(slug);
+    const roadmapConfig = this.getRoadmapConfig(slug);
+    const config = this.catalog[slug];
+
+    if (!config && roadmapConfig) {
+      return {
+        slug,
+        model: roadmapConfig.model,
+        label: roadmapConfig.label,
+        companyId,
+        status: 'OK_ROADMAP',
+        count: 0,
+        roadmap: true,
+        endpoint: roadmapConfig.endpoint,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    if (!config) {
+      throw new NotFoundException(`Módulo enterprise não mapeado: ${slug}`);
+    }
+
     const model = this.getModel(config);
     const where = config.companyWhere(companyId);
 

@@ -61,6 +61,7 @@ import { NotificationsEnterpriseModule } from './modules/notifications-enterpris
 import { CommandCenterEnterpriseModule } from './modules/command-center-enterprise/command-center-enterprise.module.js';
 import { AuditIntelligenceEnterpriseModule } from './modules/audit-intelligence-enterprise/audit-intelligence-enterprise.module.js';
 import { FinanceOperationsEnterpriseModule } from './modules/finance-operations-enterprise/finance-operations-enterprise.module.js';
+import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module.js';
 
 @Module({
   imports: [
@@ -182,6 +183,7 @@ import { FinanceOperationsEnterpriseModule } from './modules/finance-operations-
     FinanceOperationsEnterpriseModule,
     PayrollEnterpriseModule,
     ComplianceEnterpriseModule,
+    ServiceCatalogModule,
   ],
 
   controllers: [AppController],

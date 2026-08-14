@@ -16,7 +16,7 @@ export class AnomalyDetectionService {
 
   /**
    * Analisa se o novo evento financeiro é uma anomalia baseada no histórico.
-   * Mandamento: Proteção proativa do cliente (Vencer Domínio/Contimatic).
+   * Mandamento: proteção proativa do cliente com padrão de suite contábil profissional.
    */
   async detectTaxAnomaly(
     companyId: string,
