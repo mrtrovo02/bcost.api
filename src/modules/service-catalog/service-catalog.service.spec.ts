@@ -77,6 +77,22 @@ describe('ServiceCatalogService', () => {
     );
   });
 
+  it('exige revisao de fonte oficial para obrigacao tributaria regulada', () => {
+    const result = service.evaluate({
+      serviceIds: ['dctfweb'],
+    });
+
+    expect(result.conditions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'OFFICIAL_RULE_REVIEW_REQUIRED',
+          severity: 'INFO',
+          serviceId: 'dctfweb',
+        }),
+      ]),
+    );
+  });
+
   it('falha quando nenhum servico corresponde ao filtro', () => {
     expect(() =>
       service.evaluate({
