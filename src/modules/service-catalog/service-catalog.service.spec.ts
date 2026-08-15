@@ -14,6 +14,45 @@ describe('ServiceCatalogService', () => {
     expect(service.getCatalog()).toHaveLength(16);
   });
 
+  it('mantem ids de macro e microservicos unicos', () => {
+    const catalog = service.getCatalog();
+    const macroIds = catalog.map((macro) => macro.id);
+    const microIds = catalog.flatMap((macro) => macro.microServices.map((micro) => micro.id));
+
+    expect(new Set(macroIds).size).toBe(macroIds.length);
+    expect(new Set(microIds).size).toBe(microIds.length);
+  });
+
+  it('mantem fontes oficiais rastreaveis para servicos regulados', () => {
+    const regulatedServices = service
+      .getCatalog()
+      .flatMap((macro) => macro.microServices)
+      .filter((micro) => (micro.complianceTags?.length ?? 0) > 0);
+
+    expect(regulatedServices.length).toBeGreaterThan(0);
+
+    for (const micro of regulatedServices) {
+      expect(micro.officialSources?.length).toBeGreaterThan(0);
+      expect(micro.officialSources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: expect.any(String),
+            url: expect.stringMatching(/^https:\/\/.+/),
+          }),
+        ]),
+      );
+    }
+  });
+
+  it('nao carrega nomes de concorrentes no catalogo operacional', () => {
+    const text = JSON.stringify(service.getCatalog()).toLowerCase();
+
+    expect(text).not.toContain('contabilizei');
+    expect(text).not.toContain('dominio');
+    expect(text).not.toContain('alterdata');
+    expect(text).not.toContain('conta azul');
+  });
+
   it('sinaliza taxas publicas fora da gratuidade na abertura de empresa', () => {
     const result = service.evaluate({
       serviceIds: ['company-opening'],
