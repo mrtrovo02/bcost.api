@@ -18,7 +18,8 @@ export type ServiceConditionCode =
   | 'EXPERTS_HONORARIUM_WAIVER'
   | 'EXPERTS_NO_RETROACTIVE_WAIVER'
   | 'MUNICIPAL_DIGITAL_DEPENDENCY'
-  | 'PHYSICAL_PROTOCOL_CUSTOMER_ACTION';
+  | 'PHYSICAL_PROTOCOL_CUSTOMER_ACTION'
+  | 'OFFICIAL_RULE_REVIEW_REQUIRED';
 
 export type ServiceConditionSeverity = 'INFO' | 'WARNING' | 'BLOCKER';
 
@@ -33,6 +34,11 @@ export type MicroServiceDefinition = {
   id: string;
   name: string;
   notes?: string[];
+  officialSources?: Array<{
+    label: string;
+    url: string;
+  }>;
+  complianceTags?: string[];
   governmentFeesMayApply?: boolean;
   addOnService?: boolean;
   expertsHonorariumWaivable?: boolean;

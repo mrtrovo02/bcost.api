@@ -40,7 +40,39 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       { id: 'periodic-accounting', name: 'Apuracao contabil periodica' },
       { id: 'financial-statements', name: 'Balanco Patrimonial e DRE' },
       { id: 'accounting-books', name: 'Emissao e guarda de livros contabeis' },
-      { id: 'accounting-obligations', name: 'Entrega de obrigacoes acessorias contabeis' },
+      {
+        id: 'accounting-obligations',
+        name: 'Entrega de obrigacoes acessorias contabeis',
+        complianceTags: ['ECD', 'ECF', 'SPED'],
+        officialSources: [
+          { label: 'Portal SPED - ECD/ECF', url: 'https://sped.rfb.gov.br/' },
+        ],
+        notes: [
+          'ECD e ECF devem observar leiautes, manuais e validadores vigentes publicados no Portal SPED.',
+        ],
+      },
+      {
+        id: 'ecd-bookkeeping',
+        name: 'ECD - Escrituração Contábil Digital',
+        complianceTags: ['ECD', 'SPED', 'Contábil'],
+        officialSources: [
+          { label: 'Portal SPED - ECD', url: 'https://sped.rfb.gov.br/' },
+        ],
+        notes: [
+          'Obrigação digital sujeita ao leiaute e ao programa validador vigente no ano-calendário/situação especial.',
+        ],
+      },
+      {
+        id: 'ecf-tax-accounting',
+        name: 'ECF - Escrituração Contábil Fiscal',
+        complianceTags: ['ECF', 'IRPJ', 'CSLL', 'SPED'],
+        officialSources: [
+          { label: 'Portal SPED - ECF', url: 'https://sped.rfb.gov.br/' },
+        ],
+        notes: [
+          'A ECF deve seguir o manual e leiaute aplicável ao ano-calendário, inclusive regras de IRPJ/CSLL e situações especiais.',
+        ],
+      },
       { id: 'routine-guidance', name: 'Orientacao sobre rotinas e documentacao exigida' },
       { id: 'daily-compliance', name: 'Regularizacao e manutencao da conformidade diaria' },
       { id: 'platform-alerts', name: 'Acompanhamento via plataforma digital e alertas' },
@@ -53,9 +85,109 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
     description: 'Calculo, emissao, planejamento e controle de obrigacoes tributarias.',
     microServices: [
       { id: 'tax-planning', name: 'Planejamento tributario para elisao fiscal' },
-      { id: 'tax-assessment', name: 'Apuracao de impostos federais, estaduais e municipais' },
+      {
+        id: 'tax-assessment',
+        name: 'Apuracao de impostos federais, estaduais e municipais',
+        complianceTags: ['IRPJ', 'CSLL', 'PIS', 'COFINS', 'ICMS', 'ISS', 'CBS', 'IBS'],
+        officialSources: [
+          { label: 'Receita Federal - Reforma Tributária do Consumo', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo' },
+          { label: 'LC 214/2025 - Senado Federal', url: 'https://legis.senado.gov.br/norma/40180341' },
+        ],
+        notes: [
+          'Para 2026, CBS e IBS entram em ambiente de teste com destaque em documentos fiscais conforme orientações e notas técnicas oficiais.',
+        ],
+      },
       { id: 'tax-guides', name: 'Emissao e controle de guias tributarias' },
-      { id: 'fiscal-accessory-obligations', name: 'Envio de declaracoes e obrigacoes fiscais acessorias' },
+      {
+        id: 'fiscal-accessory-obligations',
+        name: 'Envio de declaracoes e obrigacoes fiscais acessorias',
+        complianceTags: ['SPED', 'DCTFWeb', 'EFD-Reinf', 'EFD ICMS IPI', 'EFD Contribuições'],
+        officialSources: [
+          { label: 'Portal SPED', url: 'https://sped.rfb.gov.br/' },
+          { label: 'Receita Federal - EFD-Reinf', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/perguntas-frequentes/sped/efd-reinf/efdr/' },
+        ],
+        notes: [
+          'A obrigação deve ser validada por regime tributário, atividade, UF/município, período de apuração e eventos efetivamente ocorridos.',
+        ],
+      },
+      {
+        id: 'pgdas-d-das',
+        name: 'PGDAS-D e emissão do DAS do Simples Nacional',
+        complianceTags: ['Simples Nacional', 'PGDAS-D', 'DAS'],
+        officialSources: [
+          { label: 'Portal do Simples Nacional', url: 'https://www8.receita.fazenda.gov.br/SimplesNacional/' },
+        ],
+        notes: [
+          'Aplicável a optantes do Simples Nacional, condicionado à receita, anexos, segregação de atividades e regras vigentes do período.',
+        ],
+      },
+      {
+        id: 'defis',
+        name: 'DEFIS - Declaração de Informações Socioeconômicas e Fiscais',
+        complianceTags: ['Simples Nacional', 'DEFIS'],
+        officialSources: [
+          { label: 'Portal do Simples Nacional', url: 'https://www8.receita.fazenda.gov.br/SimplesNacional/' },
+        ],
+        notes: [
+          'Obrigação anual de empresas optantes pelo Simples Nacional, sujeita ao prazo e às regras publicadas no Portal do Simples Nacional.',
+        ],
+      },
+      {
+        id: 'dctfweb',
+        name: 'DCTFWeb e emissão de DARF previdenciário/tributário',
+        complianceTags: ['DCTFWeb', 'eSocial', 'EFD-Reinf', 'DARF'],
+        officialSources: [
+          { label: 'Receita Federal - EFD-Reinf/DCTFWeb', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/perguntas-frequentes/sped/efd-reinf/efdr/' },
+        ],
+        notes: [
+          'A DCTFWeb consolida apurações recebidas de eSocial e/ou EFD-Reinf após encerramento das escriturações.',
+        ],
+      },
+      {
+        id: 'efd-reinf',
+        name: 'EFD-Reinf - retenções e informações fiscais previdenciárias',
+        complianceTags: ['EFD-Reinf', 'SPED', 'Retenções'],
+        officialSources: [
+          { label: 'Receita Federal - EFD-Reinf', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/perguntas-frequentes/sped/efd-reinf/efdr/' },
+        ],
+        notes: [
+          'Na ausência de fatos a informar no período, a orientação oficial dispensa eventos sem movimento enquanto persistir essa situação.',
+        ],
+      },
+      {
+        id: 'efd-icms-ipi',
+        name: 'EFD ICMS/IPI',
+        complianceTags: ['SPED', 'ICMS', 'IPI', 'EFD ICMS IPI'],
+        officialSources: [
+          { label: 'Portal SPED - EFD ICMS/IPI', url: 'https://sped.rfb.gov.br/' },
+        ],
+        notes: [
+          'Obrigação condicionada a UF, perfil do contribuinte, operações com mercadorias/industrialização e guia prático vigente.',
+        ],
+      },
+      {
+        id: 'efd-contributions',
+        name: 'EFD Contribuições',
+        complianceTags: ['SPED', 'PIS', 'COFINS', 'Contribuição Previdenciária'],
+        officialSources: [
+          { label: 'Portal SPED - EFD Contribuições', url: 'https://sped.rfb.gov.br/' },
+        ],
+        notes: [
+          'A escrituração deve observar regime de apuração, incidência de PIS/Cofins e leiaute vigente publicado no SPED.',
+        ],
+      },
+      {
+        id: 'rtc-2026-readiness',
+        name: 'Adequação à Reforma Tributária do Consumo 2026',
+        complianceTags: ['CBS', 'IBS', 'IS', 'LC 214/2025', 'EC 132/2023'],
+        officialSources: [
+          { label: 'Receita Federal - Orientações RTC 2026', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo/orientacoes-2026' },
+          { label: 'LC 214/2025 - Senado Federal', url: 'https://legis.senado.gov.br/norma/40180341' },
+        ],
+        notes: [
+          'A partir de 2026, documentos fiscais eletrônicos devem destacar CBS e IBS conforme notas técnicas específicas; 2026 é ano de teste conforme orientação oficial.',
+        ],
+      },
       { id: 'withholding-guidance', name: 'Orientacao sobre retencoes tributarias' },
       { id: 'fiscal-pendency-regularization', name: 'Consulta e regularizacao de pendencias fiscais', addOnService: true, expertsHonorariumWaivable: true, retroactiveSensitive: true, activeCustomersOnly: true },
       { id: 'tax-auto-debit', name: 'Debito automatico de impostos via conta PJ integrada' },
@@ -74,7 +206,18 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       { id: 'prolabore-guides', name: 'Calculo e guias de pro-labore' },
       { id: 'labor-charges', name: 'INSS, FGTS e IRRF' },
       { id: 'employee-lifecycle', name: 'Admissao, ferias, 13o salario e desligamento', addOnService: true, activeCustomersOnly: true },
-      { id: 'labor-obligations', name: 'eSocial, DCTFWeb e obrigacoes trabalhistas' },
+      {
+        id: 'labor-obligations',
+        name: 'eSocial, DCTFWeb, FGTS Digital e obrigacoes trabalhistas',
+        complianceTags: ['eSocial', 'DCTFWeb', 'FGTS Digital', 'INSS', 'IRRF'],
+        officialSources: [
+          { label: 'Receita Federal - EFD-Reinf/DCTFWeb', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/perguntas-frequentes/sped/efd-reinf/efdr/' },
+          { label: 'Portal eSocial', url: 'https://www.gov.br/esocial/' },
+        ],
+        notes: [
+          'Eventos trabalhistas e fiscais devem observar tabelas, leiautes e cronogramas oficiais do eSocial/DCTFWeb/FGTS Digital.',
+        ],
+      },
       { id: 'prolabore-profit-guidance', name: 'Consultoria sobre pro-labore e distribuicao de lucros' },
     ],
   },
@@ -83,8 +226,30 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
     name: 'Emissao de Notas e Faturamento',
     description: 'Suporte e automacao do ciclo de faturamento e recebimentos.',
     microServices: [
-      { id: 'nfse-guidance', name: 'Orientacao tecnica para NFS-e', municipalDependency: true },
-      { id: 'invoice-management', name: 'Emissao e gerenciamento de notas pela plataforma', municipalDependency: true },
+      {
+        id: 'nfse-guidance',
+        name: 'Orientacao tecnica para NFS-e',
+        municipalDependency: true,
+        complianceTags: ['NFS-e', 'ISS', 'CBS', 'IBS'],
+        officialSources: [
+          { label: 'Receita Federal - Documentos Fiscais RTC 2026', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo/orientacoes-2026' },
+        ],
+        notes: [
+          'NFS-e depende de regras municipais e, em 2026, deve considerar destaque de CBS/IBS quando aplicável às notas técnicas vigentes.',
+        ],
+      },
+      {
+        id: 'invoice-management',
+        name: 'Emissao e gerenciamento de notas pela plataforma',
+        municipalDependency: true,
+        complianceTags: ['NF-e', 'NFC-e', 'NFS-e', 'CT-e', 'CBS', 'IBS'],
+        officialSources: [
+          { label: 'Receita Federal - Orientações RTC 2026', url: 'https://www.gov.br/receitafederal/pt-br/acesso-a-informacao/acoes-e-programas/programas-e-atividades/reforma-tributaria-do-consumo/orientacoes-2026' },
+        ],
+        notes: [
+          'Documentos fiscais eletrônicos devem seguir leiautes e notas técnicas oficiais, incluindo campos de CBS/IBS na transição da reforma.',
+        ],
+      },
       { id: 'revenue-history', name: 'Controle mensal do historico de faturamento' },
       { id: 'online-collection', name: 'Cobranca online por link/pix' },
       { id: 'installment-sales', name: 'Parcelamento de vendas em ate 12x' },

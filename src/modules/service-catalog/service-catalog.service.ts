@@ -118,6 +118,16 @@ export class ServiceCatalogService {
       Boolean(contractedAt && referenceDate && referenceDate.getTime() < contractedAt.getTime());
 
     for (const service of services) {
+      if (service.officialSources?.length || service.complianceTags?.length) {
+        conditions.push({
+          code: 'OFFICIAL_RULE_REVIEW_REQUIRED',
+          severity: 'INFO',
+          serviceId: service.id,
+          message:
+            'Servico com base regulatoria oficial: validar leiaute, prazo, regime tributario, UF/municipio e atos vigentes antes da execucao.',
+        });
+      }
+
       if (service.governmentFeesMayApply) {
         conditions.push({
           code: 'GOVERNMENT_FEES_NOT_INCLUDED',
