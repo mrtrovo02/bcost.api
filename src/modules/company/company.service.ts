@@ -21,6 +21,21 @@ export class CompanyService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private async assertCanManageCompany(companyId: string, userId: string) {
+    const membership = await this.prisma.companyUser.findFirst({
+      where: { companyId, userId, deletedAt: null },
+      select: { role: true },
+    });
+
+    if (!membership || !['OWNER', 'MANAGER'].includes(membership.role)) {
+      throw new ForbiddenException(
+        'Acesso negado para gerenciar esta empresa.',
+      );
+    }
+
+    return membership;
+  }
+
   /**
    * Registra uma nova empresa validando a duplicidade de CNPJ e incluindo dados fiscais.
    */
@@ -129,6 +144,7 @@ export class CompanyService {
    */
   async update(id: string, dto: UpdateCompanyDto, userId: string) {
     await this.findOne(id, userId); // Valida se existe e pertence ao usuário
+    await this.assertCanManageCompany(id, userId);
 
     try {
       this.logger.log(`Atualizando dados fiscais da empresa ID: ${id}`);
@@ -147,18 +163,7 @@ export class CompanyService {
    */
   async delete(id: string, userId: string) {
     const company = await this.findOne(id, userId);
-
-    // Somente OWNER ou MANAGER podem desativar
-    const membership = await this.prisma.companyUser.findFirst({
-      where: { companyId: id, userId, deletedAt: null },
-      select: { role: true },
-    });
-
-    if (!membership || !['OWNER', 'MANAGER'].includes(membership.role)) {
-      throw new ForbiddenException(
-        'Acesso negado para desativar esta empresa.',
-      );
-    }
+    await this.assertCanManageCompany(id, userId);
 
     if (!company.active) {
       throw new ConflictException('Esta empresa já se encontra desativada.');

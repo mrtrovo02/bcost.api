@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Delete,
+  Patch,
   Body,
   Param,
   UseGuards,
@@ -18,6 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
+import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
 
@@ -52,6 +54,20 @@ export class CompanyController {
   @ApiResponse({ status: 404, description: 'Empresa não encontrada.' })
   findOne(@Param('id') id: string, @GetUser('id') userId: string) {
     return this.companyService.findOne(id, userId);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Atualizar dados cadastrais e fiscais da empresa' })
+  @ApiParam({ name: 'id', description: 'ID da empresa', example: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Empresa atualizada.' })
+  @ApiResponse({ status: 403, description: 'Usuário sem permissão de gestão.' })
+  @ApiResponse({ status: 404, description: 'Empresa não encontrada.' })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateCompanyDto,
+    @GetUser('id') userId: string,
+  ) {
+    return this.companyService.update(id, dto, userId);
   }
 
   @Delete(':id')
