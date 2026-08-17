@@ -12,11 +12,13 @@ import {
   UseInterceptors,
   UploadedFiles,
   BadRequestException,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
   Logger,
   Body,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
@@ -24,6 +26,7 @@ import {
   ApiBearerAuth,
   ApiExtraModels,
   ApiConsumes,
+  ApiExcludeEndpoint,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
@@ -93,7 +96,16 @@ export class FiscalController {
     private readonly taxService: TaxCalculationService,
     private readonly reportService: ReportService,
     private readonly invoiceService: InvoiceService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private assertNonProductionSeedAllowed() {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new ForbiddenException(
+        'Geração de dados de teste bloqueada em produção.',
+      );
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // 0. ROTAS DE COMPATIBILIDADE FRONTEND / FISCAL INTELLIGENCE
@@ -311,13 +323,15 @@ export class FiscalController {
 
   @Post('seed-demo/:companyId')
   @HttpCode(HttpStatus.CREATED)
+  @ApiExcludeEndpoint()
   @ApiOperation({
     summary:
-      'MODO DEMO: Alias compatível para gerar massa de dados fiscais de demonstração',
+      'AMBIENTE NÃO PRODUTIVO: Alias compatível para gerar dados fiscais de teste',
   })
   async seedDemoCompat(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ) {
+    this.assertNonProductionSeedAllowed();
     return await this.fiscalService.seedDemoData(companyId);
   }
 
@@ -509,10 +523,12 @@ export class FiscalController {
 
   @Post('demo/seed/:companyId')
   @HttpCode(HttpStatus.CREATED)
+  @ApiExcludeEndpoint()
   @ApiOperation({
-    summary: 'MODO DEMO: Gerar massa de dados para testes de stress',
+    summary: 'AMBIENTE NÃO PRODUTIVO: Gerar dados fiscais para testes',
   })
   async seedDemo(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    this.assertNonProductionSeedAllowed();
     return await this.fiscalService.seedDemoData(companyId);
   }
 }
