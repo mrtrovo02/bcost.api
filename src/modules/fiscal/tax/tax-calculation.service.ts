@@ -51,7 +51,10 @@ const SIMPLES_TABLES = {
   ],
 } as const;
 
-function calculateOfficialFactorR(payroll12: Prisma.Decimal, rbt12: Prisma.Decimal): Prisma.Decimal {
+function calculateOfficialFactorR(
+  payroll12: Prisma.Decimal,
+  rbt12: Prisma.Decimal,
+): Prisma.Decimal {
   if (payroll12.gt(0) && rbt12.isZero()) return new Prisma.Decimal(0.28);
   if (payroll12.isZero()) return new Prisma.Decimal(0.01);
   return payroll12.div(rbt12);
@@ -299,7 +302,8 @@ export class TaxCalculationService {
     }
 
     const table = SIMPLES_TABLES[anexo];
-    const bracket = table.find((item) => rbt <= item.limit) ?? table[table.length - 1];
+    const bracket =
+      table.find((item) => rbt <= item.limit) ?? table[table.length - 1];
 
     if (rbt12.isZero()) return new Prisma.Decimal(bracket.rate);
 

@@ -164,9 +164,7 @@ export class InsightsService {
         processed++;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        this.logger.error(
-          `❌ Falha na empresa ${company.name}: ${message}`,
-        );
+        this.logger.error(`❌ Falha na empresa ${company.name}: ${message}`);
         errors++;
       }
     }

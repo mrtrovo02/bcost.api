@@ -11,11 +11,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { AuditService } from './audit.service.js';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto.js';

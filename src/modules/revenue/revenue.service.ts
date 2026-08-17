@@ -1,10 +1,7 @@
 'use strict';
 
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  InvoiceStatus,
-  Prisma,
-} from '@prisma/client';
+import { InvoiceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 
 type BillingMode = 'MANUAL' | 'MONTHLY_JOB' | 'QUEUE' | 'AUTOMATION';
@@ -156,7 +153,9 @@ export class RevenueService {
 
     for (const contract of contracts as any[]) {
       const contractId = String(contract.id);
-      const customerId = contract.customerId ? String(contract.customerId) : null;
+      const customerId = contract.customerId
+        ? String(contract.customerId)
+        : null;
       const amount = this.toNumber(contract.amount);
 
       try {
@@ -230,7 +229,8 @@ export class RevenueService {
             status: 'SKIPPED',
             invoiceId: existing.id,
             amount,
-            reason: 'Já existe invoice de serviço para este cliente no período.',
+            reason:
+              'Já existe invoice de serviço para este cliente no período.',
           });
           continue;
         }

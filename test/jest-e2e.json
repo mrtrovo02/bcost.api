@@ -12,6 +12,7 @@
     "^#modules/(.*)\\.js$": "<rootDir>/../src/modules/$1",
     "^#database/(.*)\\.js$": "<rootDir>/../src/database/$1",
     "^src/(.*)\\.js$": "<rootDir>/../src/$1",
-    "^(\\.\\.?/.+)\\.js$": "$1"
+    "^src/(.*)$": "<rootDir>/../src/$1",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

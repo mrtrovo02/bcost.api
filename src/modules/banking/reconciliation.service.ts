@@ -23,7 +23,9 @@ export class ReconciliationService {
   }
 
   async runAutoMatch(companyId: string) {
-    this.logger.log(`[RECONCILE] Auto-match iniciado para companyId=${companyId}`);
+    this.logger.log(
+      `[RECONCILE] Auto-match iniciado para companyId=${companyId}`,
+    );
 
     return {
       companyId,

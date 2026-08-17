@@ -59,7 +59,12 @@ export class NotificationsEnterpriseController {
     @Body() body: UpdateNotificationEnterpriseDto,
     @Req() req: any,
   ) {
-    return this.service.updateNotification(companyId, notificationId, body, req.user);
+    return this.service.updateNotification(
+      companyId,
+      notificationId,
+      body,
+      req.user,
+    );
   }
 
   @Post('notifications/enterprise/:companyId/:notificationId/read')
@@ -68,7 +73,11 @@ export class NotificationsEnterpriseController {
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
     @Req() req: any,
   ) {
-    return this.service.markNotificationRead(companyId, notificationId, req.user);
+    return this.service.markNotificationRead(
+      companyId,
+      notificationId,
+      req.user,
+    );
   }
 
   @Post('notifications/enterprise/:companyId/:notificationId/unread')
@@ -77,7 +86,11 @@ export class NotificationsEnterpriseController {
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
     @Req() req: any,
   ) {
-    return this.service.markNotificationUnread(companyId, notificationId, req.user);
+    return this.service.markNotificationUnread(
+      companyId,
+      notificationId,
+      req.user,
+    );
   }
 
   @Post('notifications/enterprise/:companyId/:notificationId/acknowledge')
@@ -86,7 +99,11 @@ export class NotificationsEnterpriseController {
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
     @Req() req: any,
   ) {
-    return this.service.acknowledgeNotification(companyId, notificationId, req.user);
+    return this.service.acknowledgeNotification(
+      companyId,
+      notificationId,
+      req.user,
+    );
   }
 
   @Post('notifications/enterprise/:companyId/:notificationId/archive')
@@ -95,7 +112,11 @@ export class NotificationsEnterpriseController {
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
     @Req() req: any,
   ) {
-    return this.service.archiveNotification(companyId, notificationId, req.user);
+    return this.service.archiveNotification(
+      companyId,
+      notificationId,
+      req.user,
+    );
   }
 
   @Get('webhooks/enterprise/:companyId')

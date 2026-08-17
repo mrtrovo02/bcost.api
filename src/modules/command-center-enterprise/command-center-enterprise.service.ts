@@ -64,7 +64,6 @@ export class CommandCenterEnterpriseService {
 
   private readonly COMMAND_CENTER_CACHE_TTL_MS = 30_000;
 
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditIntelligenceService: AuditIntelligenceEnterpriseService,
@@ -253,11 +252,7 @@ export class CommandCenterEnterpriseService {
 
     if (!model) return 0;
 
-    const attempts = [
-      where,
-      { companyId: where.companyId },
-      {},
-    ];
+    const attempts = [where, { companyId: where.companyId }, {}];
 
     for (const attempt of attempts) {
       try {
@@ -279,11 +274,7 @@ export class CommandCenterEnterpriseService {
 
     if (!model) return [];
 
-    const attempts = [
-      where,
-      { companyId: where.companyId },
-      {},
-    ];
+    const attempts = [where, { companyId: where.companyId }, {}];
 
     for (const attempt of attempts) {
       try {
@@ -517,9 +508,7 @@ export class CommandCenterEnterpriseService {
     }
 
     const penalty =
-      params.critical * 15 +
-      params.failed * 12 +
-      params.warning * 6;
+      params.critical * 15 + params.failed * 12 + params.warning * 6;
 
     const riskScore = Math.max(0, Math.min(100, 100 - penalty));
 
@@ -600,7 +589,9 @@ export class CommandCenterEnterpriseService {
     return risks.sort((a, b) => b.scoreImpact - a.scoreImpact);
   }
 
-  private normalizeAuditStatus(status?: string): 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE' {
+  private normalizeAuditStatus(
+    status?: string,
+  ): 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE' {
     const normalized = String(status || '').toUpperCase();
 
     if (normalized === 'HEALTHY') return 'HEALTHY';
@@ -708,7 +699,9 @@ export class CommandCenterEnterpriseService {
         byEndpoint: Array.isArray(finding?.evidenceSummary?.byEndpoint)
           ? finding.evidenceSummary.byEndpoint.slice(0, 3)
           : [],
-        latestSummaryCount: Array.isArray(finding?.evidenceSummary?.latestSummary)
+        latestSummaryCount: Array.isArray(
+          finding?.evidenceSummary?.latestSummary,
+        )
           ? finding.evidenceSummary.latestSummary.length
           : 0,
       },
@@ -839,11 +832,7 @@ export class CommandCenterEnterpriseService {
     const auditStatus = this.normalizeAuditStatus(quality.qualityStatus);
 
     const penalty =
-      auditStatus === 'CRITICAL'
-        ? 8
-        : auditStatus === 'ATTENTION'
-          ? 4
-          : 0;
+      auditStatus === 'CRITICAL' ? 8 : auditStatus === 'ATTENTION' ? 4 : 0;
 
     const executiveScore = Math.max(
       0,
@@ -870,7 +859,9 @@ export class CommandCenterEnterpriseService {
     };
   }
 
-  private normalizeFinanceStatus(status?: string): 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE' {
+  private normalizeFinanceStatus(
+    status?: string,
+  ): 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | 'UNAVAILABLE' {
     const normalized = String(status || '').toUpperCase();
 
     if (normalized === 'HEALTHY') return 'HEALTHY';
@@ -947,13 +938,9 @@ export class CommandCenterEnterpriseService {
         Number(summary.payables?.count || 0),
       critical: Number(summary.totalOverdueCount || 0),
       warning:
-        String(cashflow.riskStatus || '').toUpperCase() === 'ATTENTION'
-          ? 1
-          : 0,
+        String(cashflow.riskStatus || '').toUpperCase() === 'ATTENTION' ? 1 : 0,
       failed:
-        String(cashflow.riskStatus || '').toUpperCase() === 'CRITICAL'
-          ? 1
-          : 0,
+        String(cashflow.riskStatus || '').toUpperCase() === 'CRITICAL' ? 1 : 0,
       open:
         Number(summary.receivables?.openCount || 0) +
         Number(summary.payables?.openCount || 0),
@@ -1112,18 +1099,39 @@ export class CommandCenterEnterpriseService {
     };
   }
 
-  private buildExecutiveSummary(metrics: ModelMetric[], risks: ExecutiveRisk[]) {
+  private buildExecutiveSummary(
+    metrics: ModelMetric[],
+    risks: ExecutiveRisk[],
+  ) {
     const availableModules = metrics.filter((item) => item.available).length;
     const unavailableModules = metrics.filter((item) => !item.available).length;
-    const healthyModules = metrics.filter((item) => item.status === 'HEALTHY').length;
-    const attentionModules = metrics.filter((item) => item.status === 'ATTENTION').length;
-    const criticalModules = metrics.filter((item) => item.status === 'CRITICAL').length;
+    const healthyModules = metrics.filter(
+      (item) => item.status === 'HEALTHY',
+    ).length;
+    const attentionModules = metrics.filter(
+      (item) => item.status === 'ATTENTION',
+    ).length;
+    const criticalModules = metrics.filter(
+      (item) => item.status === 'CRITICAL',
+    ).length;
 
     const totalRecords = metrics.reduce((sum, item) => sum + item.total, 0);
-    const totalCritical = metrics.reduce((sum, item) => sum + (item.critical || 0), 0);
-    const totalWarning = metrics.reduce((sum, item) => sum + (item.warning || 0), 0);
-    const totalFailed = metrics.reduce((sum, item) => sum + (item.failed || 0), 0);
-    const totalUnread = metrics.reduce((sum, item) => sum + (item.unread || 0), 0);
+    const totalCritical = metrics.reduce(
+      (sum, item) => sum + (item.critical || 0),
+      0,
+    );
+    const totalWarning = metrics.reduce(
+      (sum, item) => sum + (item.warning || 0),
+      0,
+    );
+    const totalFailed = metrics.reduce(
+      (sum, item) => sum + (item.failed || 0),
+      0,
+    );
+    const totalUnread = metrics.reduce(
+      (sum, item) => sum + (item.unread || 0),
+      0,
+    );
 
     const averageScore =
       metrics.length > 0
@@ -1189,9 +1197,7 @@ export class CommandCenterEnterpriseService {
     }
 
     const baseWhere =
-      catalog.prismaKey === 'company'
-        ? { id: companyId }
-        : { companyId };
+      catalog.prismaKey === 'company' ? { id: companyId } : { companyId };
 
     const total = await this.countSafe(catalog.prismaKey, baseWhere);
 
@@ -1346,7 +1352,11 @@ export class CommandCenterEnterpriseService {
     ];
 
     for (const source of sources) {
-      const rows = await this.sampleSafe(source.prismaKey, { companyId }, limit);
+      const rows = await this.sampleSafe(
+        source.prismaKey,
+        { companyId },
+        limit,
+      );
 
       for (const row of rows) {
         activity.push({
@@ -1435,10 +1445,11 @@ export class CommandCenterEnterpriseService {
       ...(financeRisk ? [financeRisk] : []),
     ]);
 
-    const executiveSummaryWithAudit = this.enrichExecutiveSummaryWithAuditIntelligence(
-      this.buildExecutiveSummary(metricsWithEnterpriseSignals, risks),
-      auditSignal,
-    );
+    const executiveSummaryWithAudit =
+      this.enrichExecutiveSummaryWithAuditIntelligence(
+        this.buildExecutiveSummary(metricsWithEnterpriseSignals, risks),
+        auditSignal,
+      );
 
     const executiveSummary = this.enrichExecutiveSummaryWithFinanceOperations(
       executiveSummaryWithAudit,
@@ -1446,7 +1457,9 @@ export class CommandCenterEnterpriseService {
     );
 
     const [audit, activity] = await Promise.all([
-      includeAudit ? this.getRecentAudit(companyId, limit) : Promise.resolve([]),
+      includeAudit
+        ? this.getRecentAudit(companyId, limit)
+        : Promise.resolve([]),
       this.getRecentActivity(companyId, limit),
     ]);
 
@@ -1495,7 +1508,9 @@ export class CommandCenterEnterpriseService {
       performance: {
         computedInMs: Date.now() - startedAt,
       },
-      health: includeHealth ? { api: 'UP', database: 'CONNECTED', commandCenter: 'READY' } : null,
+      health: includeHealth
+        ? { api: 'UP', database: 'CONNECTED', commandCenter: 'READY' }
+        : null,
       generatedAt: new Date().toISOString(),
     };
     this.setCommandCenterCache(cacheKey, result as Record<string, unknown>);
@@ -1507,11 +1522,7 @@ export class CommandCenterEnterpriseService {
     query: CommandCenterQueryDto,
     user?: AuthUser,
   ) {
-    const cacheKey = this.buildCommandCenterCacheKey(
-      'risks',
-      companyId,
-      query,
-    );
+    const cacheKey = this.buildCommandCenterCacheKey('risks', companyId, query);
     const cached = this.getCommandCenterCache(cacheKey);
 
     if (cached) {

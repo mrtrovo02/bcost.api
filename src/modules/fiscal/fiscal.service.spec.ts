@@ -49,7 +49,7 @@ describe('FiscalService (Motor Tributário)', () => {
     ]);
 
     const result = await service.calculateMonthlyTax('company-id', 4, 2026);
-    
+
     expect(result.metrics.fatorR).toBe(28);
     expect(result.metrics.anexoUtilizado).toBe('III');
   });

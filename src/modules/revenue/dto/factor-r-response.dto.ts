@@ -7,10 +7,10 @@ export class FactorRResponseDto {
   @ApiProperty({ example: true })
   isEligibleForAnexoIII: boolean;
 
-  @ApiProperty({ example: 150000.00 })
+  @ApiProperty({ example: 150000.0 })
   revenueLast12Months: number;
 
-  @ApiProperty({ example: 42750.00 })
+  @ApiProperty({ example: 42750.0 })
   payrollLast12Months: number;
 
   @ApiProperty({ example: 'Cálculo baseado nos últimos 12 meses fechados.' })

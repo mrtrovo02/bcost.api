@@ -1,5 +1,5 @@
 import { MetricsController } from './metrics.controller';
-'use strict';
+('use strict');
 
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';

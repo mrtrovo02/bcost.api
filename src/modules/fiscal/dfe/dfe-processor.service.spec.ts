@@ -1,11 +1,48 @@
+import { DfeProcessorService } from './dfe-processor.service';
+import { SefazProtocolService } from './sefaz-protocol.service';
+
+// Mock do @prisma/client garantindo que os enums acessados pelo DfeProcessorService existam
+jest.mock('@prisma/client', () => {
+  let actual: any = {};
+  try {
+    actual = jest.requireActual('@prisma/client');
+  } catch {}
+
+  return {
+    ...actual,
+    InvoiceStatus: actual.InvoiceStatus || {
+      NORMAL: 'NORMAL',
+      CANCELLED: 'CANCELLED',
+      DRAFT: 'DRAFT',
+    },
+    InvoiceType: actual.InvoiceType || {
+      PRODUCT: 'PRODUCT',
+      SERVICE: 'SERVICE',
+    },
+    NFeStatus: actual.NFeStatus || {
+      DRAFT: 'DRAFT',
+      AUTHORIZED: 'AUTHORIZED',
+      CANCELLED: 'CANCELLED',
+      PENDING: 'PENDING',
+    },
+    DfeStatus: actual.DfeStatus || {
+      DRAFT: 'DRAFT',
+      PROCESSED: 'PROCESSED',
+      ERROR: 'ERROR',
+    },
+    SefazEvent: actual.SefazEvent || {
+      AUTORIZADA: 'AUTORIZADA',
+      CANCELADA: 'CANCELADA',
+    },
+  };
+});
+
 import {
   InvoiceStatus,
   InvoiceType,
   NFeStatus,
   SefazEvent,
 } from '@prisma/client';
-import { DfeProcessorService } from './dfe-processor.service.js';
-import { SefazProtocolService } from './sefaz-protocol.service.js';
 
 describe('DfeProcessorService', () => {
   const prisma = {
@@ -139,6 +176,19 @@ describe('DfeProcessorService', () => {
         nfeStatus: NFeStatus.DRAFT,
       }),
     );
+    expect(prisma.invoiceSefazEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('propaga exceção caso o parser do XML falhe', async () => {
+    xmlService.parseInvoiceXml.mockImplementation(() => {
+      throw new Error('XML malformado ou inválido');
+    });
+
+    await expect(
+      service.processXml('company-1', '<xml-invalido>'),
+    ).rejects.toThrow('XML malformado ou inválido');
+
+    expect(invoiceService.create).not.toHaveBeenCalled();
     expect(prisma.invoiceSefazEvent.create).not.toHaveBeenCalled();
   });
 });

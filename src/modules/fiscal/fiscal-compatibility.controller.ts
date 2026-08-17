@@ -20,7 +20,8 @@ export class FiscalCompatibilityController {
     const activeCompanyId = companyIdFromQuery || companyId;
     const monthlyRevenue = revenueQuery ? parseFloat(revenueQuery) : 100000.0;
 
-    const simulation = this.cbsIbsEngine.calculateTransitionalTax(monthlyRevenue);
+    const simulation =
+      this.cbsIbsEngine.calculateTransitionalTax(monthlyRevenue);
 
     return {
       success: true,

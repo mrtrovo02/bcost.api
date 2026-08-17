@@ -18,8 +18,21 @@ export class UpdateAccountPlanDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['ATIVO', 'PASSIVO', 'PATRIMONIO_LIQUIDO', 'RECEITA', 'DESPESA', 'CUSTO'])
-  type?: 'ATIVO' | 'PASSIVO' | 'PATRIMONIO_LIQUIDO' | 'RECEITA' | 'DESPESA' | 'CUSTO';
+  @IsIn([
+    'ATIVO',
+    'PASSIVO',
+    'PATRIMONIO_LIQUIDO',
+    'RECEITA',
+    'DESPESA',
+    'CUSTO',
+  ])
+  type?:
+    | 'ATIVO'
+    | 'PASSIVO'
+    | 'PATRIMONIO_LIQUIDO'
+    | 'RECEITA'
+    | 'DESPESA'
+    | 'CUSTO';
 
   @IsOptional()
   @IsString()

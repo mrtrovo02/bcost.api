@@ -55,7 +55,9 @@ export function redactDeep<T = unknown>(value: T): T {
 
   const output: Record<string, unknown> = {};
 
-  for (const [key, innerValue] of Object.entries(value as Record<string, unknown>)) {
+  for (const [key, innerValue] of Object.entries(
+    value as Record<string, unknown>,
+  )) {
     output[key] = redactSensitiveValue(key, redactDeep(innerValue));
   }
 

@@ -1,13 +1,7 @@
 'use strict';
 
 import { Type } from 'class-transformer';
-import {
-  IsInt,
-  IsNumber,
-  IsOptional,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsInt, IsNumber, IsOptional, Max, Min } from 'class-validator';
 
 export class AutoReconciliationEnterpriseDto {
   @IsOptional()

@@ -24,8 +24,8 @@ import { AutomationJobsEnterpriseService } from './automation-jobs-enterprise.se
 @Module({
   imports: [
     // Módulos que exportam os serviços necessários para os Jobs
-    RevenueModule,   // Provê: RevenueService
-    FiscalModule,    // Provê: TaxCalculationService, ComplianceService
+    RevenueModule, // Provê: RevenueService
+    FiscalModule, // Provê: TaxCalculationService, ComplianceService
     AnalyticsModule, // Provê: ForecastingService e AnomalyDetectionService
   ],
   controllers: [

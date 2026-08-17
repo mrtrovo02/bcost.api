@@ -58,7 +58,8 @@ export class PayrollEnterpriseService {
 
   private get payrollEntryModel() {
     const model = (this.prisma as any).payrollEntry;
-    if (!model) throw new NotFoundException('Modelo payrollEntry não encontrado.');
+    if (!model)
+      throw new NotFoundException('Modelo payrollEntry não encontrado.');
     return model;
   }
 
@@ -111,7 +112,9 @@ export class PayrollEnterpriseService {
     ];
 
     if (!allowed.includes(role)) {
-      throw new ForbiddenException('Perfil sem permissão para folha enterprise.');
+      throw new ForbiddenException(
+        'Perfil sem permissão para folha enterprise.',
+      );
     }
   }
 
@@ -143,7 +146,8 @@ export class PayrollEnterpriseService {
 
     if (value && typeof value === 'object') {
       const out: Record<string, unknown> = {};
-      for (const [key, inner] of Object.entries(value)) out[key] = this.normalize(inner);
+      for (const [key, inner] of Object.entries(value))
+        out[key] = this.normalize(inner);
       return out;
     }
 
@@ -158,7 +162,8 @@ export class PayrollEnterpriseService {
       } as any,
     });
 
-    if (!company) throw new NotFoundException(`Empresa não encontrada: ${companyId}`);
+    if (!company)
+      throw new NotFoundException(`Empresa não encontrada: ${companyId}`);
 
     return company;
   }
@@ -259,12 +264,26 @@ export class PayrollEnterpriseService {
     return {
       ...employee,
       baseSalary: this.toNumber(employee.baseSalary),
-      admissionAt: employee.admissionAt ? new Date(employee.admissionAt).toISOString() : null,
-      dismissalAt: employee.dismissalAt ? new Date(employee.dismissalAt).toISOString() : null,
-      createdAt: employee.createdAt ? new Date(employee.createdAt).toISOString() : null,
-      updatedAt: employee.updatedAt ? new Date(employee.updatedAt).toISOString() : null,
-      deletedAt: employee.deletedAt ? new Date(employee.deletedAt).toISOString() : null,
-      operationalStatus: employee.deletedAt ? 'DELETED' : employee.active ? 'ACTIVE' : 'INACTIVE',
+      admissionAt: employee.admissionAt
+        ? new Date(employee.admissionAt).toISOString()
+        : null,
+      dismissalAt: employee.dismissalAt
+        ? new Date(employee.dismissalAt).toISOString()
+        : null,
+      createdAt: employee.createdAt
+        ? new Date(employee.createdAt).toISOString()
+        : null,
+      updatedAt: employee.updatedAt
+        ? new Date(employee.updatedAt).toISOString()
+        : null,
+      deletedAt: employee.deletedAt
+        ? new Date(employee.deletedAt).toISOString()
+        : null,
+      operationalStatus: employee.deletedAt
+        ? 'DELETED'
+        : employee.active
+          ? 'ACTIVE'
+          : 'INACTIVE',
     };
   }
 
@@ -274,7 +293,9 @@ export class PayrollEnterpriseService {
       salariesAmount: this.toNumber(payroll.salariesAmount),
       proLaboreAmount: this.toNumber(payroll.proLaboreAmount),
       totalAmount: this.toNumber(payroll.totalAmount),
-      createdAt: payroll.createdAt ? new Date(payroll.createdAt).toISOString() : null,
+      createdAt: payroll.createdAt
+        ? new Date(payroll.createdAt).toISOString()
+        : null,
       periodLabel: `${String(payroll.month).padStart(2, '0')}/${payroll.year}`,
     };
   }
@@ -290,14 +311,17 @@ export class PayrollEnterpriseService {
       otherBenefits: this.toNumber(entry.otherBenefits),
       otherDeductions: this.toNumber(entry.otherDeductions),
       netSalary: this.toNumber(entry.netSalary),
-      createdAt: entry.createdAt ? new Date(entry.createdAt).toISOString() : null,
+      createdAt: entry.createdAt
+        ? new Date(entry.createdAt).toISOString()
+        : null,
     };
   }
 
   private employeeWhere(companyId: string, query: PayrollEnterpriseQueryDto) {
     const and: any[] = [{ companyId }];
 
-    if (query.active !== undefined) and.push({ active: query.active === 'true' });
+    if (query.active !== undefined)
+      and.push({ active: query.active === 'true' });
     if (query.regime) and.push({ regime: query.regime });
 
     if (query.search) {
@@ -378,7 +402,9 @@ export class PayrollEnterpriseService {
     }
 
     out.totalBaseSalary = this.money(out.totalBaseSalary);
-    out.averageBaseSalary = items.length ? this.money(out.totalBaseSalary / items.length) : 0;
+    out.averageBaseSalary = items.length
+      ? this.money(out.totalBaseSalary / items.length)
+      : 0;
 
     return out;
   }
@@ -454,8 +480,13 @@ export class PayrollEnterpriseService {
     return out;
   }
 
-  private calculateAmounts(employee: any, overrides: Partial<Amounts> = {}): Amounts {
-    const baseSalary = this.money(overrides.baseSalary ?? this.toNumber(employee.baseSalary));
+  private calculateAmounts(
+    employee: any,
+    overrides: Partial<Amounts> = {},
+  ): Amounts {
+    const baseSalary = this.money(
+      overrides.baseSalary ?? this.toNumber(employee.baseSalary),
+    );
     const regime = String(employee.regime || 'CLT');
 
     let inssEmployee = 0;
@@ -499,7 +530,10 @@ export class PayrollEnterpriseService {
     const entries = await tx.payrollEntry.findMany({ where: { payrollId } });
 
     const salariesAmount = this.money(
-      entries.reduce((sum: number, entry: any) => sum + this.toNumber(entry.baseSalary), 0),
+      entries.reduce(
+        (sum: number, entry: any) => sum + this.toNumber(entry.baseSalary),
+        0,
+      ),
     );
 
     const totalAmount = this.money(
@@ -523,7 +557,11 @@ export class PayrollEnterpriseService {
     });
   }
 
-  private async createFinancialEvent(companyId: string, payroll: any, amount: number) {
+  private async createFinancialEvent(
+    companyId: string,
+    payroll: any,
+    amount: number,
+  ) {
     if (!this.financialEventModel?.create) {
       return { recorded: false, error: 'financialEvent indisponível.' };
     }
@@ -549,11 +587,18 @@ export class PayrollEnterpriseService {
 
       return { recorded: true, event: this.normalize(event) };
     } catch (error) {
-      return { recorded: false, error: error instanceof Error ? error.message : String(error) };
+      return {
+        recorded: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
-  private async createAccountingEntry(companyId: string, payroll: any, amount: number) {
+  private async createAccountingEntry(
+    companyId: string,
+    payroll: any,
+    amount: number,
+  ) {
     if (!this.accountingEntryModel?.create) {
       return { recorded: false, error: 'accountingEntry indisponível.' };
     }
@@ -578,11 +623,18 @@ export class PayrollEnterpriseService {
 
       return { recorded: true, entry: this.normalize(entry) };
     } catch (error) {
-      return { recorded: false, error: error instanceof Error ? error.message : String(error) };
+      return {
+        recorded: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
-  async listEmployees(companyId: string, query: PayrollEnterpriseQueryDto, user?: AuthUser) {
+  async listEmployees(
+    companyId: string,
+    query: PayrollEnterpriseQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -595,7 +647,9 @@ export class PayrollEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichEmployee(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichEmployee(item));
 
     return {
       status: 'OK',
@@ -612,7 +666,11 @@ export class PayrollEnterpriseService {
     };
   }
 
-  async createEmployee(companyId: string, dto: CreateEmployeeEnterpriseDto, user?: AuthUser) {
+  async createEmployee(
+    companyId: string,
+    dto: CreateEmployeeEnterpriseDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     this.validateWritePermission(user);
     await this.findCompany(companyId);
@@ -624,7 +682,9 @@ export class PayrollEnterpriseService {
     });
 
     if (existing) {
-      throw new ConflictException('Já existe colaborador com este CPF nesta empresa.');
+      throw new ConflictException(
+        'Já existe colaborador com este CPF nesta empresa.',
+      );
     }
 
     const created = await this.employeeModel.create({
@@ -634,7 +694,9 @@ export class PayrollEnterpriseService {
         cpf,
         pis: dto.pis?.trim() || null,
         admissionAt: this.parseDate(dto.admissionAt, 'admissionAt'),
-        dismissalAt: dto.dismissalAt ? this.parseDate(dto.dismissalAt, 'dismissalAt') : null,
+        dismissalAt: dto.dismissalAt
+          ? this.parseDate(dto.dismissalAt, 'dismissalAt')
+          : null,
         role: dto.role.trim(),
         baseSalary: dto.baseSalary,
         active: dto.active ?? true,
@@ -678,16 +740,20 @@ export class PayrollEnterpriseService {
       where: { id: employeeId, companyId },
     });
 
-    if (!current) throw new NotFoundException(`Colaborador não encontrado: ${employeeId}`);
+    if (!current)
+      throw new NotFoundException(`Colaborador não encontrado: ${employeeId}`);
 
     const data: Record<string, unknown> = {};
 
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.cpf !== undefined) data.cpf = dto.cpf.replace(/\D/g, '');
     if (dto.pis !== undefined) data.pis = dto.pis?.trim() || null;
-    if (dto.admissionAt !== undefined) data.admissionAt = this.parseDate(dto.admissionAt, 'admissionAt');
+    if (dto.admissionAt !== undefined)
+      data.admissionAt = this.parseDate(dto.admissionAt, 'admissionAt');
     if (dto.dismissalAt !== undefined) {
-      data.dismissalAt = dto.dismissalAt ? this.parseDate(dto.dismissalAt, 'dismissalAt') : null;
+      data.dismissalAt = dto.dismissalAt
+        ? this.parseDate(dto.dismissalAt, 'dismissalAt')
+        : null;
     }
     if (dto.role !== undefined) data.role = dto.role.trim();
     if (dto.baseSalary !== undefined) data.baseSalary = dto.baseSalary;
@@ -724,7 +790,11 @@ export class PayrollEnterpriseService {
     };
   }
 
-  async deactivateEmployee(companyId: string, employeeId: string, user?: AuthUser) {
+  async deactivateEmployee(
+    companyId: string,
+    employeeId: string,
+    user?: AuthUser,
+  ) {
     return this.updateEmployee(
       companyId,
       employeeId,
@@ -736,7 +806,11 @@ export class PayrollEnterpriseService {
     );
   }
 
-  async listPayrolls(companyId: string, query: PayrollEnterpriseQueryDto, user?: AuthUser) {
+  async listPayrolls(
+    companyId: string,
+    query: PayrollEnterpriseQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -754,7 +828,9 @@ export class PayrollEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichPayroll(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichPayroll(item));
 
     return {
       status: 'OK',
@@ -771,7 +847,11 @@ export class PayrollEnterpriseService {
     };
   }
 
-  async createPayroll(companyId: string, dto: CreatePayrollEnterpriseDto, user?: AuthUser) {
+  async createPayroll(
+    companyId: string,
+    dto: CreatePayrollEnterpriseDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     this.validateWritePermission(user);
     await this.findCompany(companyId);
@@ -781,12 +861,16 @@ export class PayrollEnterpriseService {
     });
 
     if (existing) {
-      throw new ConflictException(`Folha ${String(dto.month).padStart(2, '0')}/${dto.year} já existe.`);
+      throw new ConflictException(
+        `Folha ${String(dto.month).padStart(2, '0')}/${dto.year} já existe.`,
+      );
     }
 
     const salariesAmount = this.money(dto.salariesAmount ?? 0);
     const proLaboreAmount = this.money(dto.proLaboreAmount ?? 0);
-    const totalAmount = this.money(dto.totalAmount ?? salariesAmount + proLaboreAmount);
+    const totalAmount = this.money(
+      dto.totalAmount ?? salariesAmount + proLaboreAmount,
+    );
 
     const created = await this.payrollModel.create({
       data: {
@@ -825,7 +909,11 @@ export class PayrollEnterpriseService {
     };
   }
 
-  async listPayrollEntries(companyId: string, query: PayrollEnterpriseQueryDto, user?: AuthUser) {
+  async listPayrollEntries(
+    companyId: string,
+    query: PayrollEnterpriseQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -842,7 +930,9 @@ export class PayrollEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichEntry(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichEntry(item));
 
     return {
       status: 'OK',
@@ -871,13 +961,17 @@ export class PayrollEnterpriseService {
       where: { id: dto.payrollId, companyId },
     });
 
-    if (!payroll) throw new NotFoundException(`Folha não encontrada: ${dto.payrollId}`);
+    if (!payroll)
+      throw new NotFoundException(`Folha não encontrada: ${dto.payrollId}`);
 
     const employee = await this.employeeModel.findFirst({
       where: { id: dto.employeeId, companyId, deletedAt: null },
     });
 
-    if (!employee) throw new NotFoundException(`Colaborador não encontrado: ${dto.employeeId}`);
+    if (!employee)
+      throw new NotFoundException(
+        `Colaborador não encontrado: ${dto.employeeId}`,
+      );
 
     const amounts = this.calculateAmounts(employee, dto as Partial<Amounts>);
 
@@ -890,7 +984,9 @@ export class PayrollEnterpriseService {
       });
 
       if (existing) {
-        throw new ConflictException('Já existe evento de folha para este colaborador nesta competência.');
+        throw new ConflictException(
+          'Já existe evento de folha para este colaborador nesta competência.',
+        );
       }
 
       const entry = await tx.payrollEntry.create({
@@ -905,7 +1001,10 @@ export class PayrollEnterpriseService {
         },
       });
 
-      const updatedPayroll = await this.recomputePayrollTotals(tx, dto.payrollId);
+      const updatedPayroll = await this.recomputePayrollTotals(
+        tx,
+        dto.payrollId,
+      );
 
       return { entry, updatedPayroll };
     });
@@ -955,7 +1054,10 @@ export class PayrollEnterpriseService {
       },
     });
 
-    if (!current) throw new NotFoundException(`Evento de folha não encontrado: ${payrollEntryId}`);
+    if (!current)
+      throw new NotFoundException(
+        `Evento de folha não encontrado: ${payrollEntryId}`,
+      );
 
     const amounts = this.calculateAmounts(current.employee, {
       baseSalary: dto.baseSalary ?? this.toNumber(current.baseSalary),
@@ -964,7 +1066,8 @@ export class PayrollEnterpriseService {
       irrf: dto.irrf ?? this.toNumber(current.irrf),
       fgts: dto.fgts ?? this.toNumber(current.fgts),
       otherBenefits: dto.otherBenefits ?? this.toNumber(current.otherBenefits),
-      otherDeductions: dto.otherDeductions ?? this.toNumber(current.otherDeductions),
+      otherDeductions:
+        dto.otherDeductions ?? this.toNumber(current.otherDeductions),
       netSalary: dto.netSalary ?? undefined,
     });
 
@@ -978,7 +1081,10 @@ export class PayrollEnterpriseService {
         },
       });
 
-      const updatedPayroll = await this.recomputePayrollTotals(tx, current.payrollId);
+      const updatedPayroll = await this.recomputePayrollTotals(
+        tx,
+        current.payrollId,
+      );
 
       return { entry, updatedPayroll };
     });
@@ -1008,7 +1114,11 @@ export class PayrollEnterpriseService {
     };
   }
 
-  async generatePayroll(companyId: string, dto: GeneratePayrollEnterpriseDto, user?: AuthUser) {
+  async generatePayroll(
+    companyId: string,
+    dto: GeneratePayrollEnterpriseDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     this.validateWritePermission(user);
     await this.findCompany(companyId);
@@ -1113,7 +1223,9 @@ export class PayrollEnterpriseService {
       message: 'Folha gerada com sucesso.',
       companyId,
       item: this.normalize(this.enrichPayroll(result.payroll)),
-      entries: this.normalize(result.entries.map((entry: any) => this.enrichEntry(entry))),
+      entries: this.normalize(
+        result.entries.map((entry: any) => this.enrichEntry(entry)),
+      ),
       totals: {
         employees: employees.length,
         entries: result.entries.length,

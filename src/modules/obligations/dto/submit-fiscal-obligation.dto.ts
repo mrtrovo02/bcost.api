@@ -1,11 +1,6 @@
 'use strict';
 
-import {
-  IsDateString,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from 'class-validator';
+import { IsDateString, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class SubmitFiscalObligationDto {
   @IsOptional()

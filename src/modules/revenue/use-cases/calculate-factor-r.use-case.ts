@@ -16,7 +16,9 @@ export class CalculateFactorRUseCase {
 
   async execute(companyId: string): Promise<FactorRResponseDto> {
     const referenceDate = new Date();
-    this.logger.log(`🎬 Iniciando cálculo de Fator R para empresa: ${companyId}`);
+    this.logger.log(
+      `🎬 Iniciando cálculo de Fator R para empresa: ${companyId}`,
+    );
 
     // 1. Busca dados agregados utilizando o Repository (Garante consistência com o banco)
     // Usamos Promise.all para executar as queries em paralelo e reduzir o tempo de resposta
@@ -38,7 +40,9 @@ export class CalculateFactorRUseCase {
           : totalPayroll / totalRevenue;
     const isEligible = factorR >= 0.28;
 
-    this.logger.debug(`📊 Resultado ${companyId}: Faturamento R$${totalRevenue} | Folha R$${totalPayroll} | Fator R: ${factorR.toFixed(4)}`);
+    this.logger.debug(
+      `📊 Resultado ${companyId}: Faturamento R$${totalRevenue} | Folha R$${totalPayroll} | Fator R: ${factorR.toFixed(4)}`,
+    );
 
     // 3. Persistência do resultado para histórico e Dashboards
     // Isso garante que o cálculo consultado via API fique registrado na tabela de tributação

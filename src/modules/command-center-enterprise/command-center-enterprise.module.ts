@@ -8,7 +8,11 @@ import { CommandCenterEnterpriseController } from './command-center-enterprise.c
 import { CommandCenterEnterpriseService } from './command-center-enterprise.service.js';
 
 @Module({
-  imports: [FinanceOperationsEnterpriseModule, PrismaModule, AuditIntelligenceEnterpriseModule],
+  imports: [
+    FinanceOperationsEnterpriseModule,
+    PrismaModule,
+    AuditIntelligenceEnterpriseModule,
+  ],
   controllers: [CommandCenterEnterpriseController],
   providers: [CommandCenterEnterpriseService],
   exports: [CommandCenterEnterpriseService],

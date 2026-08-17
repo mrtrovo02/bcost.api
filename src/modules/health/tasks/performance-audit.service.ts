@@ -33,7 +33,9 @@ export class PerformanceAuditService {
       const { metrics } = await this.healthService.getDatabaseMetrics();
 
       if (metrics.length === 0) {
-        this.logger.warn('⚠️ Auditoria pulada: métricas de banco indisponíveis no momento.');
+        this.logger.warn(
+          '⚠️ Auditoria pulada: métricas de banco indisponíveis no momento.',
+        );
         return;
       }
 

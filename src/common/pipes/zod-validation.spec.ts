@@ -5,7 +5,9 @@ import { z } from 'nestjs-zod/z';
 const TargetPayloadSchema = z.object({
   companyId: z.string().uuid('ID organizacional precisa ser um UUID válido'),
   value: z.number().positive('O valor de custo deve ser positivo'),
-  fiscalPeriod: z.string().regex(/^\d{4}-\d{2}$/, 'Formato de competência fiscal esperado: YYYY-MM'),
+  fiscalPeriod: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/, 'Formato de competência fiscal esperado: YYYY-MM'),
 });
 
 describe('ZodValidationPipe - Unidade e Validação de Contratos', () => {

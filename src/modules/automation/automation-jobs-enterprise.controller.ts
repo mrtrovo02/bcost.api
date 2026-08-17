@@ -10,11 +10,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { AutomationJobsEnterpriseService } from './automation-jobs-enterprise.service.js';
 import { AutomationJobsQueryDto } from './dto/automation-jobs-query.dto.js';
@@ -24,9 +20,7 @@ import { AutomationJobsQueryDto } from './dto/automation-jobs-query.dto.js';
 @UseGuards(JwtAuthGuard)
 @Controller('automation/jobs')
 export class AutomationJobsEnterpriseController {
-  constructor(
-    private readonly service: AutomationJobsEnterpriseService,
-  ) {}
+  constructor(private readonly service: AutomationJobsEnterpriseService) {}
 
   @Get(':companyId')
   @ApiOperation({
@@ -56,10 +50,7 @@ export class AutomationJobsEnterpriseController {
   @ApiOperation({
     summary: 'ENTERPRISE: Solicita retry de um job de automação',
   })
-  retry(
-    @Param('jobId') jobId: string,
-    @Req() req: any,
-  ) {
+  retry(@Param('jobId') jobId: string, @Req() req: any) {
     return this.service.retry(jobId, req.user);
   }
 
@@ -67,10 +58,7 @@ export class AutomationJobsEnterpriseController {
   @ApiOperation({
     summary: 'ENTERPRISE: Solicita cancelamento de um job de automação',
   })
-  cancel(
-    @Param('jobId') jobId: string,
-    @Req() req: any,
-  ) {
+  cancel(@Param('jobId') jobId: string, @Req() req: any) {
     return this.service.cancel(jobId, req.user);
   }
 
@@ -78,10 +66,7 @@ export class AutomationJobsEnterpriseController {
   @ApiOperation({
     summary: 'ENTERPRISE: Reconhece um job com falha sem alterar seu status',
   })
-  acknowledge(
-    @Param('jobId') jobId: string,
-    @Req() req: any,
-  ) {
+  acknowledge(@Param('jobId') jobId: string, @Req() req: any) {
     return this.service.acknowledge(jobId, req.user);
   }
 }

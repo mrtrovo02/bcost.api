@@ -40,6 +40,7 @@ import { CompanyModule } from './modules/company/company.module.js';
 import { ContractModule } from './modules/contracts/contract.module.js';
 import { RevenueModule } from './modules/revenue/revenue.module.js';
 import { FiscalModule } from './modules/fiscal/fiscal.module.js';
+import { FiscalSimulationModule } from './modules/fiscal-simulation/fiscal-simulation.module.js';
 import { BankingModule } from './modules/banking/banking.module.js';
 import { ReconciliationModule } from './modules/reconciliation/reconciliation.module.js';
 import { AutomationModule } from './modules/automation/automation.module.js';
@@ -65,6 +66,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
 
 @Module({
   imports: [
+    // ⚙️ Validação Rígida do Schema de Ambiente (Joi)
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
@@ -74,6 +76,8 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
           .valid('development', 'production', 'test')
           .default('development'),
         PORT: Joi.number().default(5000),
+        HOST: Joi.string().default('0.0.0.0'),
+        PUBLIC_BASE_URL: Joi.string().uri().optional(),
 
         DATABASE_URL: Joi.string().required(),
 
@@ -87,8 +91,11 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
         SETUP_ADMIN_PASSWORD: Joi.string().optional(),
 
         ENABLE_SWAGGER: Joi.string().valid('true', 'false').default('false'),
-        CORS_ORIGINS: Joi.string().default(''),
+        CORS_ORIGINS: Joi.string().allow('').default(''),
         METRICS_API_KEY: Joi.string().allow('').default(''),
+        LOG_LEVEL: Joi.string()
+          .valid('fatal', 'error', 'warn', 'info', 'debug', 'trace')
+          .default('info'),
 
         CACHE_TTL: Joi.number().default(600),
         THROTTLE_TTL: Joi.number().default(60),
@@ -96,16 +103,19 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
       }),
     }),
 
+    // 🛡️ Rate Limiting Global
     ThrottlerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => [
         {
-          ttl: config.get<number>('THROTTLE_TTL') ?? 60,
+          name: 'default',
+          ttl: (config.get<number>('THROTTLE_TTL') ?? 60) * 1000,
           limit: config.get<number>('THROTTLE_LIMIT') ?? 100,
         },
       ],
     }),
 
+    // ⚡ Cache Em Memória
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
@@ -115,6 +125,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
       }),
     }),
 
+    // 🐂 Fila de Processamento Assíncrono (BullMQ + Redis)
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -124,8 +135,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
           password: config.get<string>('REDIS_PASSWORD') || undefined,
           enableOfflineQueue: true,
           lazyConnect: true,
-          maxRetriesPerRequest: 0,
-          retryStrategy: () => null,
+          maxRetriesPerRequest: null,
           connectTimeout: 5000,
         },
         defaultJobOptions: {
@@ -140,6 +150,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
       }),
     }),
 
+    // 📢 Eventos Internos
     EventEmitterModule.forRoot({
       wildcard: true,
       delimiter: '.',
@@ -147,6 +158,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
       global: true,
     }),
 
+    // ⏰ Agendador de Tarefas Crons
     ScheduleModule.forRoot(),
 
     // --- Core / Infra ---
@@ -165,6 +177,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
     ContractModule,
     RevenueModule,
     FiscalModule,
+    FiscalSimulationModule,
     BankingModule,
     ReconciliationModule,
     AutomationModule,
@@ -197,11 +210,13 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
       useExisting: LoggingInterceptor,
     },
 
+    // 🔒 ORDEM CRÍTICA DE EXECUÇÃO DOS GUARDS GLOBAIS
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: CompanyAccessGuard },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
 
+    // 🧪 PIPES GLOBAIS DE VALIDAÇÃO
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     {
       provide: APP_PIPE,
@@ -224,12 +239,15 @@ export class AppModule {
       .apply(TenantMiddleware)
       .exclude(
         { path: 'health', method: RequestMethod.GET },
+        { path: 'live', method: RequestMethod.GET },
+        { path: 'ready', method: RequestMethod.GET },
+        { path: 'metrics', method: RequestMethod.GET },
         { path: 'api/v1', method: RequestMethod.GET },
         { path: 'api/v1/health', method: RequestMethod.GET },
         { path: 'api/v1/diagnostics', method: RequestMethod.GET },
-        { path: 'api/v1/auth/*', method: RequestMethod.ALL },
+        { path: 'api/v1/auth/(.*)', method: RequestMethod.ALL },
         { path: 'docs', method: RequestMethod.GET },
-        { path: 'docs/*', method: RequestMethod.GET },
+        { path: 'docs/(.*)', method: RequestMethod.GET },
       )
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }

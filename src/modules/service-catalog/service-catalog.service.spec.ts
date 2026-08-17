@@ -17,7 +17,9 @@ describe('ServiceCatalogService', () => {
   it('mantem ids de macro e microservicos unicos', () => {
     const catalog = service.getCatalog();
     const macroIds = catalog.map((macro) => macro.id);
-    const microIds = catalog.flatMap((macro) => macro.microServices.map((micro) => micro.id));
+    const microIds = catalog.flatMap((macro) =>
+      macro.microServices.map((micro) => micro.id),
+    );
 
     expect(new Set(macroIds).size).toBe(macroIds.length);
     expect(new Set(microIds).size).toBe(microIds.length);

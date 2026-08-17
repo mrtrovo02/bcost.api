@@ -1,12 +1,7 @@
 'use strict';
 
 import { Type } from 'class-transformer';
-import {
-  IsNumber,
-  IsOptional,
-  IsUUID,
-  Min,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class CreatePayrollEntryEnterpriseDto {
   @IsUUID('4')

@@ -35,12 +35,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   /**
    * Customização da resposta de erro para manter o padrão enterprise do bCost
    */
-  override handleRequest<TUser = {
-    id: string;
-    email: string;
-    companyId?: string | null;
-    role?: string | null;
-  }>(
+  override handleRequest<
+    TUser = {
+      id: string;
+      email: string;
+      companyId?: string | null;
+      role?: string | null;
+    },
+  >(
     err: unknown,
     user: unknown,
     _info: unknown,

@@ -106,7 +106,12 @@ export class BankingEnterpriseController {
     @Body() body: UpdateBankTransactionEnterpriseDto,
     @Req() req: any,
   ) {
-    return this.service.updateTransaction(companyId, transactionId, body, req.user);
+    return this.service.updateTransaction(
+      companyId,
+      transactionId,
+      body,
+      req.user,
+    );
   }
 
   @Get('reconciliation/:companyId/candidates/:transactionId')

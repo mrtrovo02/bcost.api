@@ -1,27 +1,77 @@
+import { InternalServerErrorException } from '@nestjs/common';
+import { DashboardService } from './dashboard.service';
+
+// Mock do @prisma/client provendo fallbacks seguros para Enums e Decimal no Jest
+jest.mock('@prisma/client', () => {
+  let actual: any = {};
+  try {
+    actual = jest.requireActual('@prisma/client');
+  } catch {}
+
+  return {
+    ...actual,
+    AccountType: actual.AccountType || {
+      DESPESA: 'DESPESA',
+      RECEITA: 'RECEITA',
+      ATIVO: 'ATIVO',
+      PASSIVO: 'PASSIVO',
+      PATRIMONIO_LIQUIDO: 'PATRIMONIO_LIQUIDO',
+    },
+    JobStatus: actual.JobStatus || {
+      RUNNING: 'RUNNING',
+      FAILED: 'FAILED',
+      COMPLETED: 'COMPLETED',
+      PENDING: 'PENDING',
+    },
+    ObligationStatus: actual.ObligationStatus || {
+      PAID: 'PAID',
+      PENDING: 'PENDING',
+      OVERDUE: 'OVERDUE',
+    },
+    Prisma: actual.Prisma || {
+      Decimal: class Decimal {
+        private val: number;
+        constructor(v: number | string) {
+          this.val = Number(v);
+        }
+        toNumber() {
+          return this.val;
+        }
+        toString() {
+          return String(this.val);
+        }
+      },
+    },
+  };
+});
+
 import {
   AccountType,
   JobStatus,
   ObligationStatus,
   Prisma,
 } from '@prisma/client';
-import { DashboardService } from './dashboard.service.js';
 
-describe('DashboardService management cockpit', () => {
-  const createService = () => {
-    const prisma = {
+describe('DashboardService (Management Cockpit)', () => {
+  const createService = (customCompanyMock?: any) => {
+    const prismaMock = {
       company: {
-        findUnique: jest.fn().mockResolvedValue({
-          id: 'company-1',
-          name: 'Empresa Teste',
-          settings: {
-            budget: {
-              monthlyRevenue: 100000,
-              monthlyExpenses: 40000,
-              monthlyNetCash: 30000,
-              costCenters: [{ name: 'Operações', planned: 20000 }],
-            },
-          },
-        }),
+        findUnique: jest.fn().mockResolvedValue(
+          customCompanyMock !== undefined
+            ? customCompanyMock
+            : {
+                id: 'company-1',
+                name: 'Empresa Teste',
+                settings: {
+                  budget: {
+                    monthlyRevenue: 100000,
+                    monthlyExpenses: 40000,
+                    monthlyNetCash: 30000,
+                    costCenters: [{ name: 'Operações', planned: 20000 }],
+                  },
+                },
+              },
+        ),
       },
       invoice: {
         findMany: jest.fn().mockResolvedValue([
@@ -62,16 +112,14 @@ describe('DashboardService management cockpit', () => {
         ]),
       },
       fiscalObligation: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([
-            {
-              id: 'fis-1',
-              status: 'PENDING',
-              dueDate: new Date(),
-              type: 'DAS',
-            },
-          ]),
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'fis-1',
+            status: 'PENDING',
+            dueDate: new Date(),
+            type: 'DAS',
+          },
+        ]),
       },
       bankTransaction: {
         findMany: jest.fn().mockResolvedValue([
@@ -153,9 +201,20 @@ describe('DashboardService management cockpit', () => {
 
     const noop = {} as never;
     return {
-      service: new DashboardService(prisma as never, noop, noop, noop, noop),
+      service: new DashboardService(
+        prismaMock as never,
+        noop,
+        noop,
+        noop,
+        noop,
+      ),
+      prismaMock,
     };
   };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
 
   it('consolida DRE, caixa, orçamento, centro de custos e conciliação', async () => {
     const { service } = createService();
@@ -192,5 +251,13 @@ describe('DashboardService management cockpit', () => {
       actual: 150000,
       variance: 50000,
     });
+  });
+
+  it('deve lançar InternalServerErrorException quando a empresa não existir', async () => {
+    const { service } = createService(null);
+
+    await expect(
+      service.getManagementCockpit('company-inexistente'),
+    ).rejects.toThrow(InternalServerErrorException);
   });
 });

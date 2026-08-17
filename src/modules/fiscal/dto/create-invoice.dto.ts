@@ -10,8 +10,40 @@ import {
   IsUUID,
   Length,
   IsIn,
+  IsObject,
 } from 'class-validator';
-import { InvoiceType, InvoiceStatus, NFeStatus } from '@prisma/client';
+import * as PrismaClientPkg from '@prisma/client';
+
+// Enums de fallback para evitar que a avaliação dos decoradores lance TypeError
+// caso o Prisma Client apresente undefined no carregamento de módulos ES/SWC.
+export enum FallbackInvoiceType {
+  INPUT = 'INPUT',
+  OUTPUT = 'OUTPUT',
+  SERVICE = 'SERVICE',
+}
+
+export enum FallbackInvoiceStatus {
+  DRAFT = 'DRAFT',
+  ISSUED = 'ISSUED',
+  CANCELLED = 'CANCELLED',
+  ERROR = 'ERROR',
+}
+
+export enum FallbackNFeStatus {
+  PENDING = 'PENDING',
+  AUTHORIZED = 'AUTHORIZED',
+  REJECTED = 'REJECTED',
+  CANCELLED = 'CANCELLED',
+}
+
+// Resolução segura de objetos de enum em runtime
+const SafeInvoiceType =
+  (PrismaClientPkg as Record<string, any>).InvoiceType ?? FallbackInvoiceType;
+const SafeInvoiceStatus =
+  (PrismaClientPkg as Record<string, any>).InvoiceStatus ??
+  FallbackInvoiceStatus;
+const SafeNFeStatus =
+  (PrismaClientPkg as Record<string, any>).NFeStatus ?? FallbackNFeStatus;
 
 const NFE_ISSUE_PURPOSES = [
   'NORMAL',
@@ -76,18 +108,19 @@ export class CreateInvoiceDto {
   hasLegacyTaxes?: boolean;
 
   @IsOptional()
-  taxReformPayload?: unknown;
+  @IsObject()
+  taxReformPayload?: Record<string, unknown>;
 
-  @IsEnum(InvoiceType)
-  type: InvoiceType;
-
-  @IsOptional()
-  @IsEnum(InvoiceStatus)
-  status?: InvoiceStatus;
+  @IsEnum(SafeInvoiceType)
+  type: PrismaClientPkg.InvoiceType;
 
   @IsOptional()
-  @IsEnum(NFeStatus)
-  nfeStatus?: NFeStatus;
+  @IsEnum(SafeInvoiceStatus)
+  status?: PrismaClientPkg.InvoiceStatus;
+
+  @IsOptional()
+  @IsEnum(SafeNFeStatus)
+  nfeStatus?: PrismaClientPkg.NFeStatus;
 
   @IsOptional()
   @IsNumber()
@@ -113,14 +146,15 @@ export class CreateInvoiceDto {
   @IsBoolean()
   isAutoCaptured?: boolean;
 
-  @IsString()
   @IsOptional()
-  customerDocument: string;
-
   @IsString()
-  @IsOptional()
-  customerName: string;
+  customerDocument?: string;
 
   @IsOptional()
-  rawJson?: any;
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsObject()
+  rawJson?: Record<string, unknown>;
 }

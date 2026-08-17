@@ -82,10 +82,9 @@ export class RevenueCompatibilityController {
   }
 
   @Get('revenue/compatibility/tax-data')
-  async getTaxData(
-    @Query() query: TaxDataQueryDto,
-  ): Promise<TaxDataResponse> {
-    const activeCompanyId: string | undefined = query.company_id || query.companyId;
+  async getTaxData(@Query() query: TaxDataQueryDto): Promise<TaxDataResponse> {
+    const activeCompanyId: string | undefined =
+      query.company_id || query.companyId;
     return {
       success: true,
       companyId: activeCompanyId,

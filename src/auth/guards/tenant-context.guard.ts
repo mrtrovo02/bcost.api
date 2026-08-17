@@ -8,7 +8,6 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { TenantContext } from '../../common/tenant/tenant.context.js';
 import { PrismaService } from '../../database/prisma.service.js';
-import { redactDeep, redactSensitiveHeaders } from '../../common/security/redact-headers.util.js';
 
 /**
  * bCost Guard: Validação de Identidade e Vínculo de Tenant
@@ -32,7 +31,7 @@ export class TenantContextGuard implements CanActivate {
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      
+
       // Validação de Segurança Nível 3: Verifica vínculo real no banco
       const membership = await this.prisma.companyUser.findUnique({
         where: {
@@ -44,7 +43,9 @@ export class TenantContextGuard implements CanActivate {
       });
 
       if (!membership || membership.deletedAt) {
-        throw new ForbiddenException('Acesso negado: Usuário não vinculado a este Tenant.');
+        throw new ForbiddenException(
+          'Acesso negado: Usuário não vinculado a este Tenant.',
+        );
       }
 
       // POPULA O STORE CANÔNICO (O patch que você criou)
@@ -60,12 +61,13 @@ export class TenantContextGuard implements CanActivate {
     }
   }
 
-  private extractTokenFromHeader(request: any): string | undefined {
-    const authorizationHeader = redactSensitiveHeaders(
-      request.headers as Record<string, unknown>,
-    ).authorization;
-    const authorization =
-      typeof authorizationHeader === 'string' ? authorizationHeader : '';
+  private extractTokenFromHeader(request: {
+    headers?: Record<string, string | string[] | undefined>;
+  }): string | undefined {
+    const authorizationHeader = request.headers?.authorization;
+    const authorization = Array.isArray(authorizationHeader)
+      ? authorizationHeader[0]
+      : authorizationHeader || '';
     const [type, token] = authorization.split(' ');
     return type === 'Bearer' ? token : undefined;
   }

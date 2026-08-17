@@ -66,9 +66,10 @@ export class PrismaService
   implements OnModuleInit, OnModuleDestroy
 {
   private readonly logger = new Logger(PrismaService.name);
+  private readonly pool: pg.Pool;
   private _connected = false;
 
-  // Tipagem dinâmica: mantém o IntelliSense das extensões
+  // Tipagem dinâmica: mantém o IntelliSense das extensões do Prisma Client
   public readonly extended = this.applyExtensions();
 
   constructor(private readonly config: ConfigService) {
@@ -95,34 +96,50 @@ export class PrismaService
       ],
     });
 
+    this.pool = pool;
     this.registerEventListeners();
   }
 
-  async onModuleInit() {
+  get isConnected(): boolean {
+    return this._connected;
+  }
+
+  async onModuleInit(): Promise<void> {
     this.connectInBackground();
   }
 
-  async onModuleDestroy() {
-    this.logger.log('🔌 Desconectando Prisma...');
-    await this.$disconnect();
+  async onModuleDestroy(): Promise<void> {
+    this.logger.log('🔌 Desconectando Prisma e encerrando Pool PostgreSQL...');
+    this._connected = false;
+
+    try {
+      await this.$disconnect();
+      await this.pool.end();
+      this.logger.log('✅ Pool do PostgreSQL encerrado com sucesso.');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`❌ Erro ao desconectar do PostgreSQL: ${message}`);
+    }
   }
 
-  private connectInBackground() {
+  private connectInBackground(): void {
     const maxAttempts = 5;
 
-    const tryConnect = async (attempt = 1) => {
+    const tryConnect = async (attempt = 1): Promise<void> => {
       try {
         await this.$connect();
         this._connected = true;
         this.logger.log('✅ Banco de dados conectado via Adapter-PG.');
       } catch (err) {
         const error = err as Error;
+        this._connected = false;
+
         if (attempt <= maxAttempts) {
           const delay = Math.pow(2, attempt) * 1000;
           this.logger.warn(
             `⚠️ Falha na conexão (${error.message}). Tentativa ${attempt}/${maxAttempts} em ${delay}ms...`,
           );
-          setTimeout(() => tryConnect(attempt + 1), delay);
+          setTimeout(() => void tryConnect(attempt + 1), delay);
         } else {
           this.logger.error(
             '🚨 Limite de tentativas de conexão excedido. O banco pode estar inacessível.',
@@ -130,7 +147,8 @@ export class PrismaService
         }
       }
     };
-    tryConnect();
+
+    void tryConnect();
   }
 
   private applyExtensions() {
@@ -143,22 +161,34 @@ export class PrismaService
             const tenantId = TenantContext.getTenantId();
             const operationArgs = args as Record<string, unknown>;
 
-            // 1. Multi-tenancy Isolation
+            // 1. Multi-tenancy Isolation (Injeção de Tenant)
             if (tenantId && COMPANY_SCOPED_MODELS.has(model)) {
               if (['create', 'createMany'].includes(operation)) {
-                operationArgs.data = {
-                  ...((operationArgs.data as Record<string, unknown>) ?? {}),
-                  companyId: tenantId,
-                };
+                if (Array.isArray(operationArgs.data)) {
+                  operationArgs.data = operationArgs.data.map((item) => ({
+                    ...(typeof item === 'object' && item !== null ? item : {}),
+                    companyId: tenantId,
+                  }));
+                } else {
+                  operationArgs.data = {
+                    ...((operationArgs.data as Record<string, unknown>) ?? {}),
+                    companyId: tenantId,
+                  };
+                }
               } else if (
                 [
                   'findMany',
                   'findFirst',
+                  'findFirstOrThrow',
                   'findUnique',
+                  'findUniqueOrThrow',
                   'update',
                   'updateMany',
                   'delete',
                   'deleteMany',
+                  'count',
+                  'aggregate',
+                  'groupBy',
                 ].includes(operation)
               ) {
                 operationArgs.where = {
@@ -171,9 +201,16 @@ export class PrismaService
             // 2. Soft Delete Filter (Global)
             if (
               SOFT_DELETE_MODELS.has(model) &&
-              ['findMany', 'findFirst', 'findUnique', 'count'].includes(
-                operation,
-              )
+              [
+                'findMany',
+                'findFirst',
+                'findFirstOrThrow',
+                'findUnique',
+                'findUniqueOrThrow',
+                'count',
+                'aggregate',
+                'groupBy',
+              ].includes(operation)
             ) {
               const where =
                 (operationArgs.where as Record<string, unknown> | undefined) ??
@@ -193,7 +230,9 @@ export class PrismaService
             ) {
               try {
                 const action = operation === 'delete' ? 'update' : 'updateMany';
-                return await (prismaService as any)[model][action]({
+                return await (prismaService as Record<string, any>)[model][
+                  action
+                ]({
                   where: operationArgs.where,
                   data: { deletedAt: new Date() },
                 });
@@ -220,21 +259,33 @@ export class PrismaService
     TenantContext.patch({ tenantId: undefined });
   }
 
-  private registerEventListeners() {
-    (this as any).$on('query', (e: any) => {
-      if (e.duration > 500) {
-        this.logger.warn(
-          `🐌 Slow Query (${e.duration}ms): ${e.query.substring(0, 200)}...`,
-        );
-      }
-    });
+  private registerEventListeners(): void {
+    (this as unknown as { $on(event: string, cb: (e: any) => void): void }).$on(
+      'query',
+      (e: Prisma.QueryEvent) => {
+        if (e.duration > 500) {
+          this.logger.warn(
+            `🐌 Slow Query (${e.duration}ms): ${e.query.substring(0, 200)}...`,
+          );
+        }
+      },
+    );
+
+    (this as unknown as { $on(event: string, cb: (e: any) => void): void }).$on(
+      'error',
+      (e: Prisma.LogEvent) => {
+        this.logger.error(`❌ Evento de erro no Prisma: ${e.message}`);
+      },
+    );
   }
 
   async isHealthy(): Promise<boolean> {
     try {
       await this.$queryRaw`SELECT 1`;
+      this._connected = true;
       return true;
     } catch {
+      this._connected = false;
       return false;
     }
   }

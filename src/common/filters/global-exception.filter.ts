@@ -9,7 +9,10 @@ import {
 import { HttpAdapterHost } from '@nestjs/core';
 import { contextStorage } from '../context/context.storage.js';
 import { PrismaService } from '../../database/prisma.service.js';
-import { redactDeep, redactSensitiveHeaders } from '../security/redact-headers.util.js';
+import {
+  redactDeep,
+  redactSensitiveHeaders,
+} from '../security/redact-headers.util.js';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -44,7 +47,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     // 1. Log para Observabilidade
     this.logger.error(
       `[${requestId}] ${request.method} ${request.url} - Status: ${status}`,
-      exception instanceof Error ? exception.stack : JSON.stringify(redactDeep(exception)),
+      exception instanceof Error
+        ? exception.stack
+        : JSON.stringify(redactDeep(exception)),
     );
 
     // 2. Persistência no AuditLog (Correção Técnica de Tipagem)

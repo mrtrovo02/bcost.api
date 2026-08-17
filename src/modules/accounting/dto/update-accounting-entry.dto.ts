@@ -43,8 +43,19 @@ export class UpdateAccountingEntryDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['MANUAL', 'INVOICE_AUTO', 'PAYROLL_AUTO', 'BANK_IMPORT', 'TAX_PAYMENT'])
-  origin?: 'MANUAL' | 'INVOICE_AUTO' | 'PAYROLL_AUTO' | 'BANK_IMPORT' | 'TAX_PAYMENT';
+  @IsIn([
+    'MANUAL',
+    'INVOICE_AUTO',
+    'PAYROLL_AUTO',
+    'BANK_IMPORT',
+    'TAX_PAYMENT',
+  ])
+  origin?:
+    | 'MANUAL'
+    | 'INVOICE_AUTO'
+    | 'PAYROLL_AUTO'
+    | 'BANK_IMPORT'
+    | 'TAX_PAYMENT';
 
   @IsOptional()
   @IsString()

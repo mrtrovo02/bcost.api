@@ -32,10 +32,7 @@ export class BillingEntitlementsController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Req() req: any,
   ) {
-    return this.billingEntitlementsService.getEntitlements(
-      companyId,
-      req.user,
-    );
+    return this.billingEntitlementsService.getEntitlements(companyId, req.user);
   }
 
   @Get('features/:companyId/check')

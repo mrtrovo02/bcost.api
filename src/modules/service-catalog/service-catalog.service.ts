@@ -31,8 +31,12 @@ export class ServiceCatalogService {
     const plan = this.normalizePlan(input.plan);
     const selectedServices = this.selectServices(input);
     const conditions = this.buildConditions(input, plan, selectedServices);
-    const blockers = conditions.filter((item) => item.severity === 'BLOCKER').length;
-    const warnings = conditions.filter((item) => item.severity === 'WARNING').length;
+    const blockers = conditions.filter(
+      (item) => item.severity === 'BLOCKER',
+    ).length;
+    const warnings = conditions.filter(
+      (item) => item.severity === 'WARNING',
+    ).length;
     const infos = conditions.filter((item) => item.severity === 'INFO').length;
 
     return {
@@ -72,19 +76,26 @@ export class ServiceCatalogService {
     return 'UNKNOWN';
   }
 
-  private selectServices(input: ServiceEvaluationInput): EvaluatedMicroService[] {
+  private selectServices(
+    input: ServiceEvaluationInput,
+  ): EvaluatedMicroService[] {
     const serviceIdSet = new Set(input.serviceIds ?? []);
     const macroIdSet = new Set(input.macroServiceIds ?? []);
     const selectAll = serviceIdSet.size === 0 && macroIdSet.size === 0;
     const selected: EvaluatedMicroService[] = [];
 
     for (const macroService of BCOST_SERVICE_CATALOG) {
-      if (!selectAll && macroIdSet.size > 0 && !macroIdSet.has(macroService.id)) {
+      if (
+        !selectAll &&
+        macroIdSet.size > 0 &&
+        !macroIdSet.has(macroService.id)
+      ) {
         continue;
       }
 
       for (const microService of macroService.microServices) {
-        const matchesService = serviceIdSet.size === 0 || serviceIdSet.has(microService.id);
+        const matchesService =
+          serviceIdSet.size === 0 || serviceIdSet.has(microService.id);
 
         if (matchesService) {
           selected.push({
@@ -97,7 +108,9 @@ export class ServiceCatalogService {
     }
 
     if (selected.length === 0) {
-      throw new NotFoundException('Nenhum servico do catalogo corresponde aos filtros informados.');
+      throw new NotFoundException(
+        'Nenhum servico do catalogo corresponde aos filtros informados.',
+      );
     }
 
     return selected;
@@ -114,8 +127,11 @@ export class ServiceCatalogService {
     const periodStart = this.parseDate(input.periodStart);
     const contractedAt = this.parseDate(input.contractedAt);
     const referenceDate = periodStart ?? eventDate;
-    const isRetroactive =
-      Boolean(contractedAt && referenceDate && referenceDate.getTime() < contractedAt.getTime());
+    const isRetroactive = Boolean(
+      contractedAt &&
+      referenceDate &&
+      referenceDate.getTime() < contractedAt.getTime(),
+    );
 
     for (const service of services) {
       if (service.officialSources?.length || service.complianceTags?.length) {
@@ -153,7 +169,8 @@ export class ServiceCatalogService {
           code: 'ACTIVE_CUSTOMERS_ONLY',
           severity: 'BLOCKER',
           serviceId: service.id,
-          message: 'Servicos avulsos sao prestados apenas para empresas ativas na base de clientes.',
+          message:
+            'Servicos avulsos sao prestados apenas para empresas ativas na base de clientes.',
         });
       }
 

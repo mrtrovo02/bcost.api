@@ -55,7 +55,9 @@ export class ObligationsEnterpriseService {
     const model = (this.prisma as any).taxObligation;
 
     if (!model) {
-      throw new NotFoundException('Modelo Prisma taxObligation não encontrado.');
+      throw new NotFoundException(
+        'Modelo Prisma taxObligation não encontrado.',
+      );
     }
 
     return model;
@@ -212,7 +214,10 @@ export class ObligationsEnterpriseService {
       ...item,
       dueDate: dueDate.toISOString(),
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
-      amount: item.amount instanceof Prisma.Decimal ? item.amount.toNumber() : item.amount,
+      amount:
+        item.amount instanceof Prisma.Decimal
+          ? item.amount.toNumber()
+          : item.amount,
       operationalStatus,
       daysToDue,
       overdue: operationalStatus === 'OVERDUE',
@@ -577,7 +582,11 @@ export class ObligationsEnterpriseService {
     return summary;
   }
 
-  async listTax(companyId: string, query: QueryObligationsDto, user?: AuthUser) {
+  async listTax(
+    companyId: string,
+    query: QueryObligationsDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -940,7 +949,11 @@ export class ObligationsEnterpriseService {
     };
   }
 
-  async listFiscal(companyId: string, query: QueryObligationsDto, user?: AuthUser) {
+  async listFiscal(
+    companyId: string,
+    query: QueryObligationsDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -1161,14 +1174,16 @@ export class ObligationsEnterpriseService {
     const data: Record<string, unknown> = {};
 
     if (dto.type !== undefined) data.type = dto.type;
-    if (dto.referenceMonth !== undefined) data.referenceMonth = dto.referenceMonth;
+    if (dto.referenceMonth !== undefined)
+      data.referenceMonth = dto.referenceMonth;
     if (dto.referenceYear !== undefined) data.referenceYear = dto.referenceYear;
     if (dto.dueDate !== undefined) {
       data.dueDate = this.parseDate(dto.dueDate, 'dueDate');
     }
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.fileUrl !== undefined) data.fileUrl = dto.fileUrl?.trim() || null;
-    if (dto.fileHash !== undefined) data.fileHash = dto.fileHash?.trim() || null;
+    if (dto.fileHash !== undefined)
+      data.fileHash = dto.fileHash?.trim() || null;
     if (dto.submittedAt !== undefined) {
       data.submittedAt = dto.submittedAt
         ? this.parseDate(dto.submittedAt, 'submittedAt')
@@ -1242,9 +1257,9 @@ export class ObligationsEnterpriseService {
         submittedAt: dto.submittedAt
           ? this.parseDate(dto.submittedAt, 'submittedAt')
           : new Date(),
-        fileUrl: dto.fileUrl?.trim() || current.fileUrl || null,
-        fileHash: dto.fileHash?.trim() || current.fileHash || null,
-        receiptCode: dto.receiptCode?.trim() || current.receiptCode || null,
+        receiptCode: dto.receiptCode?.trim() || current.receiptCode,
+        fileUrl: dto.fileUrl?.trim() || current.fileUrl,
+        fileHash: dto.fileHash?.trim() || current.fileHash,
       },
     });
 

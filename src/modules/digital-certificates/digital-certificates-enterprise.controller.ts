@@ -35,9 +35,7 @@ import { DigitalCertificatesEnterpriseService } from './digital-certificates-ent
 @UseGuards(JwtAuthGuard)
 @Controller('digital-certificates/enterprise')
 export class DigitalCertificatesEnterpriseController {
-  constructor(
-    private readonly service: DigitalCertificatesEnterpriseService,
-  ) {}
+  constructor(private readonly service: DigitalCertificatesEnterpriseService) {}
 
   @Get(':companyId')
   list(

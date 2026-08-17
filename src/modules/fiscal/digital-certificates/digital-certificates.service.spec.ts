@@ -25,7 +25,9 @@ describe('DigitalCertificatesService', () => {
       ],
     }).compile();
 
-    service = module.get<DigitalCertificatesService>(DigitalCertificatesService);
+    service = module.get<DigitalCertificatesService>(
+      DigitalCertificatesService,
+    );
   });
 
   it('should be defined', () => {

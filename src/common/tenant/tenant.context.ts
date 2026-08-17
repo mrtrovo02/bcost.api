@@ -21,7 +21,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 // ---------------------------------------------------------------------------
-// Interface do store
+// Interface do Store
 // ---------------------------------------------------------------------------
 
 export interface TenantStore {
@@ -31,6 +31,12 @@ export interface TenantStore {
   userId?: string;
   /** Trace ID da requisição — correlação em logs e AuditLog */
   requestId?: string;
+  /** Roles / Permissões do usuário no contexto atual */
+  roles?: string[];
+  /** Indica se o usuário é Administrador Global / System Admin */
+  isSystemAdmin?: boolean;
+  /** Permite adição estendida de propriedades arbitrárias de contexto */
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,8 +50,8 @@ export interface TenantStore {
  * cadeia de execução assíncrona (Promises, async/await) sem passar por parâmetros.
  *
  * FLUXO:
- * 1. main.ts → onRequest hook cria o store via TenantContext.run()
- * 2. TenantContextGuard → atualiza tenantId e userId com dados do JWT
+ * 1. TenantMiddleware → cria o store inicial via TenantContext.run()
+ * 2. TenantContextGuard → atualiza tenantId, userId, roles via TenantContext.patch()
  * 3. PrismaService → lê tenantId via getTenantId() em cada query
  * 4. AuditLogInterceptor / GlobalExceptionFilter → lê userId e requestId para logs
  *
@@ -57,17 +63,17 @@ export class TenantContext {
   private static readonly storage = new AsyncLocalStorage<TenantStore>();
 
   /**
-   * Inicializa o contexto para uma execução.
-   * Deve ser chamado o mais cedo possível na cadeia (onRequest hook do Fastify).
-   * Todas as Promises filhas herdam automaticamente o mesmo store.
+   * Inicializa o contexto para uma execução assíncrona.
+   * Deve ser chamado o mais cedo possível na cadeia (ex: TenantMiddleware).
+   * Preserva e retorna o retorno do callback (ex: valor de retorno ou Promise).
    */
-  static run(store: TenantStore, callback: () => void): void {
-    this.storage.run(store, callback);
+  static run<T>(store: TenantStore, callback: () => T): T {
+    return this.storage.run(store, callback);
   }
 
   /**
    * Retorna o store completo da requisição corrente.
-   * undefined quando chamado fora de um contexto inicializado (ex: cron jobs).
+   * Retorna `undefined` quando chamado fora de um contexto inicializado (ex: cron jobs).
    */
   static getStore(): TenantStore | undefined {
     return this.storage.getStore();
@@ -75,7 +81,7 @@ export class TenantContext {
 
   /**
    * ID da empresa ativa — usado pelo PrismaService para isolar dados por tenant.
-   * undefined quando o usuário não tem empresa ou em rotas @Public().
+   * Retorna `undefined` quando o usuário não tem empresa ou em rotas públicas.
    */
   static getTenantId(): string | undefined {
     return this.storage.getStore()?.tenantId;
@@ -96,9 +102,22 @@ export class TenantContext {
   }
 
   /**
+   * Roles / Permissões atribuídas ao usuário autenticado.
+   */
+  static getRoles(): string[] {
+    return this.storage.getStore()?.roles ?? [];
+  }
+
+  /**
+   * Verifica se o usuário ativo é administrador global do sistema.
+   */
+  static isSystemAdmin(): boolean {
+    return Boolean(this.storage.getStore()?.isSystemAdmin);
+  }
+
+  /**
    * Retorna tenantId ou lança erro se não estiver definido.
-   * Use em métodos que EXIGEM contexto de empresa (ex: relatórios fiscais).
-   * Não use em guards ou middlewares — eles podem rodar antes do contexto ser populado.
+   * Use em métodos de serviços que EXIGEM contexto de empresa.
    */
   static requireTenantId(): string {
     const tenantId = this.getTenantId();
@@ -112,17 +131,30 @@ export class TenantContext {
   }
 
   /**
+   * Retorna userId ou lança erro se não estiver definido.
+   * Use em auditoria ou operações restritas a usuários autenticados.
+   */
+  static requireUserId(): string {
+    const userId = this.getUserId();
+    if (!userId) {
+      throw new Error(
+        '[TenantContext] userId não localizado no contexto. ' +
+          'Verifique se a rota requer autenticação JWT.',
+      );
+    }
+    return userId;
+  }
+
+  /**
    * Verifica se o contexto foi inicializado para a execução corrente.
-   * Útil para guards e interceptors que precisam ser tolerantes a rotas públicas.
    */
   static hasContext(): boolean {
     return this.storage.getStore() !== undefined;
   }
 
   /**
-   * Atualiza campos do store existente sem recriar o contexto.
-   * Seguro para usar dentro de guards que rodam após o onRequest hook.
-   * NÃO cria novo store — apenas modifica o store da execução corrente.
+   * Atualiza campos do store existente em tempo de execução sem recriar o contexto.
+   * Seguro para usar dentro de guards/interceptors após o middleware ter iniciado o store.
    */
   static patch(partial: Partial<TenantStore>): void {
     const store = this.storage.getStore();

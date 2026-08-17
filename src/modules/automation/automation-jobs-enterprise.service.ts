@@ -115,9 +115,7 @@ export class AutomationJobsEnterpriseService {
     ];
 
     if (role && !allowedRoles.includes(role)) {
-      throw new ForbiddenException(
-        'Ação não permitida para o perfil atual.',
-      );
+      throw new ForbiddenException('Ação não permitida para o perfil atual.');
     }
   }
 
@@ -334,8 +332,7 @@ export class AutomationJobsEnterpriseService {
           recorded: true,
         };
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
 
         errors.push(`[${candidate.label}] ${message}`);
       }
@@ -420,8 +417,7 @@ export class AutomationJobsEnterpriseService {
       applied: false,
       job: current,
       warning:
-        errors[0] ||
-        'Não foi possível atualizar status do AutomationJob.',
+        errors[0] || 'Não foi possível atualizar status do AutomationJob.',
     };
   }
 
@@ -590,8 +586,7 @@ export class AutomationJobsEnterpriseService {
       });
     } catch (error) {
       usedFallback = true;
-      fallbackReason =
-        error instanceof Error ? error.message : String(error);
+      fallbackReason = error instanceof Error ? error.message : String(error);
 
       this.logger.warn(
         `[AutomationJobsEnterprise] Query principal falhou: ${fallbackReason}`,
@@ -732,7 +727,10 @@ export class AutomationJobsEnterpriseService {
     };
   }
 
-  async cancel(jobId: string, user?: AuthUser): Promise<AutomationActionResult> {
+  async cancel(
+    jobId: string,
+    user?: AuthUser,
+  ): Promise<AutomationActionResult> {
     this.validateActionPermission(user);
 
     const current = await this.findJobById(jobId);

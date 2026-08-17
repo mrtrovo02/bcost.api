@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
 import { TenantContext } from '../tenant/tenant.context.js';
 

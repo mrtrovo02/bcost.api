@@ -63,7 +63,6 @@ export class FinanceOperationsEnterpriseService {
 
   private readonly SUMMARY_CACHE_TTL_MS = 30_000;
 
-
   constructor(private readonly prisma: PrismaService) {}
 
   private buildSummaryCacheKey(
@@ -211,7 +210,11 @@ export class FinanceOperationsEnterpriseService {
     return Math.floor((b.getTime() - a.getTime()) / dayMs);
   }
 
-  private classifyStatus(rawStatus: unknown, dueDate: unknown, paidSignals: unknown[] = []): FinanceStatus {
+  private classifyStatus(
+    rawStatus: unknown,
+    dueDate: unknown,
+    paidSignals: unknown[] = [],
+  ): FinanceStatus {
     const status = String(rawStatus || '').toUpperCase();
     const due = this.toDate(dueDate);
     const today = this.nowStart();
@@ -269,7 +272,11 @@ export class FinanceOperationsEnterpriseService {
     return due ? 'OPEN' : 'UNKNOWN';
   }
 
-  private riskLevel(status: FinanceStatus, amount: number, daysOverdue: number) {
+  private riskLevel(
+    status: FinanceStatus,
+    amount: number,
+    daysOverdue: number,
+  ) {
     if (status === 'OVERDUE' && daysOverdue >= 30) return 'CRITICAL';
     if (status === 'OVERDUE') return amount >= 10000 ? 'CRITICAL' : 'HIGH';
     if (status === 'DUE_SOON') return amount >= 10000 ? 'HIGH' : 'MEDIUM';
@@ -278,7 +285,10 @@ export class FinanceOperationsEnterpriseService {
     return 'LOW';
   }
 
-  private applyDateFilter<T extends FinanceItem>(items: T[], query: FinanceOperationsQueryDto): T[] {
+  private applyDateFilter<T extends FinanceItem>(
+    items: T[],
+    query: FinanceOperationsQueryDto,
+  ): T[] {
     const from = this.toDate(query.from);
     const to = this.toDate(query.to);
 
@@ -293,7 +303,10 @@ export class FinanceOperationsEnterpriseService {
     });
   }
 
-  private applyStatusFilter<T extends FinanceItem>(items: T[], query: FinanceOperationsQueryDto): T[] {
+  private applyStatusFilter<T extends FinanceItem>(
+    items: T[],
+    query: FinanceOperationsQueryDto,
+  ): T[] {
     if (!query.status) return items;
 
     const wanted = query.status.toUpperCase();
@@ -367,7 +380,9 @@ export class FinanceOperationsEnterpriseService {
   }
 
   private invoiceToReceivable(invoice: any, includeRaw: boolean): FinanceItem {
-    const amount = this.toNumber(invoice.amount ?? invoice.totalAmount ?? invoice.value);
+    const amount = this.toNumber(
+      invoice.amount ?? invoice.totalAmount ?? invoice.value,
+    );
     const dueDate =
       invoice.dueDate ??
       invoice.paymentDueDate ??
@@ -375,17 +390,22 @@ export class FinanceOperationsEnterpriseService {
       invoice.createdAt ??
       null;
 
-    const status = this.classifyStatus(invoice.status ?? invoice.nfeStatus, dueDate, [
-      invoice.paid,
-      invoice.received,
-      invoice.reconciled,
-      invoice.bankTransactionId ? 'RECEIVED' : null,
-    ]);
+    const status = this.classifyStatus(
+      invoice.status ?? invoice.nfeStatus,
+      dueDate,
+      [
+        invoice.paid,
+        invoice.received,
+        invoice.reconciled,
+        invoice.bankTransactionId ? 'RECEIVED' : null,
+      ],
+    );
 
     const due = this.toDate(dueDate);
     const today = this.nowStart();
     const daysToDue = due ? this.daysBetween(today, due) : null;
-    const daysOverdue = due && due < today ? Math.abs(this.daysBetween(today, due)) : 0;
+    const daysOverdue =
+      due && due < today ? Math.abs(this.daysBetween(today, due)) : 0;
 
     return {
       id: String(invoice.id),
@@ -406,8 +426,13 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  private taxObligationToPayable(obligation: any, includeRaw: boolean): FinanceItem {
-    const amount = this.toNumber(obligation.amount ?? obligation.value ?? obligation.total);
+  private taxObligationToPayable(
+    obligation: any,
+    includeRaw: boolean,
+  ): FinanceItem {
+    const amount = this.toNumber(
+      obligation.amount ?? obligation.value ?? obligation.total,
+    );
     const dueDate = obligation.dueDate ?? obligation.createdAt ?? null;
 
     const status = this.classifyStatus(obligation.status, dueDate, [
@@ -418,13 +443,17 @@ export class FinanceOperationsEnterpriseService {
     const due = this.toDate(dueDate);
     const today = this.nowStart();
     const daysToDue = due ? this.daysBetween(today, due) : null;
-    const daysOverdue = due && due < today ? Math.abs(this.daysBetween(today, due)) : 0;
+    const daysOverdue =
+      due && due < today ? Math.abs(this.daysBetween(today, due)) : 0;
 
     return {
       id: String(obligation.id),
       type: 'PAYABLE',
       source: 'tax-obligation',
-      title: obligation.name || obligation.description || `Obrigação tributária ${obligation.id}`,
+      title:
+        obligation.name ||
+        obligation.description ||
+        `Obrigação tributária ${obligation.id}`,
       description: obligation.type || obligation.period || null,
       amount,
       status,
@@ -437,7 +466,10 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  private fiscalObligationToPayable(obligation: any, includeRaw: boolean): FinanceItem {
+  private fiscalObligationToPayable(
+    obligation: any,
+    includeRaw: boolean,
+  ): FinanceItem {
     const amount = this.toNumber(
       obligation.amount ??
         obligation.value ??
@@ -456,7 +488,8 @@ export class FinanceOperationsEnterpriseService {
     const due = this.toDate(dueDate);
     const today = this.nowStart();
     const daysToDue = due ? this.daysBetween(today, due) : null;
-    const daysOverdue = due && due < today ? Math.abs(this.daysBetween(today, due)) : 0;
+    const daysOverdue =
+      due && due < today ? Math.abs(this.daysBetween(today, due)) : 0;
 
     return {
       id: String(obligation.id),
@@ -479,7 +512,10 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  private bankTransactionToCashItem(transaction: any, includeRaw: boolean): FinanceItem {
+  private bankTransactionToCashItem(
+    transaction: any,
+    includeRaw: boolean,
+  ): FinanceItem {
     const amount = this.toNumber(transaction.amount ?? transaction.value);
     const typeText = String(transaction.type || '').toUpperCase();
     const type: FinanceItemType =
@@ -502,7 +538,8 @@ export class FinanceOperationsEnterpriseService {
         transaction.memo ||
         transaction.reference ||
         `Transação bancária ${transaction.id}`,
-      description: transaction.bankAccount?.name || transaction.bankAccountId || null,
+      description:
+        transaction.bankAccount?.name || transaction.bankAccountId || null,
       amount: Math.abs(amount),
       status: transaction.reconciled ? 'PAID' : 'OPEN',
       dueDate: null,
@@ -515,21 +552,37 @@ export class FinanceOperationsEnterpriseService {
   }
 
   private summarizeItems(items: FinanceItem[]) {
-    const totalAmount = items.reduce((sum, item) => sum + Math.abs(item.amount), 0);
+    const totalAmount = items.reduce(
+      (sum, item) => sum + Math.abs(item.amount),
+      0,
+    );
     const overdue = items.filter((item) => item.status === 'OVERDUE');
     const dueSoon = items.filter((item) => item.status === 'DUE_SOON');
     const open = items.filter((item) =>
-      ['OPEN', 'PENDING', 'OVERDUE', 'DUE_SOON', 'UNKNOWN'].includes(item.status),
+      ['OPEN', 'PENDING', 'OVERDUE', 'DUE_SOON', 'UNKNOWN'].includes(
+        item.status,
+      ),
     );
-    const settled = items.filter((item) => ['PAID', 'RECEIVED'].includes(item.status));
+    const settled = items.filter((item) =>
+      ['PAID', 'RECEIVED'].includes(item.status),
+    );
 
     return {
       count: items.length,
       totalAmount,
       openAmount: open.reduce((sum, item) => sum + Math.abs(item.amount), 0),
-      overdueAmount: overdue.reduce((sum, item) => sum + Math.abs(item.amount), 0),
-      dueSoonAmount: dueSoon.reduce((sum, item) => sum + Math.abs(item.amount), 0),
-      settledAmount: settled.reduce((sum, item) => sum + Math.abs(item.amount), 0),
+      overdueAmount: overdue.reduce(
+        (sum, item) => sum + Math.abs(item.amount),
+        0,
+      ),
+      dueSoonAmount: dueSoon.reduce(
+        (sum, item) => sum + Math.abs(item.amount),
+        0,
+      ),
+      settledAmount: settled.reduce(
+        (sum, item) => sum + Math.abs(item.amount),
+        0,
+      ),
       overdueCount: overdue.length,
       dueSoonCount: dueSoon.length,
       openCount: open.length,
@@ -580,7 +633,11 @@ export class FinanceOperationsEnterpriseService {
     return buckets;
   }
 
-  private cashflowProjection(receivables: FinanceItem[], payables: FinanceItem[], cashItems: FinanceItem[]) {
+  private cashflowProjection(
+    receivables: FinanceItem[],
+    payables: FinanceItem[],
+    cashItems: FinanceItem[],
+  ) {
     const cashIn = cashItems
       .filter((item) => item.type === 'CASH_IN')
       .reduce((sum, item) => sum + item.amount, 0);
@@ -618,7 +675,10 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  private async loadFinanceDataset(companyId: string, query: FinanceOperationsQueryDto) {
+  private async loadFinanceDataset(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+  ) {
     const limit = this.limit(query);
     const includeRaw = query.includeRaw === 'true';
 
@@ -649,7 +709,9 @@ export class FinanceOperationsEnterpriseService {
     const receivables = this.sortItems(
       this.applyStatusFilter(
         this.applyDateFilter(
-          invoices.map((invoice: any) => this.invoiceToReceivable(invoice, includeRaw)),
+          invoices.map((invoice: any) =>
+            this.invoiceToReceivable(invoice, includeRaw),
+          ),
           query,
         ),
         query,
@@ -707,7 +769,11 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  async summary(companyId: string, query: FinanceOperationsQueryDto, user?: AuthUser) {
+  async summary(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const cacheKey = this.buildSummaryCacheKey(companyId, query);
@@ -810,7 +876,11 @@ export class FinanceOperationsEnterpriseService {
     return response;
   }
 
-  async receivables(companyId: string, query: FinanceOperationsQueryDto, user?: AuthUser) {
+  async receivables(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     await this.ensureCompany(companyId);
 
@@ -827,7 +897,11 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  async payables(companyId: string, query: FinanceOperationsQueryDto, user?: AuthUser) {
+  async payables(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     await this.ensureCompany(companyId);
 
@@ -844,7 +918,11 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  async cashflow(companyId: string, query: FinanceOperationsQueryDto, user?: AuthUser) {
+  async cashflow(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     await this.ensureCompany(companyId);
 
@@ -865,7 +943,11 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  async aging(companyId: string, query: FinanceOperationsQueryDto, user?: AuthUser) {
+  async aging(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     await this.ensureCompany(companyId);
 
@@ -883,7 +965,11 @@ export class FinanceOperationsEnterpriseService {
     };
   }
 
-  async timeline(companyId: string, query: FinanceOperationsQueryDto, user?: AuthUser) {
+  async timeline(
+    companyId: string,
+    query: FinanceOperationsQueryDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     await this.ensureCompany(companyId);
 

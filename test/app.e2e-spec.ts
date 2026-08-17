@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/database/prisma.service.js';
 import { getQueueToken } from '@nestjs/bullmq';
@@ -11,12 +14,12 @@ describe('bCost Engine - Relatório de Evidências Oficiais', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-    .overrideProvider(getQueueToken('default'))
-    .useValue({ add: jest.fn(), process: jest.fn() })
-    .compile();
+      .overrideProvider(getQueueToken('default'))
+      .useValue({ add: jest.fn(), process: jest.fn() })
+      .compile();
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter()
+      new FastifyAdapter(),
     );
 
     await app.init();
@@ -31,7 +34,7 @@ describe('bCost Engine - Relatório de Evidências Oficiais', () => {
   it('EVIDÊNCIA-02: Integridade da Camada de Persistência (Prisma)', async () => {
     const prisma = app.get(PrismaService);
     expect(prisma).toBeDefined();
-    
+
     // Teste de pulso no banco de dados
     const check = await prisma.$queryRaw`SELECT 1`.catch(() => 'OFFLINE');
     expect(check).not.toBe('OFFLINE');
