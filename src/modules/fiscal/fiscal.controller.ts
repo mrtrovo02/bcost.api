@@ -17,9 +17,11 @@ import {
   HttpStatus,
   Logger,
   Body,
+  Res,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -351,6 +353,31 @@ export class FiscalController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ) {
     return await this.fiscalService.getCompanyInvoices(companyId);
+  }
+
+  @Get('export/:companyId')
+  @ApiOperation({
+    summary:
+      'INTEGRAÇÃO: Exportação fiscal CSV compatível para conciliação com ERPs contábeis',
+  })
+  async exportFiscalData(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Query('format') format = 'DOMINIO',
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.fiscalService.exportCompanyInvoices(
+      companyId,
+      format,
+    );
+
+    response.setHeader('Content-Type', file.mimeType);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
+    response.setHeader('X-bCost-Export-Records', String(file.records));
+
+    return file.content;
   }
 
   @Delete('invoices/:id')
