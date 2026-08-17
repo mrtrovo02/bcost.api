@@ -4,11 +4,16 @@ import {
   NotFoundException,
   Logger,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js'; // Você precisará criar este DTO
-import { CompanyRole } from '@prisma/client';
+import { CompanyRole, TaxRegime } from '@prisma/client';
+import {
+  isValidCnpj,
+  normalizeCnpj,
+} from '../../common/validators/cnpj.util.js';
 
 @Injectable()
 export class CompanyService {
@@ -20,16 +25,26 @@ export class CompanyService {
    * Registra uma nova empresa validando a duplicidade de CNPJ e incluindo dados fiscais.
    */
   async create(dto: CreateCompanyDto, userId: string) {
+    const normalizedCnpj = normalizeCnpj(dto.cnpj);
+
+    if (!isValidCnpj(normalizedCnpj)) {
+      throw new BadRequestException(
+        'Informe um CNPJ válido para cadastrar a empresa.',
+      );
+    }
+
     this.logger.log(
-      `Iniciando cadastro da empresa: ${dto.name} - CNPJ: ${dto.cnpj}`,
+      `Iniciando cadastro da empresa: ${dto.name} - CNPJ: ${normalizedCnpj}`,
     );
 
     const exists = await this.prisma.company.findUnique({
-      where: { cnpj: dto.cnpj },
+      where: { cnpj: normalizedCnpj },
     });
 
     if (exists) {
-      this.logger.warn(`Tentativa de cadastro com CNPJ duplicado: ${dto.cnpj}`);
+      this.logger.warn(
+        `Tentativa de cadastro com CNPJ duplicado: ${normalizedCnpj}`,
+      );
       throw new ConflictException(
         'Uma empresa com este CNPJ já está cadastrada no sistema.',
       );
@@ -40,8 +55,8 @@ export class CompanyService {
         const company = await tx.company.create({
           data: {
             name: dto.name,
-            cnpj: dto.cnpj,
-            taxRegime: dto.taxRegime,
+            cnpj: normalizedCnpj,
+            taxRegime: dto.taxRegime ?? TaxRegime.SIMPLES_NACIONAL,
             // Agora suportando os novos campos do Prisma que sincronizamos
             cnae: dto.cnae ?? null,
             anexo: dto.anexo ?? 3,
