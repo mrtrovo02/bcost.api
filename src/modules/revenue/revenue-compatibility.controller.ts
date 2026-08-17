@@ -38,6 +38,7 @@ export interface TaxDataResponse {
   ibsRate: number;
   transitionalTaxActive: boolean;
   effectiveDate: string;
+  collectionDispensedIn2026: boolean;
 }
 
 export class TaxDataQueryDto {
@@ -91,7 +92,8 @@ export class RevenueCompatibilityController {
       cbsRate: 0.009,
       ibsRate: 0.001,
       transitionalTaxActive: true,
-      effectiveDate: '2026-08-01',
+      effectiveDate: '2026-01-01',
+      collectionDispensedIn2026: true,
     };
   }
 }

@@ -48,7 +48,7 @@ export class FiscalSimulationService {
     const cbsValue = monthlyRevenue.mul(cbsRate).toDecimalPlaces(2);
     const ibsValue = monthlyRevenue.mul(ibsRate).toDecimalPlaces(2);
     const totalTransitionalTax = cbsValue.plus(ibsValue);
-    const netRevenue = monthlyRevenue.minus(totalTransitionalTax);
+    const netRevenue = monthlyRevenue;
 
     return {
       monthlyRevenue,

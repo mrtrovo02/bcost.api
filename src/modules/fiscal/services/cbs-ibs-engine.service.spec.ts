@@ -7,16 +7,17 @@ describe('CbsIbsEngineService', () => {
     service = new CbsIbsEngineService();
   });
 
-  it('calcula CBS, IBS e estimativa de split payment para a fase de teste', () => {
+  it('calcula destaque CBS/IBS sem reduzir caixa na fase informativa de 2026', () => {
     expect(service.calculateTransitionalTax(100000)).toEqual({
       revenue: 100000,
       cbsValue: 900,
       ibsValue: 100,
       totalTransitionalTax: 1000,
-      netRevenue: 99000,
+      collectionDispensedIn2026: true,
+      netRevenue: 100000,
       splitPaymentEstimate: {
-        retentionAtSource: 1000,
-        effectiveNetCashflow: 99000,
+        retentionAtSource: 0,
+        effectiveNetCashflow: 100000,
       },
     });
   });

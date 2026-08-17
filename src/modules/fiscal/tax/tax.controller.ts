@@ -430,9 +430,9 @@ export class TaxController {
   @Post('simulate-cbs-ibs')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Simula CBS/IBS e retenção por Split Payment',
+    summary: 'Simula destaque informativo de CBS/IBS em 2026',
     description:
-      'Calcula os destaques gerenciais de CBS 0,9% e IBS 0,1% para a fase de teste da Reforma Tributária, incluindo estimativa de caixa líquido se houver retenção no pagamento.',
+      'Calcula os destaques gerenciais de CBS 0,9% e IBS 0,1% para a fase de teste da Reforma Tributária. Em 2026, o recolhimento é dispensado para quem cumprir as obrigações acessórias; não trate o resultado como retenção efetiva de caixa.',
   })
   @ApiBody({ type: SimulationDto })
   @ApiResponse({

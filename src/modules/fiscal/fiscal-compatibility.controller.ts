@@ -29,7 +29,8 @@ export class FiscalCompatibilityController {
       cbsRate: 0.009, // 0,9% CBS (Transição 2026)
       ibsRate: 0.001, // 0,1% IBS (Transição 2026)
       transitionalTaxActive: true,
-      effectiveDate: '2026-08-01',
+      effectiveDate: '2026-01-01',
+      collectionDispensedIn2026: true,
       taxSimulation: simulation,
     };
   }
