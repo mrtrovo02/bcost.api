@@ -46,12 +46,29 @@ describe('PrismaService', () => {
     it('deve alterar o status de conexão no encerramento (onModuleDestroy)', async () => {
       jest.spyOn(service, '$disconnect').mockResolvedValueOnce();
       // @ts-expect-error Acesso a propriedade privada pool para mock no teste
-      jest.spyOn(service.pool, 'end').mockResolvedValueOnce();
+      const poolEndSpy = jest
+        .spyOn(service.pool, 'end')
+        .mockResolvedValueOnce();
 
       await service.onModuleDestroy();
 
       expect(service.isConnected).toBe(false);
       expect(service.$disconnect).toHaveBeenCalled();
+      expect(poolEndSpy).toHaveBeenCalled();
+    });
+
+    it('deve executar o encerramento do pool apenas uma vez em hooks duplicados', async () => {
+      const disconnectSpy = jest
+        .spyOn(service, '$disconnect')
+        .mockResolvedValue();
+      // @ts-expect-error Acesso a propriedade privada pool para mock no teste
+      const poolEndSpy = jest.spyOn(service.pool, 'end').mockResolvedValue();
+
+      await service.onModuleDestroy();
+      await service.onModuleDestroy();
+
+      expect(disconnectSpy).toHaveBeenCalledTimes(1);
+      expect(poolEndSpy).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -68,6 +68,7 @@ export class PrismaService
   private readonly logger = new Logger(PrismaService.name);
   private readonly pool: pg.Pool;
   private _connected = false;
+  private disconnectPromise: Promise<void> | null = null;
 
   // Tipagem dinâmica: mantém o IntelliSense das extensões do Prisma Client
   public readonly extended = this.applyExtensions();
@@ -109,6 +110,15 @@ export class PrismaService
   }
 
   async onModuleDestroy(): Promise<void> {
+    if (this.disconnectPromise) {
+      return this.disconnectPromise;
+    }
+
+    this.disconnectPromise = this.disconnectOnce();
+    return this.disconnectPromise;
+  }
+
+  private async disconnectOnce(): Promise<void> {
     this.logger.log('🔌 Desconectando Prisma e encerrando Pool PostgreSQL...');
     this._connected = false;
 
@@ -126,8 +136,18 @@ export class PrismaService
     const maxAttempts = 5;
 
     const tryConnect = async (attempt = 1): Promise<void> => {
+      if (this.disconnectPromise) {
+        return;
+      }
+
       try {
         await this.$connect();
+
+        if (this.disconnectPromise) {
+          await this.$disconnect();
+          return;
+        }
+
         this._connected = true;
         this.logger.log('✅ Banco de dados conectado via Adapter-PG.');
       } catch (err) {
