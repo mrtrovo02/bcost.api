@@ -15,6 +15,7 @@ import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
  * Aceita como fonte legítima de comparação:
  * - user.companyId (empresa ativa carregada no JWT)
  * - user.activeCompanyId (alias usado por alguns fluxos de sessão)
+ * - user.companyIds (todos os tenants ativos vinculados ao usuário)
  *
  * NOTA DE SEGURANÇA: este guard NÃO possui bypass por "role administrativa
  * global" (ex.: ADMIN_MASTER, SUPER_ADMIN). O enum CompanyRole do schema
@@ -37,6 +38,8 @@ export class CompanyAccessGuard implements CanActivate {
           id?: string;
           companyId?: string | null;
           activeCompanyId?: string | null;
+          companyIds?: string[] | null;
+          rolesByCompany?: Record<string, string> | null;
           role?: string | null;
         }
       | undefined;
@@ -63,17 +66,27 @@ export class CompanyAccessGuard implements CanActivate {
     // Se a requisição não referencia nenhuma empresa, não há o que validar.
     if (!paramCompanyId) return true;
 
-    const allowedCompanyIds = [user.companyId, user.activeCompanyId].filter(
-      Boolean,
+    const allowedCompanyIds = new Set(
+      [user.companyId, user.activeCompanyId, ...(user.companyIds ?? [])].filter(
+        Boolean,
+      ),
     );
 
-    if (!allowedCompanyIds.includes(paramCompanyId)) {
+    if (!allowedCompanyIds.has(paramCompanyId)) {
       throw new ForbiddenException(
-        'Acesso negado: companyId não corresponde à empresa ativa do usuário.',
+        'Acesso negado: companyId não pertence às empresas vinculadas ao usuário.',
       );
     }
 
     request.companyId = paramCompanyId;
+    user.companyId = paramCompanyId;
+    user.activeCompanyId = paramCompanyId;
+
+    const requestRole = user.rolesByCompany?.[paramCompanyId];
+    if (requestRole) {
+      user.role = requestRole;
+    }
+
     return true;
   }
 }

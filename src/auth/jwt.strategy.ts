@@ -51,6 +51,16 @@ export interface AuthenticatedUser {
    */
   companyId: string | null;
   /**
+   * Todas as empresas ativas vinculadas ao usuário.
+   * Usado por guards multi-tenant para permitir troca segura de contexto.
+   */
+  companyIds: string[];
+  /**
+   * Papel do usuário por empresa vinculada.
+   * Permite que o request assuma a role correta ao acessar outro tenant válido.
+   */
+  rolesByCompany: Record<string, string>;
+  /**
    * Role do usuário na empresa ativa.
    * Usado pelo RolesGuard para RBAC.
    */
@@ -131,7 +141,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
             role: true,
           },
           // Filtra empresas com soft delete aplicado
-          where: { deletedAt: null },
+          where: {
+            deletedAt: null,
+            company: {
+              active: true,
+              deletedAt: null,
+            },
+          },
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -159,6 +175,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     //    d) null (sem empresa vinculada)
     let companyId: string | null = null;
     let role: string | null = null;
+    const companyIds = user.companies.map((company) => company.companyId);
+    const rolesByCompany = Object.fromEntries(
+      user.companies.map((company) => [company.companyId, company.role]),
+    );
 
     if (payload.companyId) {
       // Valida se o companyId do token ainda é válido (empresa não removida/deletada)
@@ -188,6 +208,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       id: user.id,
       email: user.email,
       companyId,
+      companyIds,
+      rolesByCompany,
       role,
     };
   }
