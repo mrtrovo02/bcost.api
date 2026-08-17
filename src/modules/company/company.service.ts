@@ -9,7 +9,7 @@ import {
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js'; // Você precisará criar este DTO
-import { CompanyRole, TaxRegime } from '@prisma/client';
+import { CompanyRole, Prisma, TaxRegime } from '@prisma/client';
 import {
   isValidCnpj,
   normalizeCnpj,
@@ -20,6 +20,32 @@ export class CompanyService {
   private readonly logger = new Logger(CompanyService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private companyAuditPayload(
+    company: {
+      id: string;
+      name: string;
+      cnpj: string;
+      taxRegime: TaxRegime;
+      cnae?: string | null;
+      anexo?: number | null;
+      active?: boolean;
+    },
+    extra: Record<string, unknown> = {},
+  ): Prisma.InputJsonObject {
+    return {
+      company: {
+        id: company.id,
+        name: company.name,
+        cnpj: company.cnpj,
+        taxRegime: company.taxRegime,
+        cnae: company.cnae ?? null,
+        anexo: company.anexo ?? null,
+        active: company.active ?? true,
+      },
+      ...extra,
+    };
+  }
 
   private async assertCanManageCompany(companyId: string, userId: string) {
     const membership = await this.prisma.companyUser.findFirst({
@@ -88,6 +114,21 @@ export class CompanyService {
           },
         });
 
+        await tx.auditLog.create({
+          data: {
+            userId,
+            companyId: company.id,
+            action: 'COMPANY_CREATED',
+            module: 'COMPANY',
+            entity: 'Company',
+            entityId: company.id,
+            payload: this.companyAuditPayload(company, {
+              assignedRole: CompanyRole.OWNER,
+            }),
+            statusCode: 201,
+          },
+        });
+
         return company;
       });
     } catch (error) {
@@ -143,14 +184,35 @@ export class CompanyService {
    * Essencial para o ajuste do motor de cálculo (TaxService).
    */
   async update(id: string, dto: UpdateCompanyDto, userId: string) {
-    await this.findOne(id, userId); // Valida se existe e pertence ao usuário
+    const current = await this.findOne(id, userId); // Valida se existe e pertence ao usuário
     await this.assertCanManageCompany(id, userId);
 
     try {
       this.logger.log(`Atualizando dados fiscais da empresa ID: ${id}`);
-      return await this.prisma.company.update({
-        where: { id },
-        data: dto,
+      return await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.company.update({
+          where: { id },
+          data: dto,
+        });
+
+        await tx.auditLog.create({
+          data: {
+            userId,
+            companyId: id,
+            action: 'COMPANY_UPDATED',
+            module: 'COMPANY',
+            entity: 'Company',
+            entityId: id,
+            payload: {
+              before: this.companyAuditPayload(current),
+              after: this.companyAuditPayload(updated),
+              changedFields: Object.keys(dto),
+            },
+            statusCode: 200,
+          },
+        });
+
+        return updated;
       });
     } catch (error) {
       this.logger.error(`Erro ao atualizar empresa ${id}`, error);
@@ -171,9 +233,29 @@ export class CompanyService {
 
     this.logger.log(`Desativando empresa ID: ${id} (${company.name})`);
 
-    return this.prisma.company.update({
-      where: { id },
-      data: { active: false, deletedAt: new Date() },
+    return this.prisma.$transaction(async (tx) => {
+      const deletedAt = new Date();
+      const updated = await tx.company.update({
+        where: { id },
+        data: { active: false, deletedAt },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId,
+          companyId: id,
+          action: 'COMPANY_DEACTIVATED',
+          module: 'COMPANY',
+          entity: 'Company',
+          entityId: id,
+          payload: this.companyAuditPayload(company, {
+            deletedAt: deletedAt.toISOString(),
+          }),
+          statusCode: 200,
+        },
+      });
+
+      return updated;
     });
   }
 }
