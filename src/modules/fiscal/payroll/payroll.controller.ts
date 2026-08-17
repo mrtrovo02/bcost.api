@@ -25,6 +25,7 @@ import {
 } from '@nestjs/swagger';
 import { PayrollService } from './payroll.service.js';
 import { CreatePayrollDto } from './dto/create-payroll.dto.js';
+import { SyncPayrollDto } from './dto/sync-payroll.dto.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
 
 @ApiTags('Fiscal - Gestão de Folha & Fator R')
@@ -65,6 +66,30 @@ export class PayrollController {
     @Body() data: CreatePayrollDto,
   ) {
     return await this.payrollService.createPayrollRecord(companyId, data);
+  }
+
+  @Post('sync/:companyId')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @ApiOperation({
+    summary: 'Sincronizar folha a partir de ERP externo',
+    description:
+      'Recebe uma competência de folha de sistema externo e faz upsert idempotente para alimentar Fator R e análises fiscais.',
+  })
+  @ApiParam({
+    name: 'companyId',
+    description: 'UUID da empresa no bCost',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Folha externa sincronizada com sucesso.',
+  })
+  async syncExternal(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Body() data: SyncPayrollDto,
+  ) {
+    return await this.payrollService.syncExternalPayrollRecord(companyId, data);
   }
 
   /**
