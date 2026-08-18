@@ -24,9 +24,13 @@ describe('TaxCalculationService', () => {
           _sum: { totalAmount: new Prisma.Decimal(40000) },
         }),
       },
+      taxObligation: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       auditLog: {
         create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
       },
+      $transaction: jest.fn(),
     };
 
     return {
@@ -70,5 +74,20 @@ describe('TaxCalculationService', () => {
     expect(preview.evidenceRequired).toEqual(
       expect.arrayContaining(['Recibo PGDAS-D e guia DAS após fechamento']),
     );
+  });
+
+  it('impede geração da obrigação quando o fechamento oficial não atende gates', async () => {
+    const { service, prisma } = buildService();
+
+    await expect(
+      service.closeMonthAndGenerateObligation('company-1', 7, 2026, 'user-1', {
+        hasRevenueReconciliation: true,
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        status: 'BLOCKED',
+      }),
+    });
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

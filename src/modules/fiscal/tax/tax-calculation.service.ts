@@ -251,6 +251,7 @@ export class TaxCalculationService {
     month: number,
     year: number,
     userId: string,
+    options: MonthlyTaxPreviewOptions = {},
   ) {
     const period = `${year}-${String(month).padStart(2, '0')}`;
     const obligationName = `Guia DAS - Simples Nacional - ${period}`;
@@ -265,12 +266,25 @@ export class TaxCalculationService {
       );
     }
 
-    const calc = await this.calculateSimplesNacional(
+    const preview = await this.previewMonthlyClosure(
       companyId,
       month,
       year,
       userId,
+      options,
     );
+
+    if (!preview.canClose) {
+      throw new BadRequestException({
+        message:
+          'Fechamento oficial bloqueado: resolva os gates de produção antes de gerar a obrigação.',
+        status: preview.status,
+        gates: preview.gates,
+        nextActions: preview.nextActions,
+      });
+    }
+
+    const calc = preview.calculation;
     const dueDate = new Date(year, month, 20); // Vencimento padrão: dia 20
 
     return this.prisma.$transaction(async (tx) => {

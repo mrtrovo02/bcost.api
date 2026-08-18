@@ -475,6 +475,10 @@ export class FiscalController {
     @GetUser('id') userId: string,
     @Body('month') month: unknown,
     @Body('year') year: unknown,
+    @Body('hasDigitalCertificate') hasDigitalCertificate?: unknown,
+    @Body('hasCrcReview') hasCrcReview?: unknown,
+    @Body('hasOfficialPortalAccess') hasOfficialPortalAccess?: unknown,
+    @Body('hasRevenueReconciliation') hasRevenueReconciliation?: unknown,
   ) {
     const targetMonth = parseOptionalPositiveInt(month, 0, 'month');
     const targetYear = parseOptionalPositiveInt(year, 0, 'year');
@@ -484,6 +488,12 @@ export class FiscalController {
       targetMonth,
       targetYear,
       userId,
+      {
+        hasDigitalCertificate: this.parseBooleanLike(hasDigitalCertificate),
+        hasCrcReview: this.parseBooleanLike(hasCrcReview),
+        hasOfficialPortalAccess: this.parseBooleanLike(hasOfficialPortalAccess),
+        hasRevenueReconciliation: this.parseBooleanLike(hasRevenueReconciliation),
+      },
     );
 
     const snapshot = await this.fiscalService.generateFinancialSnapshot(
@@ -503,6 +513,13 @@ export class FiscalController {
   private parseBooleanQuery(value?: string): boolean | undefined {
     if (value === undefined) return undefined;
     return ['1', 'true', 'yes', 'sim'].includes(value.toLowerCase());
+  }
+
+  private parseBooleanLike(value: unknown): boolean | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return this.parseBooleanQuery(value);
+    return undefined;
   }
 
   // ---------------------------------------------------------------------------
