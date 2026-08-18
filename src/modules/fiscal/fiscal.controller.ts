@@ -430,6 +430,41 @@ export class FiscalController {
     );
   }
 
+  @Get('tax/monthly-preview/:companyId')
+  @ApiOperation({
+    summary: 'CORE: Prévia produtiva da apuração mensal antes do fechamento',
+  })
+  async previewMonthlyTaxClosure(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @GetUser('id') userId: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+    @Query('hasDigitalCertificate') hasDigitalCertificate?: string,
+    @Query('hasCrcReview') hasCrcReview?: string,
+    @Query('hasOfficialPortalAccess') hasOfficialPortalAccess?: string,
+    @Query('hasRevenueReconciliation') hasRevenueReconciliation?: string,
+  ) {
+    const targetMonth = parseOptionalPositiveInt(
+      month,
+      currentMonth(),
+      'month',
+    );
+    const targetYear = parseOptionalPositiveInt(year, currentYear(), 'year');
+
+    return await this.taxService.previewMonthlyClosure(
+      companyId,
+      targetMonth,
+      targetYear,
+      userId,
+      {
+        hasDigitalCertificate: this.parseBooleanQuery(hasDigitalCertificate),
+        hasCrcReview: this.parseBooleanQuery(hasCrcReview),
+        hasOfficialPortalAccess: this.parseBooleanQuery(hasOfficialPortalAccess),
+        hasRevenueReconciliation: this.parseBooleanQuery(hasRevenueReconciliation),
+      },
+    );
+  }
+
   @Post('tax/close-month/:companyId')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -463,6 +498,11 @@ export class FiscalController {
       snapshotId: snapshot.id,
       integrityHash: snapshot.integrityHash,
     };
+  }
+
+  private parseBooleanQuery(value?: string): boolean | undefined {
+    if (value === undefined) return undefined;
+    return ['1', 'true', 'yes', 'sim'].includes(value.toLowerCase());
   }
 
   // ---------------------------------------------------------------------------

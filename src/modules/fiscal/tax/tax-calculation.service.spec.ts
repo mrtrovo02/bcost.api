@@ -1,0 +1,74 @@
+'use strict';
+
+import { Prisma, TaxRegime } from '@prisma/client';
+import { TaxCalculationService } from './tax-calculation.service.js';
+
+describe('TaxCalculationService', () => {
+  const buildService = () => {
+    const prisma = {
+      company: {
+        findUnique: jest.fn().mockResolvedValue({
+          taxRegime: TaxRegime.SIMPLES_NACIONAL,
+          anexo: 5,
+          name: 'Empresa Teste',
+        }),
+      },
+      invoice: {
+        aggregate: jest
+          .fn()
+          .mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(120000) } })
+          .mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(10000) } }),
+      },
+      payroll: {
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { totalAmount: new Prisma.Decimal(40000) },
+        }),
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
+      },
+    };
+
+    return {
+      service: new TaxCalculationService(prisma as never),
+      prisma,
+    };
+  };
+
+  it('bloqueia fechamento oficial quando faltam certificado, portal e revisão CRC', async () => {
+    const { service } = buildService();
+
+    const preview = await service.previewMonthlyClosure('company-1', 7, 2026, 'user-1', {
+      hasRevenueReconciliation: true,
+    });
+
+    expect(preview.status).toBe('BLOCKED');
+    expect(preview.canClose).toBe(false);
+    expect(preview.gates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'DIGITAL_CERTIFICATE', status: 'FAIL' }),
+        expect.objectContaining({ code: 'OFFICIAL_PORTAL_ACCESS', status: 'FAIL' }),
+        expect.objectContaining({ code: 'CRC_REVIEW', status: 'FAIL' }),
+      ]),
+    );
+    expect(preview.nextActions.length).toBeGreaterThan(0);
+  });
+
+  it('libera fechamento quando gates oficiais estão atendidos', async () => {
+    const { service } = buildService();
+
+    const preview = await service.previewMonthlyClosure('company-1', 7, 2026, 'user-1', {
+      hasDigitalCertificate: true,
+      hasCrcReview: true,
+      hasOfficialPortalAccess: true,
+      hasRevenueReconciliation: true,
+    });
+
+    expect(preview.status).toBe('READY_TO_CLOSE');
+    expect(preview.canClose).toBe(true);
+    expect(preview.calculation.appliedAnexo).toBe(3);
+    expect(preview.evidenceRequired).toEqual(
+      expect.arrayContaining(['Recibo PGDAS-D e guia DAS após fechamento']),
+    );
+  });
+});
