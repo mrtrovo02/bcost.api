@@ -1,11 +1,14 @@
 'use strict';
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ACCOUNTING_OFFERINGS } from './accounting-offerings.data.js';
 import {
   AccountingOffering,
   AccountingOfferingActivationRequirement,
   AccountingOfferingActivationStatus,
+  AccountingOfferingCompanyAssessment,
+  AccountingOfferingCompanyProfile,
+  AccountingOfferingEligibilityCheck,
   AccountingOfferingPlaybookStage,
   AccountingOfferingMarketStatus,
   AccountingOfferingsResponse,
@@ -59,6 +62,38 @@ export class AccountingPlatformService {
     };
   }
 
+  assessOffering(
+    offeringId: string,
+    profile: AccountingOfferingCompanyProfile,
+  ): AccountingOfferingCompanyAssessment {
+    const offering = this.offerings().offerings.find((item) => item.id === offeringId);
+
+    if (!offering) {
+      throw new NotFoundException(`Oferta contábil não encontrada: ${offeringId}`);
+    }
+
+    const checks = this.buildEligibilityChecks(offering, profile);
+    const fails = checks.filter((item) => item.status === 'FAIL').length;
+    const warnings = checks.filter((item) => item.status === 'WARN').length;
+    const decision = this.resolveCompanyActivationDecision(offering.marketStatus, fails, warnings);
+    const score = Math.max(
+      0,
+      Math.round(offering.launchReadinessScore - fails * 18 - warnings * 7),
+    );
+
+    return {
+      status: 'OK',
+      offeringId: offering.id,
+      offeringName: offering.name,
+      companyId: profile.companyId,
+      decision,
+      score,
+      checks,
+      requiredActions: this.buildCompanyRequiredActions(decision, checks),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   private buildSummary(items: AccountingPlatformCoverageItem[]) {
     const gaps = items.flatMap((item) => item.readinessGaps ?? []);
 
@@ -79,6 +114,103 @@ export class AccountingPlatformService {
       p0: items.filter((item) => item.priorityTier === 'P0').length,
       p1: items.filter((item) => item.priorityTier === 'P1').length,
     };
+  }
+
+  private buildEligibilityChecks(
+    offering: AccountingOffering,
+    profile: AccountingOfferingCompanyProfile,
+  ): AccountingOfferingEligibilityCheck[] {
+    const checks: AccountingOfferingEligibilityCheck[] = [
+      {
+        code: 'COMPANY_SCOPE',
+        label: 'Escopo empresarial mínimo',
+        status: profile.companyId && profile.taxRegime ? 'PASS' : 'WARN',
+        message:
+          profile.companyId && profile.taxRegime
+            ? 'Empresa e regime tributário informados para avaliação.'
+            : 'Informe empresa ativa e regime tributário antes de proposta final.',
+      },
+    ];
+
+    for (const requirement of offering.activationRequirements) {
+      const capabilityReady = this.isCapabilitySatisfied(requirement.code, profile);
+      const status = capabilityReady
+        ? 'PASS'
+        : requirement.status === 'BLOCKED'
+          ? 'FAIL'
+          : 'WARN';
+
+      checks.push({
+        code: requirement.code,
+        label: requirement.label,
+        status,
+        message: capabilityReady
+          ? 'Capacidade declarada como disponível para a empresa avaliada.'
+          : this.capabilityEligibilityMessage(requirement.code, requirement.status),
+      });
+    }
+
+    return checks;
+  }
+
+  private isCapabilitySatisfied(
+    capability: AccountingOffering['requiredCapabilities'][number],
+    profile: AccountingOfferingCompanyProfile,
+  ): boolean {
+    if (capability === 'CUSTOMER_PORTAL') return Boolean(profile.companyId);
+    if (capability === 'AUDIT_EVIDENCE_STORE') return profile.hasAuditEvidenceStore === true;
+    if (capability === 'BACKOFFICE_TEAM') return profile.hasBackofficeOwner === true;
+    if (capability === 'CRC_ACCOUNTANT') return profile.hasCrcResponsible === true;
+    if (capability === 'DIGITAL_CERTIFICATE') return profile.hasDigitalCertificate === true;
+    if (capability === 'MUNICIPAL_COVERAGE') return Boolean(profile.municipalityCode);
+    if (capability === 'OFFICIAL_PORTAL_ACCESS') return profile.hasOfficialPortalAccess === true;
+    if (capability === 'OFFICIAL_API_PROVIDER') return profile.hasOfficialApiProvider === true;
+    if (capability === 'BAAS_PARTNER') return profile.hasBaasPartner === true;
+    if (capability === 'OPEN_FINANCE_PROVIDER') return profile.hasOpenFinanceConsent === true;
+    return false;
+  }
+
+  private capabilityEligibilityMessage(
+    capability: AccountingOffering['requiredCapabilities'][number],
+    requirementStatus: AccountingOfferingActivationStatus,
+  ): string {
+    if (requirementStatus === 'BLOCKED') {
+      return 'Capacidade crítica ainda bloqueada para ativação desta oferta em produção.';
+    }
+
+    if (capability === 'DIGITAL_CERTIFICATE') {
+      return 'Certificado/procuração precisa ser validado antes da execução oficial.';
+    }
+
+    if (capability === 'CRC_ACCOUNTANT') {
+      return 'Contador responsável precisa revisar e assumir a entrega regulada.';
+    }
+
+    return 'Capacidade precisa ser configurada ou comprovada no onboarding da empresa.';
+  }
+
+  private resolveCompanyActivationDecision(
+    marketStatus: AccountingOfferingMarketStatus,
+    fails: number,
+    warnings: number,
+  ): AccountingOfferingCompanyAssessment['decision'] {
+    if (marketStatus === 'INTERNAL_ROADMAP' || fails > 0) return 'BLOCKED';
+    if (marketStatus !== 'MARKET_READY' || warnings > 0) return 'ASSISTED_REQUIRED';
+    return 'ACTIVATION_ALLOWED';
+  }
+
+  private buildCompanyRequiredActions(
+    decision: AccountingOfferingCompanyAssessment['decision'],
+    checks: AccountingOfferingEligibilityCheck[],
+  ): string[] {
+    if (decision === 'ACTIVATION_ALLOWED') {
+      return ['Gerar proposta, contrato e ordem de serviço com auditoria habilitada.'];
+    }
+
+    return checks
+      .filter((item) => item.status !== 'PASS')
+      .map((item) => `${item.label}: ${item.message}`)
+      .slice(0, 6);
   }
 
   private buildOffering(

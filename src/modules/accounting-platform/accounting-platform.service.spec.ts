@@ -167,4 +167,42 @@ describe('AccountingPlatformService', () => {
       }),
     );
   });
+
+  it('avalia elegibilidade de ativação por empresa sem misturar com estado demo', () => {
+    const blockedFintech = service.assessOffering('bcost-fintech', {
+      companyId: 'company-amel',
+      taxRegime: 'SIMPLES_NACIONAL',
+      hasAuditEvidenceStore: true,
+    });
+
+    expect(blockedFintech.decision).toBe('BLOCKED');
+    expect(blockedFintech.checks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'BAAS_PARTNER',
+          status: 'FAIL',
+        }),
+      ]),
+    );
+    expect(blockedFintech.requiredActions.length).toBeGreaterThan(0);
+
+    const assistedCore = service.assessOffering('bcost-core', {
+      companyId: 'company-amel',
+      taxRegime: 'SIMPLES_NACIONAL',
+      hasDigitalCertificate: true,
+      hasCrcResponsible: true,
+      hasBackofficeOwner: true,
+      hasAuditEvidenceStore: true,
+      hasOfficialPortalAccess: true,
+    });
+
+    expect(assistedCore.decision).toBe('ASSISTED_REQUIRED');
+    expect(assistedCore.score).toBeGreaterThan(blockedFintech.score);
+  });
+
+  it('falha com erro claro ao avaliar oferta inexistente', () => {
+    expect(() => service.assessOffering('nao-existe', {})).toThrow(
+      'Oferta contábil não encontrada: nao-existe',
+    );
+  });
 });

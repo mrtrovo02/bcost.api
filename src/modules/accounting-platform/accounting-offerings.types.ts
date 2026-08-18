@@ -12,7 +12,7 @@ export type AccountingOfferingMarketStatus =
 export type AccountingOfferingActivationStatus = 'READY' | 'REQUIRES_SETUP' | 'BLOCKED';
 
 export type AccountingOfferingActivationRequirement = {
-  code: string;
+  code: OperationalCapability;
   label: string;
   owner: 'PRODUCT' | 'BACKOFFICE' | 'CRC' | 'GOVERNMENT_INTEGRATIONS' | 'FINTECH_PARTNERS' | 'GOVERNANCE';
   status: AccountingOfferingActivationStatus;
@@ -28,6 +28,42 @@ export type AccountingOfferingPlaybookStage = {
   exitCriteria: string[];
   evidenceRequired: string[];
   status: AccountingOfferingActivationStatus;
+};
+
+export type AccountingOfferingCompanyProfile = {
+  companyId?: string;
+  taxRegime?: 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
+  cnae?: string;
+  municipalityCode?: string;
+  hasDigitalCertificate?: boolean;
+  hasCrcResponsible?: boolean;
+  hasBackofficeOwner?: boolean;
+  hasAuditEvidenceStore?: boolean;
+  hasBaasPartner?: boolean;
+  hasOpenFinanceConsent?: boolean;
+  hasOfficialPortalAccess?: boolean;
+  hasOfficialApiProvider?: boolean;
+};
+
+export type AccountingOfferingEligibilityStatus = 'PASS' | 'WARN' | 'FAIL';
+
+export type AccountingOfferingEligibilityCheck = {
+  code: string;
+  label: string;
+  status: AccountingOfferingEligibilityStatus;
+  message: string;
+};
+
+export type AccountingOfferingCompanyAssessment = {
+  status: 'OK';
+  offeringId: string;
+  offeringName: string;
+  companyId?: string;
+  decision: 'ACTIVATION_ALLOWED' | 'ASSISTED_REQUIRED' | 'BLOCKED';
+  score: number;
+  checks: AccountingOfferingEligibilityCheck[];
+  requiredActions: string[];
+  generatedAt: string;
 };
 
 export type AccountingOffering = {
