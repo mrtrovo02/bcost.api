@@ -19,6 +19,17 @@ export type AccountingOfferingActivationRequirement = {
   evidenceRequired: string[];
 };
 
+export type AccountingOfferingPlaybookStage = {
+  id: string;
+  title: string;
+  owner: AccountingOfferingActivationRequirement['owner'];
+  targetSlaHours: number;
+  entryCriteria: string[];
+  exitCriteria: string[];
+  evidenceRequired: string[];
+  status: AccountingOfferingActivationStatus;
+};
+
 export type AccountingOffering = {
   id: string;
   name: string;
@@ -40,6 +51,7 @@ export type AccountingOffering = {
     requiresSetup: number;
     blocked: number;
   };
+  activationPlaybook: AccountingOfferingPlaybookStage[];
 };
 
 export type AccountingOfferingsResponse = {

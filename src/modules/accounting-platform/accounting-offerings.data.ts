@@ -11,6 +11,7 @@ export const ACCOUNTING_OFFERINGS: Omit<
   | 'commercialDecision'
   | 'activationRequirements'
   | 'activationSummary'
+  | 'activationPlaybook'
 >[] = [
   {
     id: 'bcost-start',

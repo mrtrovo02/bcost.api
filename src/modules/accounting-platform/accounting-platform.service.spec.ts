@@ -143,4 +143,28 @@ describe('AccountingPlatformService', () => {
     );
     expect(core?.activationSummary.total).toBe(core?.requiredCapabilities.length);
   });
+
+  it('gera playbook operacional de ativação para cada oferta', () => {
+    const response = service.offerings();
+
+    for (const offering of response.offerings) {
+      expect(offering.activationPlaybook.map((stage) => stage.id)).toEqual([
+        `${offering.id}-scope`,
+        `${offering.id}-setup`,
+        `${offering.id}-operation`,
+      ]);
+      expect(offering.activationPlaybook.every((stage) => stage.targetSlaHours > 0)).toBe(true);
+      expect(offering.activationPlaybook.every((stage) => stage.exitCriteria.length > 0)).toBe(
+        true,
+      );
+    }
+
+    const fintech = response.offerings.find((item) => item.id === 'bcost-fintech');
+    expect(fintech?.activationPlaybook[1]).toEqual(
+      expect.objectContaining({
+        owner: 'FINTECH_PARTNERS',
+        status: 'BLOCKED',
+      }),
+    );
+  });
 });

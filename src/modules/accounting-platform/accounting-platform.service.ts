@@ -6,6 +6,7 @@ import {
   AccountingOffering,
   AccountingOfferingActivationRequirement,
   AccountingOfferingActivationStatus,
+  AccountingOfferingPlaybookStage,
   AccountingOfferingMarketStatus,
   AccountingOfferingsResponse,
 } from './accounting-offerings.types.js';
@@ -116,6 +117,12 @@ export class AccountingPlatformService {
       linkedItems,
       marketStatus,
     );
+    const activationPlaybook = this.buildActivationPlaybook(
+      offering.id,
+      marketStatus,
+      activationRequirements,
+      linkedItems,
+    );
 
     return {
       ...offering,
@@ -132,6 +139,7 @@ export class AccountingPlatformService {
           .length,
         blocked: activationRequirements.filter((item) => item.status === 'BLOCKED').length,
       },
+      activationPlaybook,
     };
   }
 
@@ -284,6 +292,58 @@ export class AccountingPlatformService {
     }
 
     return ['Checklist de ativação', 'Aceite do cliente', 'Registro operacional'];
+  }
+
+  private buildActivationPlaybook(
+    offeringId: string,
+    marketStatus: AccountingOfferingMarketStatus,
+    requirements: AccountingOfferingActivationRequirement[],
+    linkedItems: AccountingPlatformCoverageItem[],
+  ): AccountingOfferingPlaybookStage[] {
+    const blocked = requirements.filter((item) => item.status === 'BLOCKED');
+    const setup = requirements.filter((item) => item.status === 'REQUIRES_SETUP');
+    const evidence = [...new Set(linkedItems.flatMap((item) => item.officialEvidence))];
+
+    return [
+      {
+        id: `${offeringId}-scope`,
+        title: 'Qualificar escopo, elegibilidade e aceite comercial',
+        owner: 'PRODUCT',
+        targetSlaHours: 8,
+        entryCriteria: ['Lead qualificado', 'Regime tributário e município informados'],
+        exitCriteria: [this.buildCommercialDecision(marketStatus), 'Exclusões apresentadas ao cliente'],
+        evidenceRequired: ['Registro de aceite de escopo', 'Checklist de elegibilidade'],
+        status: marketStatus === 'INTERNAL_ROADMAP' ? 'BLOCKED' : 'READY',
+      },
+      {
+        id: `${offeringId}-setup`,
+        title: 'Preparar credenciais, parceiros, filas e responsáveis',
+        owner: blocked.some((item) => item.owner === 'FINTECH_PARTNERS')
+          ? 'FINTECH_PARTNERS'
+          : 'GOVERNMENT_INTEGRATIONS',
+        targetSlaHours: blocked.length > 0 ? 72 : 24,
+        entryCriteria: ['Escopo aprovado', 'Documentos mínimos recebidos'],
+        exitCriteria: [
+          blocked.length > 0
+            ? 'Bloqueios removidos ou oferta mantida em piloto/lista de espera'
+            : 'Capacidades críticas prontas para execução',
+        ],
+        evidenceRequired: [
+          ...new Set([...blocked, ...setup].flatMap((item) => item.evidenceRequired)),
+        ].slice(0, 5),
+        status: blocked.length > 0 ? 'BLOCKED' : setup.length > 0 ? 'REQUIRES_SETUP' : 'READY',
+      },
+      {
+        id: `${offeringId}-operation`,
+        title: 'Executar, revisar e armazenar evidências da entrega',
+        owner: requirements.some((item) => item.owner === 'CRC') ? 'CRC' : 'BACKOFFICE',
+        targetSlaHours: 48,
+        entryCriteria: ['Setup concluído', 'Credenciais e evidências mínimas disponíveis'],
+        exitCriteria: ['Entrega registrada', 'Recibo, protocolo ou parecer anexado'],
+        evidenceRequired: evidence.slice(0, 5),
+        status: blocked.length > 0 ? 'BLOCKED' : setup.length > 0 ? 'REQUIRES_SETUP' : 'READY',
+      },
+    ];
   }
 
   private withReadiness(
