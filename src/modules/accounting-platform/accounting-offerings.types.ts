@@ -77,6 +77,14 @@ export type AccountingOfferingPortfolioAssessment = {
     action: string;
     impactedOfferings: string[];
   }[];
+  ownerSummary: {
+    owner: AccountingOfferingActivationRequirement['owner'];
+    totalActions: number;
+    p0: number;
+    p1: number;
+    p2: number;
+    impactedOfferings: string[];
+  }[];
   summary: {
     total: number;
     activationAllowed: number;

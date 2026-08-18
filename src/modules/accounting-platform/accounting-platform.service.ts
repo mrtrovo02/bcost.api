@@ -134,6 +134,7 @@ export class AccountingPlatformService {
       companyId: profile.companyId,
       assessments,
       actionQueue,
+      ownerSummary: this.buildOwnerSummary(actionQueue),
       summary: {
         total: assessments.length,
         activationAllowed,
@@ -151,6 +152,42 @@ export class AccountingPlatformService {
         : undefined,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private buildOwnerSummary(
+    actionQueue: AccountingOfferingPortfolioAssessment['actionQueue'],
+  ): AccountingOfferingPortfolioAssessment['ownerSummary'] {
+    const summary = new Map<
+      AccountingOfferingActivationRequirement['owner'],
+      AccountingOfferingPortfolioAssessment['ownerSummary'][number]
+    >();
+
+    for (const action of actionQueue) {
+      const current =
+        summary.get(action.owner) ??
+        {
+          owner: action.owner,
+          totalActions: 0,
+          p0: 0,
+          p1: 0,
+          p2: 0,
+          impactedOfferings: [],
+        };
+
+      current.totalActions += 1;
+      if (action.priority === 'P0') current.p0 += 1;
+      if (action.priority === 'P1') current.p1 += 1;
+      if (action.priority === 'P2') current.p2 += 1;
+      current.impactedOfferings.push(...action.impactedOfferings);
+      summary.set(action.owner, current);
+    }
+
+    return [...summary.values()]
+      .map((item) => ({
+        ...item,
+        impactedOfferings: [...new Set(item.impactedOfferings)].sort(),
+      }))
+      .sort((a, b) => b.p0 - a.p0 || b.totalActions - a.totalActions || a.owner.localeCompare(b.owner));
   }
 
   private buildPortfolioActionQueue(assessments: AccountingOfferingCompanyAssessment[]) {

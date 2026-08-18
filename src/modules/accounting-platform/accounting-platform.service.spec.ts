@@ -228,6 +228,14 @@ describe('AccountingPlatformService', () => {
         impactedOfferings: expect.any(Array),
       }),
     );
+    expect(portfolio.ownerSummary.length).toBeGreaterThan(0);
+    expect(portfolio.ownerSummary[0]).toEqual(
+      expect.objectContaining({
+        owner: expect.any(String),
+        totalActions: expect.any(Number),
+        impactedOfferings: expect.any(Array),
+      }),
+    );
     expect(portfolio.recommendedNextOffering).toEqual(
       expect.objectContaining({
         offeringId: expect.any(String),
