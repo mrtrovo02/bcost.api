@@ -134,6 +134,50 @@ describe('ServiceCatalogService', () => {
     );
   });
 
+  it('classifica obrigacoes oficiais como workflow com credencial oficial e validacao CRC', () => {
+    const result = service.evaluate({
+      serviceIds: ['dctfweb'],
+    });
+    const dctfweb = result.selectedServices[0];
+
+    expect(dctfweb.executionProfile).toMatchObject({
+      automationLevel: 'HUMAN_VALIDATED',
+      productionReadiness: 'BACKOFFICE_REQUIRED',
+      operationalRisk: 'CRITICAL',
+      requiresCrcValidation: true,
+      requiresOfficialCredential: true,
+    });
+    expect(dctfweb.executionProfile.executionEngines).toEqual(
+      expect.arrayContaining([
+        'SOFTWARE_WORKFLOW',
+        'GOVERNMENT_PORTAL_RPA',
+        'CERTIFICATE_AUTH',
+        'HUMAN_CRC_REVIEW',
+      ]),
+    );
+    expect(result.summary.crcValidationServices).toBe(1);
+    expect(result.summary.officialCredentialServices).toBe(1);
+  });
+
+  it('classifica dependencia municipal com protocolo fisico como operacao humana assistida', () => {
+    const result = service.evaluate({
+      serviceIds: ['business-license-issue-renewal'],
+      municipalityDigital: false,
+    });
+    const serviceItem = result.selectedServices[0];
+
+    expect(serviceItem.executionProfile).toMatchObject({
+      automationLevel: 'HUMAN_LED',
+      productionReadiness: 'BACKOFFICE_REQUIRED',
+      requiresCustomerAction: true,
+      requiresOfficialCredential: true,
+    });
+    expect(serviceItem.executionProfile.executionEngines).toEqual(
+      expect.arrayContaining(['MUNICIPAL_RPA', 'MANUAL_PROTOCOL']),
+    );
+    expect(result.summary.customerActionServices).toBe(1);
+  });
+
   it('falha quando nenhum servico corresponde ao filtro', () => {
     expect(() =>
       service.evaluate({

@@ -7,6 +7,8 @@ import {
   EvaluatedMicroService,
   MacroServiceDefinition,
   ServiceCondition,
+  ServiceExecutionEngine,
+  ServiceExecutionProfile,
   ServiceEvaluationInput,
   ServiceEvaluationResult,
 } from './service-catalog.types.js';
@@ -50,6 +52,15 @@ export class ServiceCatalogService {
         warnings,
         infos,
         requiresHumanReview: blockers > 0 || warnings > 0,
+        crcValidationServices: selectedServices.filter(
+          (service) => service.executionProfile.requiresCrcValidation,
+        ).length,
+        customerActionServices: selectedServices.filter(
+          (service) => service.executionProfile.requiresCustomerAction,
+        ).length,
+        officialCredentialServices: selectedServices.filter(
+          (service) => service.executionProfile.requiresOfficialCredential,
+        ).length,
       },
       generatedAt: new Date().toISOString(),
     };
@@ -102,6 +113,7 @@ export class ServiceCatalogService {
             ...microService,
             macroServiceId: macroService.id,
             macroServiceName: macroService.name,
+            executionProfile: this.buildExecutionProfile(microService),
           });
         }
       }
@@ -114,6 +126,170 @@ export class ServiceCatalogService {
     }
 
     return selected;
+  }
+
+  private buildExecutionProfile(
+    service: MacroServiceDefinition['microServices'][number],
+  ): ServiceExecutionProfile {
+    const tags = new Set(
+      (service.complianceTags ?? []).map((tag) => tag.toUpperCase()),
+    );
+    const engines = new Set<ServiceExecutionEngine>(['SOFTWARE_WORKFLOW']);
+    const integrationTargets = new Set<string>();
+    const evidenceArtifacts = new Set<string>([
+      'Registro de solicitação com usuário, empresa, competência e timestamp.',
+      'Log de execução e resultado do workflow.',
+    ]);
+
+    let requiresCrcValidation = false;
+    let requiresOfficialCredential = false;
+    let requiresCustomerAction = Boolean(service.physicalProtocolMayApply);
+    let operationalRisk: ServiceExecutionProfile['operationalRisk'] = 'LOW';
+
+    if (service.officialSources?.length || service.complianceTags?.length) {
+      evidenceArtifacts.add(
+        'Fonte oficial, leiaute ou norma usada na validação.',
+      );
+      operationalRisk = 'MEDIUM';
+    }
+
+    if (service.governmentFeesMayApply) {
+      evidenceArtifacts.add('Comprovante de taxa pública quando aplicável.');
+      operationalRisk = 'MEDIUM';
+    }
+
+    if (service.municipalDependency) {
+      engines.add('MUNICIPAL_RPA');
+      integrationTargets.add(
+        'Prefeitura municipal ou emissor nacional quando disponível.',
+      );
+      evidenceArtifacts.add(
+        'Protocolo municipal, recibo ou comprovante de deferimento.',
+      );
+      requiresOfficialCredential = true;
+      operationalRisk = 'HIGH';
+    }
+
+    if (service.physicalProtocolMayApply) {
+      engines.add('MANUAL_PROTOCOL');
+      evidenceArtifacts.add(
+        'Comprovante de protocolo físico ou orientação enviada ao cliente.',
+      );
+      requiresCustomerAction = true;
+      operationalRisk = 'HIGH';
+    }
+
+    if (
+      [
+        'SPED',
+        'ECD',
+        'ECF',
+        'DCTFWEB',
+        'EFD-REINF',
+        'EFD ICMS IPI',
+        'EFD CONTRIBUIÇÕES',
+        'PGDAS-D',
+        'DAS',
+        'DEFIS',
+        'ESOCIAL',
+        'FGTS DIGITAL',
+      ].some((tag) => tags.has(tag))
+    ) {
+      engines.add('GOVERNMENT_PORTAL_RPA');
+      engines.add('CERTIFICATE_AUTH');
+      engines.add('HUMAN_CRC_REVIEW');
+      integrationTargets.add(
+        'Portal oficial da Receita Federal, SPED, eSocial ou FGTS Digital.',
+      );
+      evidenceArtifacts.add(
+        'Recibo oficial de transmissão, guia, declaração ou comprovante.',
+      );
+      requiresCrcValidation = true;
+      requiresOfficialCredential = true;
+      operationalRisk = 'CRITICAL';
+    }
+
+    if (
+      tags.has('NFS-E') ||
+      tags.has('NF-E') ||
+      tags.has('NFC-E') ||
+      tags.has('CT-E')
+    ) {
+      engines.add('OFFICIAL_API');
+      engines.add('GOVERNMENT_PORTAL_RPA');
+      engines.add('CERTIFICATE_AUTH');
+      integrationTargets.add('SEFAZ, NFS-e Nacional ou prefeitura homologada.');
+      evidenceArtifacts.add(
+        'XML autorizado, protocolo, recibo e evento fiscal.',
+      );
+      requiresOfficialCredential = true;
+      operationalRisk = 'CRITICAL';
+    }
+
+    if (
+      service.id.includes('bank') ||
+      service.id.includes('baas') ||
+      service.name.toLowerCase().includes('open finance')
+    ) {
+      engines.add('OPEN_FINANCE');
+      engines.add('BANKING_AS_A_SERVICE');
+      integrationTargets.add(
+        'Instituição parceira regulada, Open Finance ou BaaS.',
+      );
+      evidenceArtifacts.add(
+        'Consentimento, extrato, evento de conciliação e trilha de auditoria.',
+      );
+      requiresOfficialCredential = true;
+      operationalRisk = 'HIGH';
+    }
+
+    const automationLevel = this.resolveAutomationLevel({
+      engines,
+      requiresCrcValidation,
+      requiresCustomerAction,
+    });
+
+    return {
+      automationLevel,
+      productionReadiness: this.resolveProductionReadiness({
+        automationLevel,
+        requiresOfficialCredential,
+        requiresCrcValidation,
+      }),
+      operationalRisk,
+      executionEngines: [...engines],
+      integrationTargets: [...integrationTargets],
+      evidenceArtifacts: [...evidenceArtifacts],
+      requiresCrcValidation,
+      requiresOfficialCredential,
+      requiresCustomerAction,
+    };
+  }
+
+  private resolveAutomationLevel(params: {
+    engines: Set<ServiceExecutionEngine>;
+    requiresCrcValidation: boolean;
+    requiresCustomerAction: boolean;
+  }): ServiceExecutionProfile['automationLevel'] {
+    if (params.engines.has('MANUAL_PROTOCOL')) return 'HUMAN_LED';
+    if (params.requiresCrcValidation) return 'HUMAN_VALIDATED';
+    if (params.requiresCustomerAction || params.engines.size > 1) {
+      return 'ASSISTED_AUTOMATION';
+    }
+
+    return 'FULL_AUTOMATION_CANDIDATE';
+  }
+
+  private resolveProductionReadiness(params: {
+    automationLevel: ServiceExecutionProfile['automationLevel'];
+    requiresOfficialCredential: boolean;
+    requiresCrcValidation: boolean;
+  }): ServiceExecutionProfile['productionReadiness'] {
+    if (params.automationLevel === 'HUMAN_LED') return 'BACKOFFICE_REQUIRED';
+    if (params.requiresCrcValidation) return 'BACKOFFICE_REQUIRED';
+    if (params.requiresOfficialCredential) return 'INTEGRATION_REQUIRED';
+
+    return 'READY_FOR_INTERNAL_WORKFLOW';
   }
 
   private buildConditions(
