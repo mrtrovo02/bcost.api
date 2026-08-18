@@ -23,6 +23,8 @@ describe('AccountingPlatformService', () => {
     );
     expect(coverage.summary.total).toBe(10);
     expect(coverage.summary.crcValidated).toBeGreaterThanOrEqual(4);
+    expect(coverage.summary.blockers).toBeGreaterThan(0);
+    expect(coverage.summary.warnings).toBeGreaterThan(0);
   });
 
   it('declara capacidades criticas para rotinas reguladas e fintech', () => {
@@ -41,5 +43,29 @@ describe('AccountingPlatformService', () => {
     expect(banking?.requiredCapabilities).toEqual(
       expect.arrayContaining(['BAAS_PARTNER', 'OPEN_FINANCE_PROVIDER']),
     );
+  });
+
+  it('expõe lacunas acionáveis antes de vender serviços não prontos', () => {
+    const coverage = service.coverage();
+    const formation = coverage.items.find((item) => item.id === 'company-formation-engine');
+    const issuer = coverage.items.find((item) => item.id === 'universal-nfse-issuer');
+
+    expect(formation?.readinessGaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'MODULE_NOT_IMPLEMENTED',
+          severity: 'BLOCKER',
+        }),
+      ]),
+    );
+    expect(issuer?.readinessGaps).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'PARTNER_REQUIRED',
+          severity: 'BLOCKER',
+        }),
+      ]),
+    );
+    expect(issuer?.nextActions?.length).toBeGreaterThan(0);
   });
 });
