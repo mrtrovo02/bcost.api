@@ -8,7 +8,12 @@ import {
 } from '../service-catalog/service-catalog.types.js';
 import { ServiceCatalogService } from '../service-catalog/service-catalog.service.js';
 import {
+  OPERATIONAL_CAPABILITIES,
+  listOperationalCapabilities,
+} from './operational-capabilities.data.js';
+import {
   OperationalCapability,
+  OperationalCapabilityDefinition,
   OperationalWorkflowActor,
   OperationalWorkflowPreview,
   OperationalWorkflowRuntimeStatus,
@@ -19,6 +24,10 @@ import {
 @Injectable()
 export class OperationalWorkflowsService {
   constructor(private readonly serviceCatalog: ServiceCatalogService) {}
+
+  listCapabilities(): OperationalCapabilityDefinition[] {
+    return listOperationalCapabilities();
+  }
 
   preview(input: ServiceEvaluationInput): OperationalWorkflowPreview {
     const result = this.serviceCatalog.evaluate(input);
@@ -54,6 +63,9 @@ export class OperationalWorkflowsService {
       stages,
       operationalSummary: this.buildOperationalSummary(stages),
       requiredCapabilities,
+      capabilityDetails: requiredCapabilities.map(
+        (capability) => OPERATIONAL_CAPABILITIES[capability],
+      ),
       gates: {
         requiresCrcValidation: service.executionProfile.requiresCrcValidation,
         requiresOfficialCredential:

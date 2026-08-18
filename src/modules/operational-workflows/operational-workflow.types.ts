@@ -40,6 +40,24 @@ export type OperationalCapability =
   | 'OPEN_FINANCE_PROVIDER'
   | 'AUDIT_EVIDENCE_STORE';
 
+export type OperationalCapabilityCategory =
+  | 'PLATFORM'
+  | 'BACKOFFICE'
+  | 'REGULATORY'
+  | 'GOVERNMENT'
+  | 'FINTECH'
+  | 'AUDIT';
+
+export type OperationalCapabilityCriticality = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export type OperationalCapabilityDefinition = {
+  code: OperationalCapability;
+  label: string;
+  description: string;
+  category: OperationalCapabilityCategory;
+  criticality: OperationalCapabilityCriticality;
+};
+
 export type OperationalWorkflowStage = {
   id: string;
   title: string;
@@ -71,6 +89,7 @@ export type OperationalWorkflowPreview = {
     requiredCapabilities: number;
   };
   requiredCapabilities: OperationalCapability[];
+  capabilityDetails: OperationalCapabilityDefinition[];
   gates: {
     requiresCrcValidation: boolean;
     requiresOfficialCredential: boolean;

@@ -10,6 +10,15 @@ import { OperationalWorkflowsService } from './operational-workflows.service.js'
 export class OperationalWorkflowsController {
   constructor(private readonly workflows: OperationalWorkflowsService) {}
 
+  @Get('capabilities')
+  capabilities() {
+    return {
+      status: 'OK',
+      capabilities: this.workflows.listCapabilities(),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   @Get('templates/:serviceId')
   previewByServiceId(@Param('serviceId') serviceId: string) {
     return {

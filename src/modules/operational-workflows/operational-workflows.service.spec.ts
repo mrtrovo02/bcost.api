@@ -58,6 +58,15 @@ describe('OperationalWorkflowsService', () => {
         'OFFICIAL_PORTAL_ACCESS',
       ]),
     );
+    expect(preview.capabilityDetails).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'CRC_ACCOUNTANT',
+          criticality: 'CRITICAL',
+          label: 'Contador responsável CRC',
+        }),
+      ]),
+    );
   });
 
   it('gera workflow assistido para servico municipal com protocolo fisico', () => {
@@ -91,6 +100,25 @@ describe('OperationalWorkflowsService', () => {
           actor: 'CUSTOMER',
           status: 'REQUIRES_CUSTOMER',
           runtimeStatus: 'WAITING_CUSTOMER',
+        }),
+      ]),
+    );
+  });
+
+  it('lista o registry de capacidades operacionais com metadados comerciais', () => {
+    const capabilities = service.listCapabilities();
+
+    expect(capabilities).toHaveLength(10);
+    expect(capabilities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'DIGITAL_CERTIFICATE',
+          category: 'GOVERNMENT',
+          criticality: 'CRITICAL',
+        }),
+        expect.objectContaining({
+          code: 'BAAS_PARTNER',
+          category: 'FINTECH',
         }),
       ]),
     );
