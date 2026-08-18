@@ -243,4 +243,60 @@ describe('AccountingPlatformService', () => {
       }),
     );
   });
+
+  it('bloqueia abertura de empresa sem documentos, CRC e acesso oficial', () => {
+    const readiness = service.setupReadiness({
+      operation: 'COMPANY_OPENING',
+      companyId: 'lead-001',
+      hasPartnerDocuments: true,
+      hasAddressProof: false,
+    });
+
+    expect(readiness.decision).toBe('BLOCKED');
+    expect(readiness.score).toBeLessThan(70);
+    expect(readiness.gates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'CUSTOMER_DOCUMENTS', status: 'FAIL' }),
+        expect.objectContaining({ code: 'CRC_REVIEW', status: 'FAIL' }),
+        expect.objectContaining({ code: 'OFFICIAL_PORTAL_ACCESS', status: 'FAIL' }),
+      ]),
+    );
+    expect(readiness.guardrails.join(' ')).toContain('100% automática');
+    expect(readiness.officialDependencies).toEqual(
+      expect.arrayContaining(['Receita Federal / CNPJ', 'Redesim']),
+    );
+  });
+
+  it('libera migração MEI para ME como execução assistida quando gates oficiais passam', () => {
+    const readiness = service.setupReadiness({
+      operation: 'MEI_TO_ME_MIGRATION',
+      companyId: 'company-mei',
+      municipalityCode: '3550308',
+      hasPartnerDocuments: true,
+      hasAddressProof: true,
+      hasViabilityCheck: true,
+      hasCrcResponsible: true,
+      hasBackofficeOwner: true,
+      hasAuditEvidenceStore: true,
+      hasOfficialPortalAccess: true,
+      hasMunicipalCoverage: true,
+      hasMeiDeregistrationEvidence: true,
+    });
+
+    expect(readiness.decision).toBe('READY_FOR_ASSISTED_EXECUTION');
+    expect(readiness.score).toBe(100);
+    expect(readiness.gates).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'MEI_DEREGISTRATION', status: 'PASS' }),
+        expect.objectContaining({ code: 'MUNICIPAL_COVERAGE', status: 'PASS' }),
+      ]),
+    );
+    expect(readiness.stages.every((stage) => stage.status === 'READY')).toBe(true);
+    expect(readiness.evidenceRequired).toEqual(
+      expect.arrayContaining([
+        'Protocolo de desenquadramento MEI quando aplicável',
+        'Dossiê de evidências vinculado à empresa',
+      ]),
+    );
+  });
 });

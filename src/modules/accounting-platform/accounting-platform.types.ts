@@ -59,3 +59,66 @@ export type AccountingPlatformCoverageResponse = {
   };
   generatedAt: string;
 };
+
+export type AccountingSetupOperation =
+  | 'COMPANY_OPENING'
+  | 'ACCOUNTING_MIGRATION'
+  | 'MEI_TO_ME_MIGRATION';
+
+export type AccountingSetupReadinessInput = {
+  companyId?: string;
+  operation?: AccountingSetupOperation;
+  state?: string;
+  municipalityCode?: string;
+  legalNature?: 'LTDA' | 'SLU' | 'EI' | 'MEI' | 'OTHER';
+  taxRegime?: 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL';
+  hasPartnerDocuments?: boolean;
+  hasAddressProof?: boolean;
+  hasViabilityCheck?: boolean;
+  hasDigitalCertificate?: boolean;
+  hasCrcResponsible?: boolean;
+  hasBackofficeOwner?: boolean;
+  hasAuditEvidenceStore?: boolean;
+  hasOfficialPortalAccess?: boolean;
+  hasMunicipalCoverage?: boolean;
+  hasPreviousAccountingDocs?: boolean;
+  hasMeiDeregistrationEvidence?: boolean;
+};
+
+export type AccountingSetupReadinessResponse = {
+  status: 'OK';
+  operation: AccountingSetupOperation;
+  companyId?: string;
+  decision: 'READY_FOR_ASSISTED_EXECUTION' | 'REQUIRES_SETUP' | 'BLOCKED';
+  score: number;
+  gates: {
+    code: string;
+    label: string;
+    status: 'PASS' | 'WARN' | 'FAIL';
+    owner:
+      | 'CUSTOMER'
+      | 'BACKOFFICE'
+      | 'CRC'
+      | 'GOVERNMENT_INTEGRATIONS'
+      | 'PUBLIC_AGENCY';
+    message: string;
+  }[];
+  stages: {
+    id: string;
+    title: string;
+    owner:
+      | 'CUSTOMER'
+      | 'BACKOFFICE'
+      | 'CRC'
+      | 'GOVERNMENT_INTEGRATIONS'
+      | 'PUBLIC_AGENCY';
+    automationBoundary: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
+    status: 'READY' | 'REQUIRES_ACTION' | 'BLOCKED';
+    evidenceRequired: string[];
+  }[];
+  evidenceRequired: string[];
+  officialDependencies: string[];
+  nextActions: string[];
+  guardrails: string[];
+  generatedAt: string;
+};

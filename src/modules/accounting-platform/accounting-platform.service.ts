@@ -20,6 +20,9 @@ import {
   AccountingPlatformCoverageResponse,
   AccountingPlatformPriorityTier,
   AccountingPlatformReadinessGap,
+  AccountingSetupOperation,
+  AccountingSetupReadinessInput,
+  AccountingSetupReadinessResponse,
 } from './accounting-platform.types.js';
 
 @Injectable()
@@ -150,6 +153,45 @@ export class AccountingPlatformService {
             score: recommendedNextOffering.score,
           }
         : undefined,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  setupReadiness(
+    input: AccountingSetupReadinessInput = {},
+  ): AccountingSetupReadinessResponse {
+    const operation = input.operation ?? 'COMPANY_OPENING';
+    const gates = this.buildSetupReadinessGates(operation, input);
+    const failed = gates.filter((gate) => gate.status === 'FAIL').length;
+    const warnings = gates.filter((gate) => gate.status === 'WARN').length;
+    const decision: AccountingSetupReadinessResponse['decision'] =
+      failed > 0
+        ? 'BLOCKED'
+        : warnings > 0
+          ? 'REQUIRES_SETUP'
+          : 'READY_FOR_ASSISTED_EXECUTION';
+    const score = Math.max(0, Math.round(100 - failed * 18 - warnings * 7));
+    const stages = this.buildSetupReadinessStages(operation, gates);
+    const evidenceRequired = [
+      ...new Set(stages.flatMap((stage) => stage.evidenceRequired)),
+    ];
+
+    return {
+      status: 'OK',
+      operation,
+      companyId: input.companyId,
+      decision,
+      score,
+      gates,
+      stages,
+      evidenceRequired,
+      officialDependencies: this.setupOfficialDependencies(operation),
+      nextActions: this.buildSetupNextActions(gates, operation),
+      guardrails: [
+        'Não comunicar abertura, alteração ou migração como 100% automática sem protocolo oficial concluído.',
+        'Serviços regulados exigem validação de contador responsável quando envolver enquadramento, CNAE, regime tributário ou documento societário.',
+        'Prazos dependem de Receita Federal, Redesim, Junta Comercial, Prefeitura e demais órgãos locais.',
+      ],
       generatedAt: new Date().toISOString(),
     };
   }
@@ -639,6 +681,241 @@ export class AccountingPlatformService {
         evidenceRequired: evidence.slice(0, 5),
         status: blocked.length > 0 ? 'BLOCKED' : setup.length > 0 ? 'REQUIRES_SETUP' : 'READY',
       },
+    ];
+  }
+
+  private buildSetupReadinessGates(
+    operation: AccountingSetupOperation,
+    input: AccountingSetupReadinessInput,
+  ): AccountingSetupReadinessResponse['gates'] {
+    const isOpening = operation === 'COMPANY_OPENING';
+    const isMeiMigration = operation === 'MEI_TO_ME_MIGRATION';
+
+    return [
+      {
+        code: 'CUSTOMER_DOCUMENTS',
+        label: 'Documentos do cliente',
+        owner: 'CUSTOMER',
+        status:
+          input.hasPartnerDocuments === true && input.hasAddressProof === true
+            ? 'PASS'
+            : 'FAIL',
+        message:
+          input.hasPartnerDocuments === true && input.hasAddressProof === true
+            ? 'Documentos pessoais/societários e comprovante de endereço declarados.'
+            : 'Coletar documentos dos sócios/titular e comprovante de endereço antes do protocolo.',
+      },
+      {
+        code: 'VIABILITY_REDESIM',
+        label: 'Viabilidade Redesim/Junta',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        status: input.hasViabilityCheck === true ? 'PASS' : 'WARN',
+        message:
+          input.hasViabilityCheck === true
+            ? 'Consulta de viabilidade declarada para nome, endereço, CNAE e órgão local.'
+            : 'Executar consulta de viabilidade antes de prometer prazo de abertura/alteração.',
+      },
+      {
+        code: 'CRC_REVIEW',
+        label: 'Validação CRC',
+        owner: 'CRC',
+        status: input.hasCrcResponsible === true ? 'PASS' : 'FAIL',
+        message:
+          input.hasCrcResponsible === true
+            ? 'Responsável técnico declarado para validação de CNAE, regime e documentos.'
+            : 'Definir contador responsável antes de orientar enquadramento ou assinar entrega.',
+      },
+      {
+        code: 'BACKOFFICE_OWNER',
+        label: 'Responsável operacional',
+        owner: 'BACKOFFICE',
+        status: input.hasBackofficeOwner === true ? 'PASS' : 'FAIL',
+        message:
+          input.hasBackofficeOwner === true
+            ? 'Dono operacional declarado para acompanhar órgãos públicos e pendências.'
+            : 'Atribuir fila e responsável para protocolo, acompanhamento e comunicação com cliente.',
+      },
+      {
+        code: 'AUDIT_EVIDENCE_STORE',
+        label: 'Dossiê de evidências',
+        owner: 'BACKOFFICE',
+        status: input.hasAuditEvidenceStore === true ? 'PASS' : 'FAIL',
+        message:
+          input.hasAuditEvidenceStore === true
+            ? 'Dossiê de evidências declarado para protocolos, recibos e documentos oficiais.'
+            : 'Habilitar guarda auditável antes de executar serviço regulado em produção.',
+      },
+      {
+        code: 'OFFICIAL_PORTAL_ACCESS',
+        label: 'Acesso a órgãos oficiais',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        status:
+          input.hasOfficialPortalAccess === true || input.hasDigitalCertificate === true
+            ? 'PASS'
+            : 'FAIL',
+        message:
+          input.hasOfficialPortalAccess === true || input.hasDigitalCertificate === true
+            ? 'Acesso oficial ou certificado/procuração declarado.'
+            : 'Configurar certificado, procuração ou credencial oficial conforme órgão exigido.',
+      },
+      {
+        code: 'MUNICIPAL_COVERAGE',
+        label: 'Cobertura municipal',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        status:
+          input.hasMunicipalCoverage === true || Boolean(input.municipalityCode)
+            ? 'PASS'
+            : isOpening
+              ? 'WARN'
+              : 'FAIL',
+        message:
+          input.hasMunicipalCoverage === true || Boolean(input.municipalityCode)
+            ? 'Município identificado para regras de inscrição, alvará e NFS-e.'
+            : 'Mapear prefeitura, inscrição municipal, alvará e portal local antes de escalar.',
+      },
+      {
+        code: 'PREVIOUS_ACCOUNTING_DOSSIER',
+        label: 'Dossiê do contador anterior',
+        owner: 'CUSTOMER',
+        status:
+          operation === 'ACCOUNTING_MIGRATION'
+            ? input.hasPreviousAccountingDocs === true
+              ? 'PASS'
+              : 'FAIL'
+            : 'PASS',
+        message:
+          operation === 'ACCOUNTING_MIGRATION'
+            ? input.hasPreviousAccountingDocs === true
+              ? 'Documentos do contador anterior declarados.'
+              : 'Coletar balancetes, declarações, procurações, obrigações e pendências históricas.'
+            : 'Não aplicável para esta operação.',
+      },
+      {
+        code: 'MEI_DEREGISTRATION',
+        label: 'Desenquadramento MEI',
+        owner: 'PUBLIC_AGENCY',
+        status:
+          isMeiMigration
+            ? input.hasMeiDeregistrationEvidence === true
+              ? 'PASS'
+              : 'FAIL'
+            : 'PASS',
+        message:
+          isMeiMigration
+            ? input.hasMeiDeregistrationEvidence === true
+              ? 'Evidência de desenquadramento/alteração MEI declarada.'
+              : 'Registrar e evidenciar desenquadramento MEI antes de ativar operação como ME.'
+            : 'Não aplicável para esta operação.',
+      },
+    ];
+  }
+
+  private buildSetupReadinessStages(
+    operation: AccountingSetupOperation,
+    gates: AccountingSetupReadinessResponse['gates'],
+  ): AccountingSetupReadinessResponse['stages'] {
+    const hasFailed = (codes: string[]) =>
+      gates.some((gate) => codes.includes(gate.code) && gate.status === 'FAIL');
+    const hasPending = (codes: string[]) =>
+      gates.some((gate) => codes.includes(gate.code) && gate.status !== 'PASS');
+    const stageStatus = (codes: string[]) =>
+      hasFailed(codes) ? 'BLOCKED' : hasPending(codes) ? 'REQUIRES_ACTION' : 'READY';
+
+    return [
+      {
+        id: `${operation.toLowerCase()}-intake`,
+        title: 'Intake, escopo e documentos do cliente',
+        owner: 'CUSTOMER',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        status: stageStatus(['CUSTOMER_DOCUMENTS', 'PREVIOUS_ACCOUNTING_DOSSIER']),
+        evidenceRequired: [
+          'Documentos dos sócios/titular',
+          'Comprovante de endereço',
+          'Aceite de escopo e condicionantes',
+          'Dossiê do contador anterior quando aplicável',
+        ],
+      },
+      {
+        id: `${operation.toLowerCase()}-technical-review`,
+        title: 'Validação técnica de CNAE, regime e natureza jurídica',
+        owner: 'CRC',
+        automationBoundary: 'CRC_VALIDATED',
+        status: stageStatus(['CRC_REVIEW']),
+        evidenceRequired: [
+          'Parecer técnico CRC',
+          'CNAE e atividades validados',
+          'Regime tributário recomendado',
+        ],
+      },
+      {
+        id: `${operation.toLowerCase()}-official-protocol`,
+        title: 'Protocolo em órgãos oficiais e acompanhamento',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        automationBoundary: 'HUMAN_LED',
+        status: stageStatus([
+          'VIABILITY_REDESIM',
+          'OFFICIAL_PORTAL_ACCESS',
+          'MUNICIPAL_COVERAGE',
+          'MEI_DEREGISTRATION',
+        ]),
+        evidenceRequired: [
+          'Consulta de viabilidade',
+          'Protocolo Redesim/Junta',
+          'CNPJ ou alteração deferida',
+          'Inscrição municipal/estadual quando aplicável',
+          'Protocolo de desenquadramento MEI quando aplicável',
+        ],
+      },
+      {
+        id: `${operation.toLowerCase()}-activation`,
+        title: 'Ativação contábil e dossiê auditável',
+        owner: 'BACKOFFICE',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        status: stageStatus(['BACKOFFICE_OWNER', 'AUDIT_EVIDENCE_STORE']),
+        evidenceRequired: [
+          'Checklist de ativação',
+          'Protocolos e recibos oficiais',
+          'Dossiê de evidências vinculado à empresa',
+          'Comunicação final ao cliente',
+        ],
+      },
+    ];
+  }
+
+  private setupOfficialDependencies(operation: AccountingSetupOperation): string[] {
+    const dependencies = [
+      'Receita Federal / CNPJ',
+      'Redesim',
+      'Junta Comercial ou Cartório competente',
+      'Prefeitura / inscrição municipal / alvará quando aplicável',
+    ];
+
+    if (operation === 'MEI_TO_ME_MIGRATION') {
+      dependencies.push('Portal do Empreendedor / desenquadramento MEI');
+    }
+
+    if (operation === 'ACCOUNTING_MIGRATION') {
+      dependencies.push('Contabilidade anterior e procurações/obrigações históricas');
+    }
+
+    return dependencies;
+  }
+
+  private buildSetupNextActions(
+    gates: AccountingSetupReadinessResponse['gates'],
+    operation: AccountingSetupOperation,
+  ): string[] {
+    const actions = gates
+      .filter((gate) => gate.status !== 'PASS')
+      .map((gate) => `${gate.label}: ${gate.message}`);
+
+    if (actions.length > 0) return actions;
+
+    return [
+      operation === 'COMPANY_OPENING'
+        ? 'Gerar minuta/contrato social assistido, revisar com CRC e protocolar nos órgãos oficiais.'
+        : 'Executar migração assistida, reconciliar pendências históricas e ativar operação recorrente.',
+      'Registrar protocolos, recibos e documentos finais no dossiê auditável da empresa.',
     ];
   }
 
