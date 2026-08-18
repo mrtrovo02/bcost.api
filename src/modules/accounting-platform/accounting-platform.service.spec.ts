@@ -221,6 +221,13 @@ describe('AccountingPlatformService', () => {
     expect(portfolio.assessments).toHaveLength(6);
     expect(portfolio.summary.assistedRequired + portfolio.summary.blocked).toBeGreaterThan(0);
     expect(portfolio.summary.averageScore).toBeGreaterThan(0);
+    expect(portfolio.actionQueue.length).toBeGreaterThan(0);
+    expect(portfolio.actionQueue[0]).toEqual(
+      expect.objectContaining({
+        priority: expect.stringMatching(/^P[0-2]$/),
+        impactedOfferings: expect.any(Array),
+      }),
+    );
     expect(portfolio.recommendedNextOffering).toEqual(
       expect.objectContaining({
         offeringId: expect.any(String),

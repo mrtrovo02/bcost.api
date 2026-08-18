@@ -99,6 +99,7 @@ export class AccountingPlatformService {
     const assessments = this.offerings().offerings.map((offering) =>
       this.assessOffering(offering.id, profile),
     );
+    const actionQueue = this.buildPortfolioActionQueue(assessments);
     const activationAllowed = assessments.filter(
       (item) => item.decision === 'ACTIVATION_ALLOWED',
     ).length;
@@ -132,6 +133,7 @@ export class AccountingPlatformService {
       status: 'OK',
       companyId: profile.companyId,
       assessments,
+      actionQueue,
       summary: {
         total: assessments.length,
         activationAllowed,
@@ -149,6 +151,74 @@ export class AccountingPlatformService {
         : undefined,
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private buildPortfolioActionQueue(assessments: AccountingOfferingCompanyAssessment[]) {
+    const queue = new Map<
+      string,
+      {
+        id: string;
+        owner: AccountingOfferingActivationRequirement['owner'];
+        priority: 'P0' | 'P1' | 'P2';
+        action: string;
+        impactedOfferings: string[];
+      }
+    >();
+
+    for (const assessment of assessments) {
+      for (const check of assessment.checks.filter((item) => item.status !== 'PASS')) {
+        const owner = this.ownerFromEligibilityCode(check.code);
+        const priority = check.status === 'FAIL' ? 'P0' : assessment.decision === 'BLOCKED' ? 'P1' : 'P2';
+        const id = `${owner}:${check.code}:${check.status}`;
+        const action = `${check.label}: ${check.message}`;
+        const existing = queue.get(id);
+
+        if (existing) {
+          existing.impactedOfferings.push(assessment.offeringName);
+          if (priority === 'P0') existing.priority = 'P0';
+          continue;
+        }
+
+        queue.set(id, {
+          id,
+          owner,
+          priority,
+          action,
+          impactedOfferings: [assessment.offeringName],
+        });
+      }
+    }
+
+    return [...queue.values()]
+      .map((item) => ({
+        ...item,
+        impactedOfferings: [...new Set(item.impactedOfferings)].sort(),
+      }))
+      .sort((a, b) => {
+        const priorityWeight = { P0: 3, P1: 2, P2: 1 };
+
+        return (
+          priorityWeight[b.priority] - priorityWeight[a.priority] ||
+          b.impactedOfferings.length - a.impactedOfferings.length ||
+          a.action.localeCompare(b.action)
+        );
+      });
+  }
+
+  private ownerFromEligibilityCode(code: string): AccountingOfferingActivationRequirement['owner'] {
+    if (code === 'CRC_ACCOUNTANT') return 'CRC';
+    if (code === 'BACKOFFICE_TEAM') return 'BACKOFFICE';
+    if (code === 'BAAS_PARTNER' || code === 'OPEN_FINANCE_PROVIDER') return 'FINTECH_PARTNERS';
+    if (
+      code === 'DIGITAL_CERTIFICATE' ||
+      code === 'MUNICIPAL_COVERAGE' ||
+      code === 'OFFICIAL_API_PROVIDER' ||
+      code === 'OFFICIAL_PORTAL_ACCESS'
+    ) {
+      return 'GOVERNMENT_INTEGRATIONS';
+    }
+    if (code === 'AUDIT_EVIDENCE_STORE') return 'GOVERNANCE';
+    return 'PRODUCT';
   }
 
   private buildSummary(items: AccountingPlatformCoverageItem[]) {

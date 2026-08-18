@@ -70,6 +70,13 @@ export type AccountingOfferingPortfolioAssessment = {
   status: 'OK';
   companyId?: string;
   assessments: AccountingOfferingCompanyAssessment[];
+  actionQueue: {
+    id: string;
+    owner: AccountingOfferingActivationRequirement['owner'];
+    priority: 'P0' | 'P1' | 'P2';
+    action: string;
+    impactedOfferings: string[];
+  }[];
   summary: {
     total: number;
     activationAllowed: number;
