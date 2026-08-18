@@ -25,6 +25,7 @@ describe('AccountingPlatformService', () => {
     expect(coverage.summary.crcValidated).toBeGreaterThanOrEqual(4);
     expect(coverage.summary.blockers).toBeGreaterThan(0);
     expect(coverage.summary.warnings).toBeGreaterThan(0);
+    expect(coverage.summary.p0 + coverage.summary.p1).toBeGreaterThan(0);
   });
 
   it('declara capacidades criticas para rotinas reguladas e fintech', () => {
@@ -67,5 +68,15 @@ describe('AccountingPlatformService', () => {
       ]),
     );
     expect(issuer?.nextActions?.length).toBeGreaterThan(0);
+  });
+
+  it('prioriza lacunas críticas como backlog executivo', () => {
+    const coverage = service.coverage();
+    const nfse = coverage.items.find((item) => item.id === 'universal-nfse-issuer');
+    const matrix = coverage.items.find((item) => item.id === 'service-delivery-matrix');
+
+    expect(nfse?.priorityTier).toBe('P0');
+    expect(nfse?.priorityScore).toBeGreaterThanOrEqual(80);
+    expect(matrix?.priorityTier).toBe('P3');
   });
 });

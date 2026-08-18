@@ -5,6 +5,7 @@ import { ACCOUNTING_PLATFORM_COVERAGE } from './accounting-platform.data.js';
 import {
   AccountingPlatformCoverageItem,
   AccountingPlatformCoverageResponse,
+  AccountingPlatformPriorityTier,
   AccountingPlatformReadinessGap,
 } from './accounting-platform.types.js';
 
@@ -40,6 +41,8 @@ export class AccountingPlatformService {
         .length,
       blockers: gaps.filter((gap) => gap.severity === 'BLOCKER').length,
       warnings: gaps.filter((gap) => gap.severity === 'WARNING').length,
+      p0: items.filter((item) => item.priorityTier === 'P0').length,
+      p1: items.filter((item) => item.priorityTier === 'P1').length,
     };
   }
 
@@ -47,12 +50,47 @@ export class AccountingPlatformService {
     item: AccountingPlatformCoverageItem,
   ): AccountingPlatformCoverageItem {
     const readinessGaps = this.buildReadinessGaps(item);
+    const priorityScore = this.calculatePriorityScore(item, readinessGaps);
 
     return {
       ...item,
       readinessGaps,
       nextActions: this.buildNextActions(item, readinessGaps),
+      priorityScore,
+      priorityTier: this.resolvePriorityTier(priorityScore),
     };
+  }
+
+  private calculatePriorityScore(
+    item: AccountingPlatformCoverageItem,
+    gaps: AccountingPlatformReadinessGap[],
+  ): number {
+    let score = 0;
+
+    score += gaps.filter((gap) => gap.severity === 'BLOCKER').length * 30;
+    score += gaps.filter((gap) => gap.severity === 'WARNING').length * 12;
+
+    if (item.block === 'RECURRING_ACCOUNTING_TAX') score += 25;
+    if (item.block === 'ONBOARDING_LEGALIZATION') score += 20;
+    if (item.block === 'FINTECH_VALUE_ADDED') score += 15;
+
+    if (item.maturity === 'REQUIRES_PARTNER') score += 25;
+    if (item.maturity === 'PLANNED') score += 20;
+    if (item.maturity === 'INTEGRATING') score += 10;
+
+    if (item.requiredCapabilities.includes('CRC_ACCOUNTANT')) score += 12;
+    if (item.requiredCapabilities.includes('DIGITAL_CERTIFICATE')) score += 10;
+    if (item.requiredCapabilities.includes('MUNICIPAL_COVERAGE')) score += 8;
+    if (item.requiredCapabilities.includes('BAAS_PARTNER')) score += 8;
+
+    return Math.min(score, 100);
+  }
+
+  private resolvePriorityTier(score: number): AccountingPlatformPriorityTier {
+    if (score >= 80) return 'P0';
+    if (score >= 55) return 'P1';
+    if (score >= 25) return 'P2';
+    return 'P3';
   }
 
   private buildReadinessGaps(
