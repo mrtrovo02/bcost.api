@@ -4,6 +4,8 @@ import { Injectable } from '@nestjs/common';
 import { ACCOUNTING_OFFERINGS } from './accounting-offerings.data.js';
 import {
   AccountingOffering,
+  AccountingOfferingActivationRequirement,
+  AccountingOfferingActivationStatus,
   AccountingOfferingMarketStatus,
   AccountingOfferingsResponse,
 } from './accounting-offerings.types.js';
@@ -109,6 +111,11 @@ export class AccountingPlatformService {
       launchReadinessScore,
       allActive: linkedItems.every((item) => item.maturity === 'ACTIVE'),
     });
+    const activationRequirements = this.buildActivationRequirements(
+      requiredCapabilities,
+      linkedItems,
+      marketStatus,
+    );
 
     return {
       ...offering,
@@ -116,6 +123,15 @@ export class AccountingPlatformService {
       launchReadinessScore,
       marketStatus,
       marketGuardrails: this.buildMarketGuardrails(marketStatus, blockers.length, warnings.length),
+      commercialDecision: this.buildCommercialDecision(marketStatus),
+      activationRequirements,
+      activationSummary: {
+        total: activationRequirements.length,
+        ready: activationRequirements.filter((item) => item.status === 'READY').length,
+        requiresSetup: activationRequirements.filter((item) => item.status === 'REQUIRES_SETUP')
+          .length,
+        blocked: activationRequirements.filter((item) => item.status === 'BLOCKED').length,
+      },
     };
   }
 
@@ -159,6 +175,115 @@ export class AccountingPlatformService {
       'Oferta restrita ao roadmap interno até fechar módulos, parceiros, CRC, credenciais e evidências.',
       `${blockers} bloqueio(s) exigem resolução antes de comunicação comercial.`,
     ];
+  }
+
+  private buildCommercialDecision(status: AccountingOfferingMarketStatus): string {
+    if (status === 'MARKET_READY') {
+      return 'Liberar para proposta comercial padrão, contrato e onboarding digital.';
+    }
+
+    if (status === 'ASSISTED_SELLABLE') {
+      return 'Liberar apenas com escopo assistido, SLA manual e aceite das condicionantes.';
+    }
+
+    if (status === 'WAITLIST_ONLY') {
+      return 'Manter em piloto controlado ou lista de espera até remover bloqueio principal.';
+    }
+
+    return 'Não ofertar publicamente; manter como roadmap interno com validação de arquitetura.';
+  }
+
+  private buildActivationRequirements(
+    capabilities: AccountingOffering['requiredCapabilities'],
+    linkedItems: AccountingPlatformCoverageItem[],
+    marketStatus: AccountingOfferingMarketStatus,
+  ): AccountingOfferingActivationRequirement[] {
+    const officialEvidence = [...new Set(linkedItems.flatMap((item) => item.officialEvidence))];
+
+    return capabilities.map((capability) => ({
+      code: capability,
+      label: this.capabilityActivationLabel(capability),
+      owner: this.capabilityOwner(capability),
+      status: this.capabilityActivationStatus(capability, marketStatus),
+      evidenceRequired: this.capabilityEvidence(capability, officialEvidence),
+    }));
+  }
+
+  private capabilityActivationLabel(capability: AccountingOffering['requiredCapabilities'][number]) {
+    const labels: Record<typeof capability, string> = {
+      AUDIT_EVIDENCE_STORE: 'Trilha de auditoria e evidências',
+      BAAS_PARTNER: 'Parceiro BaaS regulado',
+      BACKOFFICE_TEAM: 'Fila operacional e responsáveis',
+      CRC_ACCOUNTANT: 'Governança do contador responsável',
+      CUSTOMER_PORTAL: 'Portal do cliente e coleta documental',
+      DIGITAL_CERTIFICATE: 'Certificado digital, procuração ou credencial segura',
+      MUNICIPAL_COVERAGE: 'Cobertura municipal homologada',
+      OFFICIAL_API_PROVIDER: 'Provedor oficial/API homologada',
+      OFFICIAL_PORTAL_ACCESS: 'Acesso a portal oficial e recibos',
+      OPEN_FINANCE_PROVIDER: 'Provedor Open Finance homologado',
+    };
+
+    return labels[capability];
+  }
+
+  private capabilityOwner(
+    capability: AccountingOffering['requiredCapabilities'][number],
+  ): AccountingOfferingActivationRequirement['owner'] {
+    if (capability === 'CRC_ACCOUNTANT') return 'CRC';
+    if (capability === 'BACKOFFICE_TEAM') return 'BACKOFFICE';
+    if (capability === 'BAAS_PARTNER' || capability === 'OPEN_FINANCE_PROVIDER') {
+      return 'FINTECH_PARTNERS';
+    }
+    if (
+      capability === 'DIGITAL_CERTIFICATE' ||
+      capability === 'MUNICIPAL_COVERAGE' ||
+      capability === 'OFFICIAL_API_PROVIDER' ||
+      capability === 'OFFICIAL_PORTAL_ACCESS'
+    ) {
+      return 'GOVERNMENT_INTEGRATIONS';
+    }
+    if (capability === 'AUDIT_EVIDENCE_STORE') return 'GOVERNANCE';
+    return 'PRODUCT';
+  }
+
+  private capabilityActivationStatus(
+    capability: AccountingOffering['requiredCapabilities'][number],
+    marketStatus: AccountingOfferingMarketStatus,
+  ): AccountingOfferingActivationStatus {
+    const hardDependencies = new Set<AccountingOffering['requiredCapabilities'][number]>([
+      'BAAS_PARTNER',
+      'OFFICIAL_API_PROVIDER',
+      'MUNICIPAL_COVERAGE',
+      'OPEN_FINANCE_PROVIDER',
+    ]);
+
+    if (marketStatus === 'INTERNAL_ROADMAP') return 'BLOCKED';
+    if (marketStatus === 'WAITLIST_ONLY' && hardDependencies.has(capability)) return 'BLOCKED';
+    if (capability === 'AUDIT_EVIDENCE_STORE' || capability === 'CUSTOMER_PORTAL') return 'READY';
+    if (marketStatus === 'MARKET_READY') return 'READY';
+    return 'REQUIRES_SETUP';
+  }
+
+  private capabilityEvidence(
+    capability: AccountingOffering['requiredCapabilities'][number],
+    officialEvidence: string[],
+  ): string[] {
+    if (capability === 'AUDIT_EVIDENCE_STORE') return officialEvidence.slice(0, 4);
+    if (capability === 'CRC_ACCOUNTANT') return ['Parecer CRC', 'Assinatura técnica', 'Log de revisão'];
+    if (capability === 'DIGITAL_CERTIFICATE') {
+      return ['Procuração eletrônica ou certificado válido', 'Log de uso da credencial'];
+    }
+    if (capability === 'BAAS_PARTNER' || capability === 'OPEN_FINANCE_PROVIDER') {
+      return ['Contrato do parceiro', 'Sandbox homologado', 'SLA e evidência de consentimento'];
+    }
+    if (capability === 'MUNICIPAL_COVERAGE') {
+      return ['Município homologado', 'Campos obrigatórios mapeados', 'Protocolo alternativo'];
+    }
+    if (capability === 'OFFICIAL_API_PROVIDER' || capability === 'OFFICIAL_PORTAL_ACCESS') {
+      return ['Credencial oficial', 'Recibo/protocolo oficial', 'Teste de homologação'];
+    }
+
+    return ['Checklist de ativação', 'Aceite do cliente', 'Registro operacional'];
   }
 
   private withReadiness(

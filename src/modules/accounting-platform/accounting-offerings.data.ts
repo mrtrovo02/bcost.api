@@ -4,7 +4,13 @@ import { AccountingOffering } from './accounting-offerings.types.js';
 
 export const ACCOUNTING_OFFERINGS: Omit<
   AccountingOffering,
-  'requiredCapabilities' | 'marketStatus' | 'marketGuardrails' | 'launchReadinessScore'
+  | 'requiredCapabilities'
+  | 'marketStatus'
+  | 'marketGuardrails'
+  | 'launchReadinessScore'
+  | 'commercialDecision'
+  | 'activationRequirements'
+  | 'activationSummary'
 >[] = [
   {
     id: 'bcost-start',

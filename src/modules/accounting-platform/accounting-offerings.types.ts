@@ -9,6 +9,16 @@ export type AccountingOfferingMarketStatus =
   | 'WAITLIST_ONLY'
   | 'INTERNAL_ROADMAP';
 
+export type AccountingOfferingActivationStatus = 'READY' | 'REQUIRES_SETUP' | 'BLOCKED';
+
+export type AccountingOfferingActivationRequirement = {
+  code: string;
+  label: string;
+  owner: 'PRODUCT' | 'BACKOFFICE' | 'CRC' | 'GOVERNMENT_INTEGRATIONS' | 'FINTECH_PARTNERS' | 'GOVERNANCE';
+  status: AccountingOfferingActivationStatus;
+  evidenceRequired: string[];
+};
+
 export type AccountingOffering = {
   id: string;
   name: string;
@@ -22,6 +32,14 @@ export type AccountingOffering = {
   marketStatus: AccountingOfferingMarketStatus;
   marketGuardrails: string[];
   launchReadinessScore: number;
+  commercialDecision: string;
+  activationRequirements: AccountingOfferingActivationRequirement[];
+  activationSummary: {
+    total: number;
+    ready: number;
+    requiresSetup: number;
+    blocked: number;
+  };
 };
 
 export type AccountingOfferingsResponse = {

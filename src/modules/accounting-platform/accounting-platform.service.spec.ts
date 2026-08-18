@@ -114,4 +114,33 @@ describe('AccountingPlatformService', () => {
     expect(core?.includedServices.length).toBeGreaterThan(0);
     expect(core?.excludedServices.length).toBeGreaterThan(0);
   });
+
+  it('gera plano de ativação com donos, evidências e bloqueios por oferta', () => {
+    const response = service.offerings();
+    const fintech = response.offerings.find((item) => item.id === 'bcost-fintech');
+    const core = response.offerings.find((item) => item.id === 'bcost-core');
+
+    expect(fintech?.commercialDecision).toContain('piloto controlado');
+    expect(fintech?.activationSummary.blocked).toBeGreaterThan(0);
+    expect(fintech?.activationRequirements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'BAAS_PARTNER',
+          owner: 'FINTECH_PARTNERS',
+          status: 'BLOCKED',
+        }),
+      ]),
+    );
+
+    expect(core?.activationRequirements).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'CRC_ACCOUNTANT',
+          owner: 'CRC',
+          status: 'REQUIRES_SETUP',
+        }),
+      ]),
+    );
+    expect(core?.activationSummary.total).toBe(core?.requiredCapabilities.length);
+  });
 });
