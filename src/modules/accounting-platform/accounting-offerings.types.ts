@@ -66,6 +66,26 @@ export type AccountingOfferingCompanyAssessment = {
   generatedAt: string;
 };
 
+export type AccountingOfferingPortfolioAssessment = {
+  status: 'OK';
+  companyId?: string;
+  assessments: AccountingOfferingCompanyAssessment[];
+  summary: {
+    total: number;
+    activationAllowed: number;
+    assistedRequired: number;
+    blocked: number;
+    averageScore: number;
+  };
+  recommendedNextOffering?: {
+    offeringId: string;
+    offeringName: string;
+    decision: AccountingOfferingCompanyAssessment['decision'];
+    score: number;
+  };
+  generatedAt: string;
+};
+
 export type AccountingOffering = {
   id: string;
   name: string;

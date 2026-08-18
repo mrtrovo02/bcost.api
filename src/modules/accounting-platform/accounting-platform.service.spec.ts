@@ -205,4 +205,27 @@ describe('AccountingPlatformService', () => {
       'Oferta contábil não encontrada: nao-existe',
     );
   });
+
+  it('consolida avaliação de portfólio comercial por empresa', () => {
+    const portfolio = service.assessOfferings({
+      companyId: 'company-amel',
+      taxRegime: 'SIMPLES_NACIONAL',
+      hasDigitalCertificate: true,
+      hasCrcResponsible: true,
+      hasBackofficeOwner: true,
+      hasAuditEvidenceStore: true,
+      hasOfficialPortalAccess: true,
+    });
+
+    expect(portfolio.summary.total).toBe(6);
+    expect(portfolio.assessments).toHaveLength(6);
+    expect(portfolio.summary.assistedRequired + portfolio.summary.blocked).toBeGreaterThan(0);
+    expect(portfolio.summary.averageScore).toBeGreaterThan(0);
+    expect(portfolio.recommendedNextOffering).toEqual(
+      expect.objectContaining({
+        offeringId: expect.any(String),
+        score: expect.any(Number),
+      }),
+    );
+  });
 });

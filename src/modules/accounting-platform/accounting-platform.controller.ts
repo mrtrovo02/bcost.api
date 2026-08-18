@@ -20,6 +20,11 @@ export class AccountingPlatformController {
     return this.accountingPlatform.offerings();
   }
 
+  @Get('offerings/assessment')
+  offeringsAssessment(@Query() query: Record<string, string | undefined>) {
+    return this.accountingPlatform.assessOfferings(this.toCompanyProfile(query));
+  }
+
   @Get('offerings/:offeringId/assessment')
   offeringAssessment(
     @Param('offeringId') offeringId: string,

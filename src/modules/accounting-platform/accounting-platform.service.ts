@@ -9,6 +9,7 @@ import {
   AccountingOfferingCompanyAssessment,
   AccountingOfferingCompanyProfile,
   AccountingOfferingEligibilityCheck,
+  AccountingOfferingPortfolioAssessment,
   AccountingOfferingPlaybookStage,
   AccountingOfferingMarketStatus,
   AccountingOfferingsResponse,
@@ -90,6 +91,62 @@ export class AccountingPlatformService {
       score,
       checks,
       requiredActions: this.buildCompanyRequiredActions(decision, checks),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  assessOfferings(profile: AccountingOfferingCompanyProfile): AccountingOfferingPortfolioAssessment {
+    const assessments = this.offerings().offerings.map((offering) =>
+      this.assessOffering(offering.id, profile),
+    );
+    const activationAllowed = assessments.filter(
+      (item) => item.decision === 'ACTIVATION_ALLOWED',
+    ).length;
+    const assistedRequired = assessments.filter(
+      (item) => item.decision === 'ASSISTED_REQUIRED',
+    ).length;
+    const blocked = assessments.filter((item) => item.decision === 'BLOCKED').length;
+    const averageScore =
+      assessments.length > 0
+        ? Math.round(
+            assessments.reduce((sum, item) => sum + item.score, 0) / assessments.length,
+          )
+        : 0;
+    const recommendedNextOffering = [...assessments]
+      .sort((a, b) => {
+        const decisionWeight = {
+          ACTIVATION_ALLOWED: 3,
+          ASSISTED_REQUIRED: 2,
+          BLOCKED: 1,
+        };
+
+        return (
+          decisionWeight[b.decision] - decisionWeight[a.decision] ||
+          b.score - a.score ||
+          a.offeringName.localeCompare(b.offeringName)
+        );
+      })
+      .at(0);
+
+    return {
+      status: 'OK',
+      companyId: profile.companyId,
+      assessments,
+      summary: {
+        total: assessments.length,
+        activationAllowed,
+        assistedRequired,
+        blocked,
+        averageScore,
+      },
+      recommendedNextOffering: recommendedNextOffering
+        ? {
+            offeringId: recommendedNextOffering.offeringId,
+            offeringName: recommendedNextOffering.offeringName,
+            decision: recommendedNextOffering.decision,
+            score: recommendedNextOffering.score,
+          }
+        : undefined,
       generatedAt: new Date().toISOString(),
     };
   }
