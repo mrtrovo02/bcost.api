@@ -1,5 +1,6 @@
 'use strict';
 
+import { createHash } from 'node:crypto';
 import {
   Injectable,
   Logger,
@@ -36,6 +37,14 @@ export type MonthlyTaxPreviewGateStatus = 'PASS' | 'WARN' | 'FAIL';
 
 export type MonthlyTaxPreviewStatus = 'READY_TO_CLOSE' | 'REQUIRES_ACTION' | 'BLOCKED';
 
+export type MonthlyTaxEvidenceStatus = 'READY' | 'PENDING' | 'MISSING';
+
+export type MonthlyTaxEvidenceSource =
+  | 'BCOST'
+  | 'CUSTOMER'
+  | 'GOVERNMENT_PORTAL'
+  | 'CRC';
+
 export interface MonthlyTaxPreviewOptions {
   hasDigitalCertificate?: boolean;
   hasCrcReview?: boolean;
@@ -54,6 +63,16 @@ export interface MonthlyTaxClosurePreview {
     message: string;
   }[];
   evidenceRequired: string[];
+  evidencePacket: {
+    id: string;
+    integrityHash: string;
+    requiredArtifacts: {
+      code: string;
+      label: string;
+      status: MonthlyTaxEvidenceStatus;
+      source: MonthlyTaxEvidenceSource;
+    }[];
+  };
   nextActions: string[];
   generatedAt: string;
 }
@@ -224,6 +243,11 @@ export class TaxCalculationService {
         : warnings.length > 0
           ? 'REQUIRES_ACTION'
           : 'READY_TO_CLOSE';
+    const evidencePacket = this.buildMonthlyClosureEvidencePacket(
+      companyId,
+      calculation,
+      gates,
+    );
 
     return {
       status,
@@ -238,6 +262,7 @@ export class TaxCalculationService {
         'Revisão CRC antes da transmissão oficial',
         'Recibo PGDAS-D e guia DAS após fechamento',
       ],
+      evidencePacket,
       nextActions: this.buildMonthlyClosureNextActions(gates),
       generatedAt: new Date().toISOString(),
     };
@@ -286,6 +311,14 @@ export class TaxCalculationService {
 
     const calc = preview.calculation;
     const dueDate = new Date(year, month, 20); // Vencimento padrão: dia 20
+    const inputSnapshot = {
+      calculation: {
+        ...calc,
+        updatedAt: calc.updatedAt.toISOString(),
+      },
+      gates: preview.gates,
+      evidencePacket: preview.evidencePacket,
+    } as unknown as Prisma.InputJsonValue;
 
     return this.prisma.$transaction(async (tx) => {
       const obligation = await tx.taxObligation.create({
@@ -304,8 +337,7 @@ export class TaxCalculationService {
           totalAmount: new Prisma.Decimal(calc.taxAmount),
           rbt12: new Prisma.Decimal(calc.rbt12),
           fatorR: calc.factorR,
-          // 🚀 CORREÇÃO TS2352: Double casting para JsonValue
-          inputSnapshot: calc as unknown as Prisma.InputJsonValue,
+          inputSnapshot,
         },
         create: {
           companyId,
@@ -314,8 +346,7 @@ export class TaxCalculationService {
           totalAmount: new Prisma.Decimal(calc.taxAmount),
           rbt12: new Prisma.Decimal(calc.rbt12),
           fatorR: calc.factorR,
-          // 🚀 CORREÇÃO TS2352: Double casting para JsonValue
-          inputSnapshot: calc as unknown as Prisma.InputJsonValue,
+          inputSnapshot,
         },
       });
 
@@ -460,5 +491,98 @@ export class TaxCalculationService {
       'Fechar competência, persistir snapshot fiscal e gerar obrigação DAS pendente.',
       'Transmitir/registrar PGDAS-D com evidência oficial e anexar recibo.',
     ];
+  }
+
+  private buildMonthlyClosureEvidencePacket(
+    companyId: string,
+    calculation: TaxCalculationResult,
+    gates: MonthlyTaxClosurePreview['gates'],
+  ): MonthlyTaxClosurePreview['evidencePacket'] {
+    const getGateStatus = (code: string) =>
+      gates.find((gate) => gate.code === code)?.status;
+
+    const requiredArtifacts: MonthlyTaxClosurePreview['evidencePacket']['requiredArtifacts'] =
+      [
+        {
+          code: 'MEMORIA_CALCULO_SIMPLES',
+          label: 'Memória de cálculo do Simples Nacional',
+          status: 'READY',
+          source: 'BCOST',
+        },
+        {
+          code: 'BASE_RECEITAS_RECONCILIADAS',
+          label: 'Base de receitas reconciliadas da competência',
+          status:
+            getGateStatus('REVENUE_RECONCILIATION') === 'PASS'
+              ? 'READY'
+              : 'PENDING',
+          source: 'BCOST',
+        },
+        {
+          code: 'RBT12_FOLHA_L12',
+          label: 'RBT12 e folha dos 12 meses anteriores',
+          status: 'READY',
+          source: 'BCOST',
+        },
+        {
+          code: 'CERTIFICADO_PROCURACAO',
+          label: 'Certificado digital ou procuração válida',
+          status:
+            getGateStatus('DIGITAL_CERTIFICATE') === 'PASS'
+              ? 'READY'
+              : 'MISSING',
+          source: 'CUSTOMER',
+        },
+        {
+          code: 'REVISAO_CRC',
+          label: 'Revisão técnica por contador responsável',
+          status: getGateStatus('CRC_REVIEW') === 'PASS' ? 'READY' : 'MISSING',
+          source: 'CRC',
+        },
+        {
+          code: 'ACESSO_PORTAL_SIMPLES',
+          label: 'Acesso ao Portal do Simples Nacional',
+          status:
+            getGateStatus('OFFICIAL_PORTAL_ACCESS') === 'PASS'
+              ? 'READY'
+              : 'MISSING',
+          source: 'GOVERNMENT_PORTAL',
+        },
+        {
+          code: 'RECIBO_PGDAS_D',
+          label: 'Recibo oficial PGDAS-D após transmissão',
+          status: 'PENDING',
+          source: 'GOVERNMENT_PORTAL',
+        },
+        {
+          code: 'GUIA_DAS',
+          label: 'Guia DAS gerada no canal oficial',
+          status: 'PENDING',
+          source: 'GOVERNMENT_PORTAL',
+        },
+      ];
+
+    const evidenceInput = {
+      companyId,
+      period: calculation.period,
+      taxAmount: calculation.taxAmount,
+      rbt12: calculation.rbt12,
+      factorR: calculation.factorR,
+      appliedAnexo: calculation.appliedAnexo,
+      gates: gates.map(({ code, status }) => ({ code, status })),
+      requiredArtifacts: requiredArtifacts.map(({ code, status, source }) => ({
+        code,
+        status,
+        source,
+      })),
+    };
+
+    return {
+      id: `tax-preview:${companyId}:${calculation.period}`,
+      integrityHash: createHash('sha256')
+        .update(JSON.stringify(evidenceInput))
+        .digest('hex'),
+      requiredArtifacts,
+    };
   }
 }
