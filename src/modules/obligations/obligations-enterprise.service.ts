@@ -1,5 +1,6 @@
 'use strict';
 
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
@@ -17,6 +18,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { CreateFiscalObligationDto } from './dto/create-fiscal-obligation.dto.js';
 import { CreateTaxObligationDto } from './dto/create-tax-obligation.dto.js';
 import { QueryObligationsDto } from './dto/query-obligations.dto.js';
+import { RegisterTaxEvidenceDto } from './dto/register-tax-evidence.dto.js';
 import { SubmitFiscalObligationDto } from './dto/submit-fiscal-obligation.dto.js';
 import { UpdateFiscalObligationDto } from './dto/update-fiscal-obligation.dto.js';
 import { UpdateTaxObligationDto } from './dto/update-tax-obligation.dto.js';
@@ -841,6 +843,89 @@ export class ObligationsEnterpriseService {
       message: 'Obrigação tributária marcada como paga.',
       companyId,
       item: this.normalize(enriched),
+      audit,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async registerTaxEvidence(
+    companyId: string,
+    obligationId: string,
+    dto: RegisterTaxEvidenceDto,
+    user?: AuthUser,
+  ) {
+    this.validateCompanyAccess(companyId, user);
+    this.validateWritePermission(user);
+
+    const current = await this.taxModel.findFirst({
+      where: {
+        id: obligationId,
+        companyId,
+      },
+    });
+
+    if (!current) {
+      throw new NotFoundException(
+        `Obrigação tributária não encontrada: ${obligationId}`,
+      );
+    }
+
+    const evidence = {
+      obligationId,
+      companyId,
+      fileUrl: dto.fileUrl.trim(),
+      receiptCode: dto.receiptCode.trim(),
+      notes: dto.notes?.trim() || null,
+      source: 'GOVERNMENT_PORTAL',
+      recordedBy: this.getUserId(user),
+      recordedAt: new Date().toISOString(),
+    };
+
+    const evidenceHash = createHash('sha256')
+      .update(JSON.stringify(evidence))
+      .digest('hex');
+
+    const updated = await this.taxModel.update({
+      where: {
+        id: obligationId,
+      },
+      data: {
+        fileUrl: evidence.fileUrl,
+        version: {
+          increment: 1,
+        },
+      },
+    });
+
+    const enriched = this.enrichTax(updated);
+
+    const audit = await this.safeAuditLog({
+      companyId,
+      user,
+      module: 'tax-obligations',
+      action: 'TAX_OBLIGATION_OFFICIAL_EVIDENCE_REGISTERED',
+      entity: 'TaxObligation',
+      entityId: obligationId,
+      payload: {
+        before: this.normalize(this.enrichTax(current)),
+        after: this.normalize(enriched),
+        evidence: {
+          ...evidence,
+          integrityHash: evidenceHash,
+        },
+      },
+      statusCode: 200,
+    });
+
+    return {
+      status: 'OK',
+      message: 'Evidência oficial registrada para a obrigação tributária.',
+      companyId,
+      item: this.normalize(enriched),
+      evidence: {
+        ...evidence,
+        integrityHash: evidenceHash,
+      },
       audit,
       generatedAt: new Date().toISOString(),
     };
