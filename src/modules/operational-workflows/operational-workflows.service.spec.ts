@@ -23,6 +23,7 @@ describe('OperationalWorkflowsService', () => {
         evidenceArtifacts: expect.any(Number),
         humanStages: expect.any(Number),
         readyStages: expect.any(Number),
+        requiredCapabilities: expect.any(Number),
         totalStages: expect.any(Number),
       },
       gates: {
@@ -48,6 +49,15 @@ describe('OperationalWorkflowsService', () => {
     );
     expect(preview.operationalSummary.humanStages).toBeGreaterThan(0);
     expect(preview.operationalSummary.evidenceArtifacts).toBeGreaterThan(0);
+    expect(preview.requiredCapabilities).toEqual(
+      expect.arrayContaining([
+        'AUDIT_EVIDENCE_STORE',
+        'BACKOFFICE_TEAM',
+        'CRC_ACCOUNTANT',
+        'DIGITAL_CERTIFICATE',
+        'OFFICIAL_PORTAL_ACCESS',
+      ]),
+    );
   });
 
   it('gera workflow assistido para servico municipal com protocolo fisico', () => {
@@ -58,6 +68,14 @@ describe('OperationalWorkflowsService', () => {
     });
 
     expect(preview.gates.requiresCustomerAction).toBe(true);
+    expect(preview.requiredCapabilities).toEqual(
+      expect.arrayContaining([
+        'BACKOFFICE_TEAM',
+        'CUSTOMER_PORTAL',
+        'MUNICIPAL_COVERAGE',
+        'OFFICIAL_PORTAL_ACCESS',
+      ]),
+    );
     expect(preview.stages).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

@@ -8,6 +8,7 @@ import {
 } from '../service-catalog/service-catalog.types.js';
 import { ServiceCatalogService } from '../service-catalog/service-catalog.service.js';
 import {
+  OperationalCapability,
   OperationalWorkflowActor,
   OperationalWorkflowPreview,
   OperationalWorkflowRuntimeStatus,
@@ -40,6 +41,7 @@ export class OperationalWorkflowsService {
     service: EvaluatedMicroService,
   ): OperationalWorkflowPreview {
     const stages = this.buildStages(service);
+    const requiredCapabilities = this.collectRequiredCapabilities(stages);
 
     return {
       serviceId: service.id,
@@ -51,6 +53,7 @@ export class OperationalWorkflowsService {
       operationalRisk: service.executionProfile.operationalRisk,
       stages,
       operationalSummary: this.buildOperationalSummary(stages),
+      requiredCapabilities,
       gates: {
         requiresCrcValidation: service.executionProfile.requiresCrcValidation,
         requiresOfficialCredential:
@@ -73,6 +76,7 @@ export class OperationalWorkflowsService {
         runtimeStatus: 'READY_TO_RUN',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
         executionEngine: 'SOFTWARE_WORKFLOW',
+        requiredCapabilities: ['CUSTOMER_PORTAL', 'AUDIT_EVIDENCE_STORE'],
         evidenceRequired: [
           'Empresa, solicitante, plano, competencia/fato gerador e servico selecionado.',
           'Condicionantes comerciais e regulatórias calculadas pelo catalogo.',
@@ -95,6 +99,7 @@ export class OperationalWorkflowsService {
             ? ['IN_PROGRESS', 'DONE', 'BLOCKED']
             : ['IN_PROGRESS', 'BLOCKED'],
         executionEngine: 'SOFTWARE_WORKFLOW',
+        requiredCapabilities: ['BACKOFFICE_TEAM', 'AUDIT_EVIDENCE_STORE'],
         evidenceRequired: [
           'Checklist de documentos, plano contratado, retroatividade e taxas externas.',
         ],
@@ -117,6 +122,7 @@ export class OperationalWorkflowsService {
         runtimeStatus: 'WAITING_CUSTOMER',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
         executionEngine: 'MANUAL_PROTOCOL',
+        requiredCapabilities: ['CUSTOMER_PORTAL', 'BACKOFFICE_TEAM'],
         evidenceRequired: [
           'Documento, protocolo fisico, assinatura ou comprovante enviado pelo cliente.',
         ],
@@ -132,6 +138,7 @@ export class OperationalWorkflowsService {
         runtimeStatus: 'WAITING_CRC_REVIEW',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
         executionEngine: 'HUMAN_CRC_REVIEW',
+        requiredCapabilities: ['CRC_ACCOUNTANT', 'AUDIT_EVIDENCE_STORE'],
         evidenceRequired: [
           'Parecer, aprovacao ou assinatura tecnica do responsavel contabil.',
         ],
@@ -146,6 +153,7 @@ export class OperationalWorkflowsService {
       runtimeStatus: 'READY_TO_RUN',
       allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
       executionEngine: 'SOFTWARE_WORKFLOW',
+      requiredCapabilities: ['AUDIT_EVIDENCE_STORE'],
       evidenceRequired:
         service.executionProfile.evidenceArtifacts.length > 0
           ? service.executionProfile.evidenceArtifacts
@@ -156,6 +164,8 @@ export class OperationalWorkflowsService {
   }
 
   private buildOperationalSummary(stages: OperationalWorkflowStage[]) {
+    const requiredCapabilities = this.collectRequiredCapabilities(stages);
+
     return {
       totalStages: stages.length,
       readyStages: stages.filter(
@@ -178,7 +188,16 @@ export class OperationalWorkflowsService {
         (total, stage) => total + stage.evidenceRequired.length,
         0,
       ),
+      requiredCapabilities: requiredCapabilities.length,
     };
+  }
+
+  private collectRequiredCapabilities(
+    stages: OperationalWorkflowStage[],
+  ): OperationalCapability[] {
+    return [
+      ...new Set(stages.flatMap((stage) => stage.requiredCapabilities)),
+    ].sort();
   }
 
   private stageForEngine(
@@ -196,6 +215,7 @@ export class OperationalWorkflowsService {
         status: OperationalWorkflowStageStatus;
         runtimeStatus: OperationalWorkflowRuntimeStatus;
         allowedTransitions: OperationalWorkflowRuntimeStatus[];
+        requiredCapabilities: OperationalCapability[];
         blockingReason?: string;
       }
     > = {
@@ -206,6 +226,7 @@ export class OperationalWorkflowsService {
         status: 'READY',
         runtimeStatus: 'READY_TO_RUN',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['AUDIT_EVIDENCE_STORE'],
       },
       OFFICIAL_API: {
         id: 'official-api',
@@ -214,6 +235,7 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_DEPENDENCY',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['OFFICIAL_API_PROVIDER', 'DIGITAL_CERTIFICATE'],
         blockingReason:
           'Depende de API oficial, provedor homologado ou credencial configurada.',
       },
@@ -224,6 +246,11 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_PUBLIC_AGENCY',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: [
+          'OFFICIAL_PORTAL_ACCESS',
+          'DIGITAL_CERTIFICATE',
+          'BACKOFFICE_TEAM',
+        ],
         blockingReason:
           'Depende de disponibilidade do portal publico, credencial e leiaute vigente.',
       },
@@ -234,6 +261,11 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_PUBLIC_AGENCY',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: [
+          'MUNICIPAL_COVERAGE',
+          'OFFICIAL_PORTAL_ACCESS',
+          'BACKOFFICE_TEAM',
+        ],
         blockingReason:
           'Depende de regra municipal, portal local ou emissor nacional aplicavel.',
       },
@@ -244,6 +276,7 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_DEPENDENCY',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['DIGITAL_CERTIFICATE'],
         blockingReason:
           'Depende de certificado digital valido, procuração eletronica ou credencial oficial.',
       },
@@ -254,6 +287,7 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_DEPENDENCY',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['BAAS_PARTNER'],
         blockingReason:
           'Depende de parceiro regulado, KYC/KYB e contrato de integracao.',
       },
@@ -264,6 +298,7 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_CUSTOMER',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['OPEN_FINANCE_PROVIDER', 'CUSTOMER_PORTAL'],
         blockingReason: 'Depende de consentimento ativo do cliente.',
       },
       HUMAN_CRC_REVIEW: {
@@ -273,6 +308,7 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_CRC',
         runtimeStatus: 'WAITING_CRC_REVIEW',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['CRC_ACCOUNTANT', 'AUDIT_EVIDENCE_STORE'],
         blockingReason:
           'Depende de contador responsavel e registro de aprovacao tecnica.',
       },
@@ -283,6 +319,7 @@ export class OperationalWorkflowsService {
         status: 'REQUIRES_BACKOFFICE',
         runtimeStatus: 'WAITING_DEPENDENCY',
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
+        requiredCapabilities: ['BACKOFFICE_TEAM', 'CUSTOMER_PORTAL'],
         blockingReason:
           'Depende de documentacao, protocolo assistido ou atendimento operacional.',
       },
