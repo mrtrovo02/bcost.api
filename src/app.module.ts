@@ -51,6 +51,7 @@ import { BusinessRulesModule } from './modules/business-rules/business-rules.mod
 import { FinanceModule } from './modules/finance/finance.module.js';
 import { AuditModule as ProductAuditModule } from './modules/audit/audit.module.js';
 import { AccountingPlatformModule } from './modules/accounting-platform/accounting-platform.module.js';
+import { PublicSettingsModule } from './modules/public-settings/public-settings.module.js';
 import { EnterpriseModulesModule } from './modules/enterprise/enterprise-modules.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { DigitalCertificatesEnterpriseModule } from './modules/digital-certificates/digital-certificates-enterprise.module.js';
@@ -190,6 +191,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
     FinanceModule,
     ProductAuditModule,
     AccountingPlatformModule,
+    PublicSettingsModule,
     EnterpriseModulesModule,
     BillingModule,
     DigitalCertificatesEnterpriseModule,

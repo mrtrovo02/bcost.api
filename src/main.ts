@@ -302,6 +302,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
         { path: 'metrics', method: RequestMethod.GET },
         { path: 'docs', method: RequestMethod.GET },
         { path: 'docs/(.*)', method: RequestMethod.GET },
+        { path: 'v2/settings', method: RequestMethod.GET },
       ],
     });
 
