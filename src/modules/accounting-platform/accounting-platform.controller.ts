@@ -13,4 +13,9 @@ export class AccountingPlatformController {
   coverage() {
     return this.accountingPlatform.coverage();
   }
+
+  @Get('offerings')
+  offerings() {
+    return this.accountingPlatform.offerings();
+  }
 }

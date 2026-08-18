@@ -79,4 +79,39 @@ describe('AccountingPlatformService', () => {
     expect(nfse?.priorityScore).toBeGreaterThanOrEqual(80);
     expect(matrix?.priorityTier).toBe('P3');
   });
+
+  it('estrutura prateleira comercial original sem nomes de concorrentes', () => {
+    const response = service.offerings();
+    const serialized = JSON.stringify(response).toLowerCase();
+
+    expect(response.summary.total).toBe(6);
+    expect(response.offerings.map((item) => item.id)).toEqual([
+      'bcost-start',
+      'bcost-core',
+      'bcost-people',
+      'bcost-issue',
+      'bcost-fintech',
+      'bcost-office',
+    ]);
+    expect(serialized).not.toContain('contabilizei');
+    expect(serialized).not.toContain('dominio');
+    expect(serialized).not.toContain('contimatic');
+    expect(serialized).not.toContain('alterdata');
+  });
+
+  it('bloqueia comunicação plena quando a oferta depende de parceiro ou módulo planejado', () => {
+    const response = service.offerings();
+    const issue = response.offerings.find((item) => item.id === 'bcost-issue');
+    const core = response.offerings.find((item) => item.id === 'bcost-core');
+
+    expect(issue?.marketStatus).toBe('WAITLIST_ONLY');
+    expect(issue?.marketGuardrails.join(' ')).toContain('lista de espera');
+    expect(issue?.requiredCapabilities).toEqual(
+      expect.arrayContaining(['MUNICIPAL_COVERAGE', 'DIGITAL_CERTIFICATE']),
+    );
+
+    expect(core?.marketStatus).toBe('ASSISTED_SELLABLE');
+    expect(core?.includedServices.length).toBeGreaterThan(0);
+    expect(core?.excludedServices.length).toBeGreaterThan(0);
+  });
 });

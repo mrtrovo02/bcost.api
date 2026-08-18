@@ -1,6 +1,12 @@
 'use strict';
 
 import { Injectable } from '@nestjs/common';
+import { ACCOUNTING_OFFERINGS } from './accounting-offerings.data.js';
+import {
+  AccountingOffering,
+  AccountingOfferingMarketStatus,
+  AccountingOfferingsResponse,
+} from './accounting-offerings.types.js';
 import { ACCOUNTING_PLATFORM_COVERAGE } from './accounting-platform.data.js';
 import {
   AccountingPlatformCoverageItem,
@@ -20,6 +26,32 @@ export class AccountingPlatformService {
       status: 'OK',
       items,
       summary: this.buildSummary(items),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  offerings(): AccountingOfferingsResponse {
+    const coverageItems = this.coverage().items;
+    const offerings = ACCOUNTING_OFFERINGS.map((offering) =>
+      this.buildOffering(offering, coverageItems),
+    );
+
+    return {
+      status: 'OK',
+      offerings,
+      summary: {
+        total: offerings.length,
+        marketReady: offerings.filter((item) => item.marketStatus === 'MARKET_READY')
+          .length,
+        assistedSellable: offerings.filter(
+          (item) => item.marketStatus === 'ASSISTED_SELLABLE',
+        ).length,
+        waitlistOnly: offerings.filter((item) => item.marketStatus === 'WAITLIST_ONLY')
+          .length,
+        internalRoadmap: offerings.filter(
+          (item) => item.marketStatus === 'INTERNAL_ROADMAP',
+        ).length,
+      },
       generatedAt: new Date().toISOString(),
     };
   }
@@ -44,6 +76,89 @@ export class AccountingPlatformService {
       p0: items.filter((item) => item.priorityTier === 'P0').length,
       p1: items.filter((item) => item.priorityTier === 'P1').length,
     };
+  }
+
+  private buildOffering(
+    offering: (typeof ACCOUNTING_OFFERINGS)[number],
+    coverageItems: AccountingPlatformCoverageItem[],
+  ): AccountingOffering {
+    const linkedItems = coverageItems.filter((item) =>
+      offering.coverageItemIds.includes(item.id),
+    );
+    const requiredCapabilities = [
+      ...new Set(linkedItems.flatMap((item) => item.requiredCapabilities)),
+    ].sort();
+    const blockers = linkedItems.flatMap((item) =>
+      (item.readinessGaps ?? []).filter((gap) => gap.severity === 'BLOCKER'),
+    );
+    const warnings = linkedItems.flatMap((item) =>
+      (item.readinessGaps ?? []).filter((gap) => gap.severity === 'WARNING'),
+    );
+    const avgPriority =
+      linkedItems.length > 0
+        ? linkedItems.reduce((sum, item) => sum + (item.priorityScore ?? 0), 0) /
+          linkedItems.length
+        : 0;
+    const launchReadinessScore = Math.max(
+      0,
+      Math.round(100 - blockers.length * 25 - warnings.length * 8 - avgPriority * 0.25),
+    );
+    const marketStatus = this.resolveMarketStatus({
+      blockers: blockers.length,
+      warnings: warnings.length,
+      launchReadinessScore,
+      allActive: linkedItems.every((item) => item.maturity === 'ACTIVE'),
+    });
+
+    return {
+      ...offering,
+      requiredCapabilities,
+      launchReadinessScore,
+      marketStatus,
+      marketGuardrails: this.buildMarketGuardrails(marketStatus, blockers.length, warnings.length),
+    };
+  }
+
+  private resolveMarketStatus(input: {
+    blockers: number;
+    warnings: number;
+    launchReadinessScore: number;
+    allActive: boolean;
+  }): AccountingOfferingMarketStatus {
+    if (input.blockers >= 2) return 'INTERNAL_ROADMAP';
+    if (input.blockers === 1) return 'WAITLIST_ONLY';
+    if (input.warnings > 0 || !input.allActive) return 'ASSISTED_SELLABLE';
+    if (input.launchReadinessScore >= 85) return 'MARKET_READY';
+    return 'ASSISTED_SELLABLE';
+  }
+
+  private buildMarketGuardrails(
+    status: AccountingOfferingMarketStatus,
+    blockers: number,
+    warnings: number,
+  ): string[] {
+    if (status === 'MARKET_READY') {
+      return ['Oferta liberada para comunicação comercial com monitoramento de SLA e evidências.'];
+    }
+
+    if (status === 'ASSISTED_SELLABLE') {
+      return [
+        'Oferta vendável apenas com escopo assistido, onboarding operacional e aceite explícito de condicionantes.',
+        `${warnings} aviso(s) operacional(is) exigem checklist antes da ativação.`,
+      ];
+    }
+
+    if (status === 'WAITLIST_ONLY') {
+      return [
+        'Oferta deve ficar em lista de espera ou piloto controlado até remover bloqueio principal.',
+        `${blockers} bloqueio(s) impedem promessa de disponibilidade plena.`,
+      ];
+    }
+
+    return [
+      'Oferta restrita ao roadmap interno até fechar módulos, parceiros, CRC, credenciais e evidências.',
+      `${blockers} bloqueio(s) exigem resolução antes de comunicação comercial.`,
+    ];
   }
 
   private withReadiness(
