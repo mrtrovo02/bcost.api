@@ -477,13 +477,13 @@ export class AccountingPlatformService {
         name: 'Entrada de documentos fiscais e XML',
         layer: 'INTEGRATIONS',
         canonicalOwner: 'fiscal',
-        canonicalApiBase: '/fiscal/upload-xml',
+        canonicalApiBase: '/fiscal/upload',
         frontendRoutes: ['/dashboard/xml', '/upload-xml'],
         relatedModules: ['document-management', 'fiscal-books', 'dfe'],
         status: 'NEEDS_CONSOLIDATION',
         duplicateRisk: 'HIGH',
         consolidationRule:
-          'Upload, validação XML e ingestão DFe devem convergir para fiscal/dfe; /upload-xml deve virar alias controlado de /dashboard/xml.',
+          'Upload, validação XML e ingestão DFe devem convergir para /fiscal/upload; /fiscal/upload-xml e /upload-xml devem operar apenas como aliases controlados.',
         publicContract:
           'Recebe XML/documento fiscal, valida estrutura, vincula empresa, gera hash e libera para apuração e obrigações.',
         integrationPoints: [
