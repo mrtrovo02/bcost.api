@@ -294,6 +294,7 @@ export class AccountingPlatformService {
           'Não criar novo catálogo paralelo em accounting-platform ou compliance-enterprise.',
           'Não nomear recursos com marcas de concorrentes.',
         ],
+        legacyAliases: [],
       },
       {
         capabilityId: 'ACCOUNTING_MARKET_READINESS',
@@ -317,6 +318,7 @@ export class AccountingPlatformService {
         forbiddenDuplicates: [
           'Não criar dashboards paralelos de readiness fora do painel enterprise.',
         ],
+        legacyAliases: [],
       },
       {
         capabilityId: 'SETUP_LEGALIZATION',
@@ -344,6 +346,7 @@ export class AccountingPlatformService {
         forbiddenDuplicates: [
           'Não criar /legalization/* isolado sem delegar readiness para /accounting-platform/setup.',
         ],
+        legacyAliases: [],
       },
       {
         capabilityId: 'MONTHLY_TAX_CLOSURE',
@@ -376,6 +379,7 @@ export class AccountingPlatformService {
           'Não duplicar cálculo de imposto dentro de obligations-enterprise.',
           'Não gerar guia sem evidence packet e responsável definido.',
         ],
+        legacyAliases: [],
       },
       {
         capabilityId: 'TAX_OBLIGATION_EVIDENCE',
@@ -395,6 +399,7 @@ export class AccountingPlatformService {
         forbiddenDuplicates: [
           'Não anexar comprovante fiscal em endpoint genérico sem atualizar TaxObligation.',
         ],
+        legacyAliases: [],
       },
       {
         capabilityId: 'OFFICIAL_FISCAL_OBLIGATIONS',
@@ -418,6 +423,7 @@ export class AccountingPlatformService {
         forbiddenDuplicates: [
           'Não criar scheduler fiscal fora de automation-jobs e obligations-enterprise.',
         ],
+        legacyAliases: [],
       },
       {
         capabilityId: 'PAYROLL_ESOCIAL',
@@ -441,6 +447,20 @@ export class AccountingPlatformService {
         integrationPoints: ['eSocial', 'FGTS Digital', 'DCTFWeb', 'AuditLog'],
         forbiddenDuplicates: [
           'Não evoluir fiscal/payroll como segundo motor de folha sem plano de migração.',
+        ],
+        legacyAliases: [
+          {
+            method: 'POST',
+            path: '/fiscal/payroll/:companyId',
+            migrationTarget: '/payroll/enterprise/payrolls/:companyId',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
+          {
+            method: 'POST',
+            path: '/fiscal/payroll/sync/:companyId',
+            migrationTarget: '/payroll/enterprise/payrolls/:companyId/generate',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
         ],
       },
       {
@@ -471,6 +491,41 @@ export class AccountingPlatformService {
           'Não criar novo /finance/banking para transações bancárias.',
           'Não armazenar consentimento Open Finance fora da camada fintech/governança.',
         ],
+        legacyAliases: [
+          {
+            method: 'GET',
+            path: '/banking/accounts/:companyId',
+            migrationTarget: '/banking/enterprise/accounts/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'GET',
+            path: '/banking/transactions/:companyId',
+            migrationTarget: '/banking/enterprise/transactions/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'POST',
+            path: '/banking/reconcile/:companyId',
+            migrationTarget:
+              '/banking/enterprise/reconciliation/:companyId/auto',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'POST',
+            path: '/reconciliation/auto/:companyId',
+            migrationTarget:
+              '/banking/enterprise/reconciliation/:companyId/auto',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'DELETE',
+            path: '/reconciliation/undo/:bankTransactionId',
+            migrationTarget:
+              '/banking/enterprise/reconciliation/:companyId/undo/:transactionId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+        ],
       },
       {
         capabilityId: 'DOCUMENT_XML_INTAKE',
@@ -495,6 +550,20 @@ export class AccountingPlatformService {
         forbiddenDuplicates: [
           'Não criar terceira tela de upload fiscal.',
           'Não permitir fallback demo em ingestão de documento produtivo.',
+        ],
+        legacyAliases: [
+          {
+            method: 'POST',
+            path: '/fiscal/upload-xml/:companyId',
+            migrationTarget: '/fiscal/upload/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'GET',
+            path: '/upload-xml',
+            migrationTarget: '/dashboard/xml',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
         ],
       },
       {
@@ -521,6 +590,7 @@ export class AccountingPlatformService {
           'Não acessar dados por companyId sem validação de tenant.',
           'Não reativar fallback demonstrativo em ambiente produtivo.',
         ],
+        legacyAliases: [],
       },
     ];
   }

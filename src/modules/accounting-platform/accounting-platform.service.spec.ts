@@ -172,6 +172,48 @@ describe('AccountingPlatformService', () => {
           capabilityId: 'BANKING_RECONCILIATION',
           canonicalOwner: 'banking-enterprise',
           duplicateRisk: 'HIGH',
+          legacyAliases: expect.arrayContaining([
+            expect.objectContaining({
+              path: '/banking/transactions/:companyId',
+              migrationTarget: '/banking/enterprise/transactions/:companyId',
+            }),
+            expect.objectContaining({
+              path: '/reconciliation/auto/:companyId',
+              migrationTarget:
+                '/banking/enterprise/reconciliation/:companyId/auto',
+            }),
+          ]),
+        }),
+      ]),
+    );
+  });
+
+  it('documenta aliases legados sem transformar compatibilidade em novo core', () => {
+    const registry = service.architectureRegistry();
+    const xmlIntake = registry.items.find(
+      (item) => item.capabilityId === 'DOCUMENT_XML_INTAKE',
+    );
+    const payroll = registry.items.find(
+      (item) => item.capabilityId === 'PAYROLL_ESOCIAL',
+    );
+
+    expect(xmlIntake?.canonicalApiBase).toBe('/fiscal/upload');
+    expect(xmlIntake?.legacyAliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          method: 'POST',
+          path: '/fiscal/upload-xml/:companyId',
+          migrationTarget: '/fiscal/upload/:companyId',
+          deprecationStage: 'SUPPORTED_ALIAS',
+        }),
+      ]),
+    );
+    expect(payroll?.legacyAliases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: '/fiscal/payroll/:companyId',
+          migrationTarget: '/payroll/enterprise/payrolls/:companyId',
+          deprecationStage: 'INTERNAL_ONLY',
         }),
       ]),
     );
