@@ -472,6 +472,18 @@ export class AccountingPlatformService {
             migrationTarget: '/payroll/enterprise/payrolls/:companyId/generate',
             deprecationStage: 'INTERNAL_ONLY',
           },
+          {
+            method: 'GET',
+            path: '/fiscal/payroll/history/:companyId',
+            migrationTarget: '/payroll/enterprise/payrolls/:companyId',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
+          {
+            method: 'GET',
+            path: '/fiscal/payroll/diagnostics/:companyId',
+            migrationTarget: '/fiscal/tax/monthly-preview/:companyId',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
         ],
       },
       {
