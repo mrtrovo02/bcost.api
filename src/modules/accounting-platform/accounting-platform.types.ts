@@ -60,6 +60,73 @@ export type AccountingPlatformCoverageResponse = {
   generatedAt: string;
 };
 
+export type AccountingMarketReadinessStatus =
+  | 'PRODUCTION_READY'
+  | 'ASSISTED_READY'
+  | 'INTEGRATION_REQUIRED'
+  | 'BLOCKED';
+
+export type AccountingMarketReadinessTrack = {
+  code:
+    | 'CRC_GOVERNANCE'
+    | 'LEGALIZATION_ENGINE'
+    | 'MONTHLY_TAX_CORE'
+    | 'OFFICIAL_OBLIGATIONS'
+    | 'NFSE_ISSUANCE'
+    | 'PAYROLL_ESOCIAL'
+    | 'BANKING_BAAS'
+    | 'SECURITY_LGPD'
+    | 'CUSTOMER_SUCCESS_OPS';
+  title: string;
+  priority: AccountingPlatformPriorityTier;
+  owner:
+    | 'PRODUCT'
+    | 'ENGINEERING'
+    | 'BACKOFFICE'
+    | 'CRC'
+    | 'GOVERNMENT_INTEGRATIONS'
+    | 'FINTECH_PARTNERS'
+    | 'SECURITY'
+    | 'CUSTOMER_SUCCESS';
+  status: AccountingMarketReadinessStatus;
+  automationBoundary: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
+  gap: string;
+  implementationActions: string[];
+  officialDependencies: string[];
+  requiredEvidence: string[];
+  sourceBasis: string[];
+  estimatedImpact: 'REVENUE_CRITICAL' | 'RISK_CRITICAL' | 'SCALE_CRITICAL' | 'EFFICIENCY';
+};
+
+export type AccountingMarketReadinessResponse = {
+  status: 'OK';
+  score: number;
+  marketPosition:
+    | 'NOT_SELLABLE_AS_FULL_ACCOUNTING'
+    | 'ASSISTED_ACCOUNTING_PILOT'
+    | 'MARKET_READY_WITH_GUARDRAILS'
+    | 'SCALE_READY';
+  summary: {
+    totalTracks: number;
+    productionReady: number;
+    assistedReady: number;
+    integrationRequired: number;
+    blocked: number;
+    p0: number;
+    p1: number;
+  };
+  tracks: AccountingMarketReadinessTrack[];
+  nextBuildQueue: {
+    id: string;
+    priority: AccountingPlatformPriorityTier;
+    owner: AccountingMarketReadinessTrack['owner'];
+    action: string;
+    unlocks: string[];
+  }[];
+  executiveGuardrails: string[];
+  generatedAt: string;
+};
+
 export type AccountingSetupOperation =
   | 'COMPANY_OPENING'
   | 'ACCOUNTING_MIGRATION'

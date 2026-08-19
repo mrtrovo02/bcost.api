@@ -17,6 +17,9 @@ import {
 } from './accounting-offerings.types.js';
 import { ACCOUNTING_PLATFORM_COVERAGE } from './accounting-platform.data.js';
 import {
+  AccountingMarketReadinessResponse,
+  AccountingMarketReadinessStatus,
+  AccountingMarketReadinessTrack,
   AccountingPlatformCoverageItem,
   AccountingPlatformCoverageResponse,
   AccountingPlatformPriorityTier,
@@ -63,6 +66,28 @@ export class AccountingPlatformService {
           (item) => item.marketStatus === 'INTERNAL_ROADMAP',
         ).length,
       },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  marketReadiness(): AccountingMarketReadinessResponse {
+    const tracks = this.buildMarketReadinessTracks();
+    const summary = this.buildMarketReadinessSummary(tracks);
+    const score = this.calculateMarketReadinessScore(tracks);
+
+    return {
+      status: 'OK',
+      score,
+      marketPosition: this.resolveMarketPosition(score, summary.blocked),
+      summary,
+      tracks,
+      nextBuildQueue: this.buildMarketNextBuildQueue(tracks),
+      executiveGuardrails: [
+        'Não vender contabilidade completa em escala antes de formalizar CRC, governança técnica e dossiê de evidências.',
+        'Todo serviço dependente de órgão público deve comunicar prazo assistido, protocolo oficial e exceções municipais.',
+        'Fintech, conta PJ e Open Finance devem operar por parceiro autorizado ou estrutura regulatória compatível.',
+        'CBS/IBS em 2026 deve ser tratado como compliance documental e calibração operacional, sem comunicação de recolhimento indevido.',
+      ],
       generatedAt: new Date().toISOString(),
     };
   }
@@ -238,6 +263,266 @@ export class AccountingPlatformService {
         impactedOfferings: [...new Set(item.impactedOfferings)].sort(),
       }))
       .sort((a, b) => b.p0 - a.p0 || b.totalActions - a.totalActions || a.owner.localeCompare(b.owner));
+  }
+
+  private buildMarketReadinessTracks(): AccountingMarketReadinessTrack[] {
+    return [
+      {
+        code: 'CRC_GOVERNANCE',
+        title: 'Governança CRC e organização contábil',
+        priority: 'P0',
+        owner: 'CRC',
+        status: 'BLOCKED',
+        automationBoundary: 'CRC_VALIDATED',
+        gap: 'Formalizar responsável técnico, políticas de revisão, registro da operação contábil e matriz de responsabilidade antes de escalar.',
+        implementationActions: [
+          'Cadastrar responsáveis técnicos por UF/CRC e matriz de alçada.',
+          'Criar workflow de revisão/aprovação para DAS, folha, demonstrações e obrigações acessórias.',
+          'Vincular parecer técnico e assinatura digital ao dossiê de cada entrega.',
+        ],
+        officialDependencies: ['CFC/CRC', 'NBC PG 01', 'Registro de organização contábil'],
+        requiredEvidence: [
+          'Registro cadastral da organização contábil',
+          'Responsável técnico ativo',
+          'Política de revisão CRC versionada',
+        ],
+        sourceBasis: ['CFC', 'NBC PG', 'Resoluções de registro profissional e cadastral'],
+        estimatedImpact: 'RISK_CRITICAL',
+      },
+      {
+        code: 'LEGALIZATION_ENGINE',
+        title: 'Abertura, migração, alteração e baixa',
+        priority: 'P0',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        status: 'ASSISTED_READY',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        gap: 'Readiness e dossiê existem, mas ainda falta execução transacional com protocolos, exigências, anexos e conclusão oficial.',
+        implementationActions: [
+          'Criar entidades de protocolo, exigência, anexo e etapa pública.',
+          'Conectar Redesim/Junta quando houver API ou RPA governado.',
+          'Registrar deferimento, CNPJ, inscrição municipal e comunicação final ao cliente.',
+        ],
+        officialDependencies: ['Redesim', 'Receita Federal', 'Junta Comercial', 'Prefeituras'],
+        requiredEvidence: [
+          'Consulta de viabilidade',
+          'Protocolo Redesim/Junta',
+          'CNPJ deferido',
+          'Inscrição municipal/estadual quando aplicável',
+        ],
+        sourceBasis: ['Gov.br Redesim', 'Receita Federal CNPJ'],
+        estimatedImpact: 'REVENUE_CRITICAL',
+      },
+      {
+        code: 'MONTHLY_TAX_CORE',
+        title: 'Core mensal de impostos e DAS',
+        priority: 'P0',
+        owner: 'ENGINEERING',
+        status: 'ASSISTED_READY',
+        automationBoundary: 'CRC_VALIDATED',
+        gap: 'Prévia, gates, fechamento e evidências já existem; falta transmissão/retorno oficial PGDAS-D e exceções de regime/município.',
+        implementationActions: [
+          'Persistir memória de cálculo mensal com versionamento imutável.',
+          'Criar fila de transmissão assistida PGDAS-D com retorno de recibo e guia.',
+          'Ampliar regras para Lucro Presumido e retenções quando sair do foco Simples.',
+        ],
+        officialDependencies: ['Portal do Simples Nacional', 'e-CAC', 'Procuração eletrônica'],
+        requiredEvidence: ['Memória de cálculo', 'Recibo PGDAS-D', 'Guia DAS', 'Parecer CRC'],
+        sourceBasis: ['Simples Nacional', 'Receita Federal e-CAC'],
+        estimatedImpact: 'REVENUE_CRITICAL',
+      },
+      {
+        code: 'OFFICIAL_OBLIGATIONS',
+        title: 'Obrigações acessórias oficiais',
+        priority: 'P0',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        status: 'INTEGRATION_REQUIRED',
+        automationBoundary: 'HUMAN_LED',
+        gap: 'É preciso cobrir DEFIS, DCTFWeb, SPED, ECD, ECF, EFD, recibos, rejeições e calendário oficial por regime.',
+        implementationActions: [
+          'Criar catálogo parametrizado de obrigações por regime, CNAE, UF e município.',
+          'Implementar geração/validação de arquivos e anexação de recibos oficiais.',
+          'Adicionar monitor de vencimentos, rejeições, retificações e aceite CRC.',
+        ],
+        officialDependencies: ['SPED', 'DCTFWeb', 'eSocial', 'Receita Federal'],
+        requiredEvidence: ['Arquivo transmitido', 'Recibo oficial', 'Protocolo de retificação', 'Log de validação'],
+        sourceBasis: ['SPED Receita Federal', 'eSocial', 'DCTFWeb'],
+        estimatedImpact: 'RISK_CRITICAL',
+      },
+      {
+        code: 'NFSE_ISSUANCE',
+        title: 'Emissão NFS-e/NF-e com cobertura nacional',
+        priority: 'P0',
+        owner: 'GOVERNMENT_INTEGRATIONS',
+        status: 'INTEGRATION_REQUIRED',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        gap: 'Falta emissor produtivo universal com NFS-e Nacional, prefeituras não aderentes, certificados, cancelamento e substituição.',
+        implementationActions: [
+          'Criar abstração de provedor fiscal por município/documento.',
+          'Homologar NFS-e Nacional, provedores municipais e fallback assistido.',
+          'Implementar cancelamento, substituição, carta/justificativa e armazenamento XML/PDF.',
+        ],
+        officialDependencies: ['NFS-e Nacional', 'Prefeituras', 'SEFAZ', 'Certificado digital'],
+        requiredEvidence: ['XML autorizado', 'PDF/DANFSE', 'Código de verificação', 'Protocolo de cancelamento'],
+        sourceBasis: ['Portal NFS-e Nacional', 'Notas técnicas fiscais'],
+        estimatedImpact: 'REVENUE_CRITICAL',
+      },
+      {
+        code: 'PAYROLL_ESOCIAL',
+        title: 'Folha, pró-labore, eSocial, DCTFWeb e FGTS Digital',
+        priority: 'P1',
+        owner: 'ENGINEERING',
+        status: 'INTEGRATION_REQUIRED',
+        automationBoundary: 'CRC_VALIDATED',
+        gap: 'Falta esteira completa de DP com eventos eSocial, fechamento, totalizadores, FGTS Digital e guias.',
+        implementationActions: [
+          'Modelar eventos de admissão, remuneração, pró-labore, férias e rescisão.',
+          'Criar fechamento mensal com S-1299, totalizadores, DCTFWeb e FGTS Digital.',
+          'Adicionar revisão CRC/DP e dossiê por colaborador/competência.',
+        ],
+        officialDependencies: ['eSocial', 'DCTFWeb', 'FGTS Digital', 'Procuração/certificado'],
+        requiredEvidence: ['Recibos eSocial', 'Totalizadores', 'Guia FGTS Digital', 'DARF DCTFWeb'],
+        sourceBasis: ['Manual eSocial', 'FGTS Digital'],
+        estimatedImpact: 'SCALE_CRITICAL',
+      },
+      {
+        code: 'BANKING_BAAS',
+        title: 'Conta PJ, BaaS, Open Finance e conciliação',
+        priority: 'P1',
+        owner: 'FINTECH_PARTNERS',
+        status: 'BLOCKED',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        gap: 'Para oferecer conta, Pix, boleto e Open Finance com segurança comercial é necessário parceiro autorizado, consentimento e SLA.',
+        implementationActions: [
+          'Selecionar parceiro BaaS/Open Finance e definir sandbox/homologação.',
+          'Implementar consentimento, reconciliação bancária e trilha de auditoria LGPD.',
+          'Integrar baixa automática de impostos, notas, salários e recebíveis.',
+        ],
+        officialDependencies: ['Banco Central', 'Instituição autorizada', 'Open Finance Brasil'],
+        requiredEvidence: ['Contrato parceiro', 'Consentimento do cliente', 'Log de API', 'SLA financeiro'],
+        sourceBasis: ['Banco Central Open Finance', 'Regulação de instituições de pagamento'],
+        estimatedImpact: 'SCALE_CRITICAL',
+      },
+      {
+        code: 'SECURITY_LGPD',
+        title: 'Segurança, LGPD, certificados e multi-tenant',
+        priority: 'P0',
+        owner: 'SECURITY',
+        status: 'ASSISTED_READY',
+        automationBoundary: 'SOFTWARE_ONLY',
+        gap: 'Base multi-tenant evoluiu, mas produção real exige hardening contínuo, cofre de credenciais e política LGPD operacional.',
+        implementationActions: [
+          'Implantar cofre de certificados/procurações com rotação e logs de uso.',
+          'Adicionar auditoria imutável para ações sensíveis e segregação por tenant em testes.',
+          'Formalizar papéis LGPD, bases legais, retenção e resposta a titulares.',
+        ],
+        officialDependencies: ['ANPD', 'ICP-Brasil', 'Receita Federal e-CAC'],
+        requiredEvidence: ['DPIA/LIA quando aplicável', 'Log de acesso', 'Termos de tratamento', 'Cofre de credenciais'],
+        sourceBasis: ['ANPD', 'Receita Federal e-CAC'],
+        estimatedImpact: 'RISK_CRITICAL',
+      },
+      {
+        code: 'CUSTOMER_SUCCESS_OPS',
+        title: 'Atendimento, SLA, filas e operação assistida',
+        priority: 'P1',
+        owner: 'CUSTOMER_SUCCESS',
+        status: 'INTEGRATION_REQUIRED',
+        automationBoundary: 'HUMAN_LED',
+        gap: 'Para competir em escala falta fila omnichannel, SLA por serviço, playbooks de exceção e handoff para contador/backoffice.',
+        implementationActions: [
+          'Criar filas por serviço, prioridade, vencimento e risco fiscal.',
+          'Adicionar macros de atendimento, histórico e handoff CRC/backoffice.',
+          'Medir SLA, retrabalho, exigências públicas e satisfação por carteira.',
+        ],
+        officialDependencies: ['Contratos de serviço', 'Políticas internas', 'Canais de atendimento'],
+        requiredEvidence: ['SLA contratado', 'Histórico de atendimento', 'Aceite do cliente', 'Checklist de encerramento'],
+        sourceBasis: ['Benchmarks públicos de players contábeis', 'Operação assistida bCost'],
+        estimatedImpact: 'EFFICIENCY',
+      },
+    ];
+  }
+
+  private buildMarketReadinessSummary(tracks: AccountingMarketReadinessTrack[]) {
+    return {
+      totalTracks: tracks.length,
+      productionReady: tracks.filter((track) => track.status === 'PRODUCTION_READY').length,
+      assistedReady: tracks.filter((track) => track.status === 'ASSISTED_READY').length,
+      integrationRequired: tracks.filter((track) => track.status === 'INTEGRATION_REQUIRED')
+        .length,
+      blocked: tracks.filter((track) => track.status === 'BLOCKED').length,
+      p0: tracks.filter((track) => track.priority === 'P0').length,
+      p1: tracks.filter((track) => track.priority === 'P1').length,
+    };
+  }
+
+  private calculateMarketReadinessScore(tracks: AccountingMarketReadinessTrack[]): number {
+    const scoreByStatus: Record<AccountingMarketReadinessStatus, number> = {
+      PRODUCTION_READY: 100,
+      ASSISTED_READY: 68,
+      INTEGRATION_REQUIRED: 35,
+      BLOCKED: 8,
+    };
+    const weightByPriority: Record<AccountingPlatformPriorityTier, number> = {
+      P0: 4,
+      P1: 3,
+      P2: 2,
+      P3: 1,
+    };
+    const weighted = tracks.reduce(
+      (acc, track) => {
+        const weight = weightByPriority[track.priority];
+
+        return {
+          score: acc.score + scoreByStatus[track.status] * weight,
+          weight: acc.weight + weight,
+        };
+      },
+      { score: 0, weight: 0 },
+    );
+
+    return weighted.weight > 0 ? Math.round(weighted.score / weighted.weight) : 0;
+  }
+
+  private resolveMarketPosition(
+    score: number,
+    blocked: number,
+  ): AccountingMarketReadinessResponse['marketPosition'] {
+    if (score >= 85 && blocked === 0) return 'SCALE_READY';
+    if (score >= 68 && blocked <= 1) return 'MARKET_READY_WITH_GUARDRAILS';
+    if (score >= 40) return 'ASSISTED_ACCOUNTING_PILOT';
+    return 'NOT_SELLABLE_AS_FULL_ACCOUNTING';
+  }
+
+  private buildMarketNextBuildQueue(tracks: AccountingMarketReadinessTrack[]) {
+    return tracks
+      .filter((track) => track.status !== 'PRODUCTION_READY')
+      .sort((a, b) => {
+        const priorityWeight: Record<AccountingPlatformPriorityTier, number> = {
+          P0: 4,
+          P1: 3,
+          P2: 2,
+          P3: 1,
+        };
+        const statusWeight: Record<AccountingMarketReadinessStatus, number> = {
+          BLOCKED: 4,
+          INTEGRATION_REQUIRED: 3,
+          ASSISTED_READY: 2,
+          PRODUCTION_READY: 1,
+        };
+
+        return (
+          priorityWeight[b.priority] - priorityWeight[a.priority] ||
+          statusWeight[b.status] - statusWeight[a.status] ||
+          a.title.localeCompare(b.title)
+        );
+      })
+      .slice(0, 7)
+      .map((track) => ({
+        id: track.code,
+        priority: track.priority,
+        owner: track.owner,
+        action: track.implementationActions[0],
+        unlocks: [track.title, ...track.officialDependencies.slice(0, 2)],
+      }));
   }
 
   private buildPortfolioActionQueue(assessments: AccountingOfferingCompanyAssessment[]) {

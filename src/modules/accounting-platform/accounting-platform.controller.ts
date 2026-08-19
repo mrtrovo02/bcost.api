@@ -24,6 +24,11 @@ export class AccountingPlatformController {
     return this.accountingPlatform.offerings();
   }
 
+  @Get('market-readiness')
+  marketReadiness() {
+    return this.accountingPlatform.marketReadiness();
+  }
+
   @Get('setup/readiness')
   setupReadiness(@Query() query: Record<string, string | undefined>) {
     return this.accountingPlatform.setupReadiness(this.toSetupReadinessInput(query));

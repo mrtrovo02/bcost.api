@@ -99,6 +99,41 @@ describe('AccountingPlatformService', () => {
     expect(serialized).not.toContain('alterdata');
   });
 
+  it('gera matriz executiva de prontidão para competir em mercado', () => {
+    const readiness = service.marketReadiness();
+
+    expect(readiness.summary.totalTracks).toBe(9);
+    expect(readiness.summary.p0).toBeGreaterThanOrEqual(5);
+    expect(readiness.summary.blocked).toBeGreaterThan(0);
+    expect(readiness.marketPosition).toBe('ASSISTED_ACCOUNTING_PILOT');
+    expect(readiness.tracks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'CRC_GOVERNANCE',
+          priority: 'P0',
+          status: 'BLOCKED',
+          owner: 'CRC',
+        }),
+        expect.objectContaining({
+          code: 'NFSE_ISSUANCE',
+          priority: 'P0',
+          status: 'INTEGRATION_REQUIRED',
+        }),
+        expect.objectContaining({
+          code: 'SECURITY_LGPD',
+          status: 'ASSISTED_READY',
+        }),
+      ]),
+    );
+    expect(readiness.nextBuildQueue[0]).toEqual(
+      expect.objectContaining({
+        priority: 'P0',
+        owner: 'CRC',
+      }),
+    );
+    expect(JSON.stringify(readiness).toLowerCase()).not.toContain('contabilizei');
+  });
+
   it('bloqueia comunicação plena quando a oferta depende de parceiro ou módulo planejado', () => {
     const response = service.offerings();
     const issue = response.offerings.find((item) => item.id === 'bcost-issue');
