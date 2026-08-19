@@ -265,6 +265,14 @@ describe('AccountingPlatformService', () => {
     expect(readiness.officialDependencies).toEqual(
       expect.arrayContaining(['Receita Federal / CNPJ', 'Redesim']),
     );
+    expect(readiness.setupDossier.integrityHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(readiness.setupDossier.requiredArtifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'CUSTOMER_ID_DOCUMENTS', status: 'MISSING' }),
+        expect.objectContaining({ code: 'CRC_TECHNICAL_REVIEW', status: 'MISSING' }),
+        expect.objectContaining({ code: 'VIABILITY_PROTOCOL', status: 'PENDING' }),
+      ]),
+    );
   });
 
   it('libera migração MEI para ME como execução assistida quando gates oficiais passam', () => {
@@ -296,6 +304,13 @@ describe('AccountingPlatformService', () => {
       expect.arrayContaining([
         'Protocolo de desenquadramento MEI quando aplicável',
         'Dossiê de evidências vinculado à empresa',
+      ]),
+    );
+    expect(readiness.setupDossier.id).toBe('setup:MEI_TO_ME_MIGRATION:company-mei:3550308');
+    expect(readiness.setupDossier.requiredArtifacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'MEI_DEREGISTRATION_PROTOCOL', status: 'READY' }),
+        expect.objectContaining({ code: 'AUDIT_DOSSIER_STORE', status: 'READY' }),
       ]),
     );
   });

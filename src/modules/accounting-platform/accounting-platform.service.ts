@@ -1,5 +1,6 @@
 'use strict';
 
+import { createHash } from 'node:crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ACCOUNTING_OFFERINGS } from './accounting-offerings.data.js';
 import {
@@ -175,6 +176,12 @@ export class AccountingPlatformService {
     const evidenceRequired = [
       ...new Set(stages.flatMap((stage) => stage.evidenceRequired)),
     ];
+    const setupDossier = this.buildSetupDossier(
+      operation,
+      input,
+      gates,
+      stages,
+    );
 
     return {
       status: 'OK',
@@ -185,6 +192,7 @@ export class AccountingPlatformService {
       gates,
       stages,
       evidenceRequired,
+      setupDossier,
       officialDependencies: this.setupOfficialDependencies(operation),
       nextActions: this.buildSetupNextActions(gates, operation),
       guardrails: [
@@ -917,6 +925,131 @@ export class AccountingPlatformService {
         : 'Executar migração assistida, reconciliar pendências históricas e ativar operação recorrente.',
       'Registrar protocolos, recibos e documentos finais no dossiê auditável da empresa.',
     ];
+  }
+
+  private buildSetupDossier(
+    operation: AccountingSetupOperation,
+    input: AccountingSetupReadinessInput,
+    gates: AccountingSetupReadinessResponse['gates'],
+    stages: AccountingSetupReadinessResponse['stages'],
+  ): AccountingSetupReadinessResponse['setupDossier'] {
+    const getGateStatus = (code: string) =>
+      gates.find((gate) => gate.code === code)?.status;
+    const artifactStatus = (
+      code: string,
+      pendingOnWarn = true,
+    ): 'READY' | 'PENDING' | 'MISSING' => {
+      const status = getGateStatus(code);
+
+      if (status === 'PASS') return 'READY';
+      if (status === 'WARN' && pendingOnWarn) return 'PENDING';
+      return 'MISSING';
+    };
+    const requiredArtifacts: AccountingSetupReadinessResponse['setupDossier']['requiredArtifacts'] =
+      [
+        {
+          code: 'CUSTOMER_ID_DOCUMENTS',
+          label: 'Documentos dos sócios/titular',
+          status: artifactStatus('CUSTOMER_DOCUMENTS'),
+          source: 'CUSTOMER',
+        },
+        {
+          code: 'ADDRESS_PROOF',
+          label: 'Comprovante de endereço',
+          status: artifactStatus('CUSTOMER_DOCUMENTS'),
+          source: 'CUSTOMER',
+        },
+        {
+          code: 'SCOPE_ACCEPTANCE',
+          label: 'Aceite de escopo e condicionantes',
+          status: 'READY',
+          source: 'BCOST',
+        },
+        {
+          code: 'CRC_TECHNICAL_REVIEW',
+          label: 'Parecer técnico CRC',
+          status: artifactStatus('CRC_REVIEW'),
+          source: 'CRC',
+        },
+        {
+          code: 'VIABILITY_PROTOCOL',
+          label: 'Consulta de viabilidade Redesim/Junta',
+          status: artifactStatus('VIABILITY_REDESIM'),
+          source: 'GOVERNMENT_PORTAL',
+        },
+        {
+          code: 'OFFICIAL_CREDENTIAL',
+          label: 'Certificado, procuração ou credencial oficial',
+          status: artifactStatus('OFFICIAL_PORTAL_ACCESS'),
+          source: 'CUSTOMER',
+        },
+        {
+          code: 'MUNICIPAL_COVERAGE_MAP',
+          label: 'Mapa de prefeitura, inscrição e alvará',
+          status: artifactStatus('MUNICIPAL_COVERAGE'),
+          source: 'BCOST',
+        },
+        {
+          code: 'PUBLIC_AGENCY_PROTOCOLS',
+          label: 'Protocolos oficiais de Receita, Junta e Prefeitura',
+          status: stages.some((stage) => stage.id.endsWith('official-protocol') && stage.status === 'READY')
+            ? 'READY'
+            : 'PENDING',
+          source: 'PUBLIC_AGENCY',
+        },
+        {
+          code: 'PREVIOUS_ACCOUNTING_DOCS',
+          label: 'Dossiê do contador anterior',
+          status:
+            operation === 'ACCOUNTING_MIGRATION'
+              ? artifactStatus('PREVIOUS_ACCOUNTING_DOSSIER')
+              : 'READY',
+          source: 'CUSTOMER',
+        },
+        {
+          code: 'MEI_DEREGISTRATION_PROTOCOL',
+          label: 'Protocolo de desenquadramento MEI',
+          status:
+            operation === 'MEI_TO_ME_MIGRATION'
+              ? artifactStatus('MEI_DEREGISTRATION')
+              : 'READY',
+          source: 'PUBLIC_AGENCY',
+        },
+        {
+          code: 'AUDIT_DOSSIER_STORE',
+          label: 'Dossiê auditável vinculado à empresa',
+          status: artifactStatus('AUDIT_EVIDENCE_STORE'),
+          source: 'BCOST',
+        },
+      ];
+
+    const dossierInput = {
+      companyId: input.companyId,
+      operation,
+      state: input.state,
+      municipalityCode: input.municipalityCode,
+      legalNature: input.legalNature,
+      taxRegime: input.taxRegime,
+      gates: gates.map(({ code, status }) => ({ code, status })),
+      stages: stages.map(({ id, status, automationBoundary }) => ({
+        id,
+        status,
+        automationBoundary,
+      })),
+      requiredArtifacts: requiredArtifacts.map(({ code, status, source }) => ({
+        code,
+        status,
+        source,
+      })),
+    };
+
+    return {
+      id: `setup:${operation}:${input.companyId ?? 'prospect'}:${input.municipalityCode ?? 'municipality-pending'}`,
+      integrityHash: createHash('sha256')
+        .update(JSON.stringify(dossierInput))
+        .digest('hex'),
+      requiredArtifacts,
+    };
   }
 
   private withReadiness(

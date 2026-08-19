@@ -117,6 +117,16 @@ export type AccountingSetupReadinessResponse = {
     evidenceRequired: string[];
   }[];
   evidenceRequired: string[];
+  setupDossier: {
+    id: string;
+    integrityHash: string;
+    requiredArtifacts: {
+      code: string;
+      label: string;
+      status: 'READY' | 'PENDING' | 'MISSING';
+      source: 'CUSTOMER' | 'BCOST' | 'CRC' | 'GOVERNMENT_PORTAL' | 'PUBLIC_AGENCY';
+    }[];
+  };
   officialDependencies: string[];
   nextActions: string[];
   guardrails: string[];
