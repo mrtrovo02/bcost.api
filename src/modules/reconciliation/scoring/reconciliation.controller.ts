@@ -32,6 +32,7 @@ import { ReconciliationService } from '../reconciliation.service.js';
 import { ReconciliationQueryDto } from '../dto/reconciliation-query.dto.js';
 import { GetUser } from '../../auth/decorators/get-user.decorator.js';
 import { JwtAuthGuard } from '../../../auth/jwt-auth.guard.js';
+import { LegacyApiAlias } from '../../../common/decorators/legacy-api-alias.decorator.js';
 
 @ApiTags('Reconciliation')
 @ApiBearerAuth()
@@ -48,6 +49,7 @@ export class ReconciliationController {
    * Rota: POST /reconciliation/manual
    */
   @Post('manual')
+  @LegacyApiAlias('/banking/enterprise/reconciliation/:companyId/manual')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Conciliação manual de transação',
@@ -119,6 +121,7 @@ export class ReconciliationController {
    * Rota: GET /reconciliation/summary/:companyId
    */
   @Get('summary/:companyId')
+  @LegacyApiAlias('/banking/enterprise/summary/:companyId')
   @ApiOperation({
     summary: 'Resumo de conciliação para Dashboard',
     description:
@@ -153,6 +156,7 @@ export class ReconciliationController {
    * Rota: GET /reconciliation/query
    */
   @Get('query')
+  @LegacyApiAlias('/banking/enterprise/transactions/:companyId')
   @ApiOperation({
     summary: 'Consultar transações conciliadas/pendentes',
     description:
@@ -173,6 +177,7 @@ export class ReconciliationController {
    * Rota: POST /reconciliation/auto/:companyId
    */
   @Post('auto/:companyId')
+  @LegacyApiAlias('/banking/enterprise/reconciliation/:companyId/auto')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary: 'Executar conciliação automática (Async)',
@@ -222,6 +227,9 @@ export class ReconciliationController {
    * Rota: DELETE /reconciliation/undo/:bankTransactionId
    */
   @Delete('undo/:bankTransactionId')
+  @LegacyApiAlias(
+    '/banking/enterprise/reconciliation/:companyId/undo/:transactionId',
+  )
   @ApiOperation({
     summary: 'Desfazer conciliação',
     description:

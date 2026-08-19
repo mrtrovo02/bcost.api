@@ -24,6 +24,7 @@ import { ReconciliationService } from './reconciliation.service.js';
 import { ImportService } from './import.service.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
 
 /**
  * 🏦 BankingController - API de Operações Bancárias bCost
@@ -361,6 +362,7 @@ export class BankingController {
    * GET /api/v1/banking/transactions/:companyId
    */
   @Get('transactions/:companyId')
+  @LegacyApiAlias('/banking/enterprise/transactions/:companyId')
   async listTransactions(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query('from') from?: string,
@@ -389,6 +391,7 @@ export class BankingController {
    * GET /api/v1/banking/accounts/:companyId
    */
   @Get('accounts/:companyId')
+  @LegacyApiAlias('/banking/enterprise/accounts/:companyId')
   async listAccounts(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ) {
@@ -403,6 +406,7 @@ export class BankingController {
    * GET /api/v1/banking/summary/:companyId
    */
   @Get('summary/:companyId')
+  @LegacyApiAlias('/banking/enterprise/summary/:companyId')
   async getSummary(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     const transactions = await this.findTransactions({
       companyId,
@@ -418,6 +422,7 @@ export class BankingController {
    * GET /api/v1/banking/status/:companyId
    */
   @Get('status/:companyId')
+  @LegacyApiAlias('/banking/enterprise/summary/:companyId')
   async getStatus(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     const [accounts, transactions] = await Promise.all([
       this.findAccounts(companyId),
@@ -450,6 +455,7 @@ export class BankingController {
    * GET /api/v1/banking/health/:companyId
    */
   @Get('health/:companyId')
+  @LegacyApiAlias('/banking/enterprise/summary/:companyId')
   async getHealth(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     const [accounts, transactions] = await Promise.all([
       this.findAccounts(companyId),
@@ -484,6 +490,7 @@ export class BankingController {
    * POST /api/v1/banking/import/:companyId/:bankAccountId
    */
   @Post('import/:companyId/:bankAccountId')
+  @LegacyApiAlias('/banking/enterprise/transactions/:companyId')
   @UseInterceptors(FileInterceptor('file'))
   async uploadOfx(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
@@ -508,6 +515,7 @@ export class BankingController {
   }
 
   @Post('upload/:companyId')
+  @LegacyApiAlias('/banking/enterprise/transactions/:companyId')
   @UseInterceptors(FileInterceptor('file'))
   async uploadStatementLegacy(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
@@ -547,6 +555,7 @@ export class BankingController {
    * POST /api/v1/banking/reconcile/:companyId
    */
   @Post('reconcile/:companyId')
+  @LegacyApiAlias('/banking/enterprise/reconciliation/:companyId/auto')
   @HttpCode(HttpStatus.ACCEPTED)
   async triggerReconciliation(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
@@ -561,6 +570,9 @@ export class BankingController {
    * POST /api/v1/banking/unmatch/:transactionId
    */
   @Post('unmatch/:transactionId')
+  @LegacyApiAlias(
+    '/banking/enterprise/reconciliation/:companyId/undo/:transactionId',
+  )
   async undoMatch(
     @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
     @Body('userId') userId?: string,

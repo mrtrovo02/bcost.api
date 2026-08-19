@@ -32,6 +32,7 @@ import {
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
 import { FiscalService } from './fiscal.service.js';
 import { ComplianceService } from './compliance/compliance.service.js';
 import { DfeService } from './dfe/dfe.service.js';
@@ -459,8 +460,12 @@ export class FiscalController {
       {
         hasDigitalCertificate: this.parseBooleanQuery(hasDigitalCertificate),
         hasCrcReview: this.parseBooleanQuery(hasCrcReview),
-        hasOfficialPortalAccess: this.parseBooleanQuery(hasOfficialPortalAccess),
-        hasRevenueReconciliation: this.parseBooleanQuery(hasRevenueReconciliation),
+        hasOfficialPortalAccess: this.parseBooleanQuery(
+          hasOfficialPortalAccess,
+        ),
+        hasRevenueReconciliation: this.parseBooleanQuery(
+          hasRevenueReconciliation,
+        ),
       },
     );
   }
@@ -492,7 +497,9 @@ export class FiscalController {
         hasDigitalCertificate: this.parseBooleanLike(hasDigitalCertificate),
         hasCrcReview: this.parseBooleanLike(hasCrcReview),
         hasOfficialPortalAccess: this.parseBooleanLike(hasOfficialPortalAccess),
-        hasRevenueReconciliation: this.parseBooleanLike(hasRevenueReconciliation),
+        hasRevenueReconciliation: this.parseBooleanLike(
+          hasRevenueReconciliation,
+        ),
       },
     );
 
@@ -559,6 +566,7 @@ export class FiscalController {
   }
 
   @Post('upload-xml/:companyId')
+  @LegacyApiAlias('/fiscal/upload/:companyId')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseInterceptors(FilesInterceptor('files', 50))
   @ApiConsumes('multipart/form-data')
