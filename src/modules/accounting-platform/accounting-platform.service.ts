@@ -17,9 +17,12 @@ import {
 } from './accounting-offerings.types.js';
 import { ACCOUNTING_PLATFORM_COVERAGE } from './accounting-platform.data.js';
 import {
+  AccountingArchitectureRegistryItem,
+  AccountingArchitectureRegistryResponse,
   AccountingMarketReadinessResponse,
   AccountingMarketReadinessStatus,
   AccountingMarketReadinessTrack,
+  AccountingArchitectureOwner,
   AccountingPlatformCoverageItem,
   AccountingPlatformCoverageResponse,
   AccountingPlatformPriorityTier,
@@ -55,13 +58,15 @@ export class AccountingPlatformService {
       offerings,
       summary: {
         total: offerings.length,
-        marketReady: offerings.filter((item) => item.marketStatus === 'MARKET_READY')
-          .length,
+        marketReady: offerings.filter(
+          (item) => item.marketStatus === 'MARKET_READY',
+        ).length,
         assistedSellable: offerings.filter(
           (item) => item.marketStatus === 'ASSISTED_SELLABLE',
         ).length,
-        waitlistOnly: offerings.filter((item) => item.marketStatus === 'WAITLIST_ONLY')
-          .length,
+        waitlistOnly: offerings.filter(
+          (item) => item.marketStatus === 'WAITLIST_ONLY',
+        ).length,
         internalRoadmap: offerings.filter(
           (item) => item.marketStatus === 'INTERNAL_ROADMAP',
         ).length,
@@ -92,20 +97,54 @@ export class AccountingPlatformService {
     };
   }
 
+  architectureRegistry(): AccountingArchitectureRegistryResponse {
+    const items = this.buildArchitectureRegistryItems();
+
+    return {
+      status: 'OK',
+      items,
+      summary: {
+        total: items.length,
+        canonical: items.filter((item) => item.status === 'CANONICAL').length,
+        shared: items.filter((item) => item.status === 'SHARED_CAPABILITY')
+          .length,
+        needsConsolidation: items.filter(
+          (item) => item.status === 'NEEDS_CONSOLIDATION',
+        ).length,
+        deprecatedAlias: items.filter(
+          (item) => item.status === 'DEPRECATED_ALIAS',
+        ).length,
+        highRisk: items.filter((item) => item.duplicateRisk === 'HIGH').length,
+        mediumRisk: items.filter((item) => item.duplicateRisk === 'MEDIUM')
+          .length,
+      },
+      recommendations: this.buildArchitectureRecommendations(items),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   assessOffering(
     offeringId: string,
     profile: AccountingOfferingCompanyProfile,
   ): AccountingOfferingCompanyAssessment {
-    const offering = this.offerings().offerings.find((item) => item.id === offeringId);
+    const offering = this.offerings().offerings.find(
+      (item) => item.id === offeringId,
+    );
 
     if (!offering) {
-      throw new NotFoundException(`Oferta contábil não encontrada: ${offeringId}`);
+      throw new NotFoundException(
+        `Oferta contábil não encontrada: ${offeringId}`,
+      );
     }
 
     const checks = this.buildEligibilityChecks(offering, profile);
     const fails = checks.filter((item) => item.status === 'FAIL').length;
     const warnings = checks.filter((item) => item.status === 'WARN').length;
-    const decision = this.resolveCompanyActivationDecision(offering.marketStatus, fails, warnings);
+    const decision = this.resolveCompanyActivationDecision(
+      offering.marketStatus,
+      fails,
+      warnings,
+    );
     const score = Math.max(
       0,
       Math.round(offering.launchReadinessScore - fails * 18 - warnings * 7),
@@ -124,7 +163,9 @@ export class AccountingPlatformService {
     };
   }
 
-  assessOfferings(profile: AccountingOfferingCompanyProfile): AccountingOfferingPortfolioAssessment {
+  assessOfferings(
+    profile: AccountingOfferingCompanyProfile,
+  ): AccountingOfferingPortfolioAssessment {
     const assessments = this.offerings().offerings.map((offering) =>
       this.assessOffering(offering.id, profile),
     );
@@ -135,11 +176,14 @@ export class AccountingPlatformService {
     const assistedRequired = assessments.filter(
       (item) => item.decision === 'ASSISTED_REQUIRED',
     ).length;
-    const blocked = assessments.filter((item) => item.decision === 'BLOCKED').length;
+    const blocked = assessments.filter(
+      (item) => item.decision === 'BLOCKED',
+    ).length;
     const averageScore =
       assessments.length > 0
         ? Math.round(
-            assessments.reduce((sum, item) => sum + item.score, 0) / assessments.length,
+            assessments.reduce((sum, item) => sum + item.score, 0) /
+              assessments.length,
           )
         : 0;
     const recommendedNextOffering = [...assessments]
@@ -229,6 +273,280 @@ export class AccountingPlatformService {
     };
   }
 
+  private buildArchitectureRegistryItems(): AccountingArchitectureRegistryItem[] {
+    return [
+      {
+        capabilityId: 'SERVICE_SCOPE_CATALOG',
+        name: 'Catálogo comercial e escopo de serviços',
+        layer: 'CUSTOMER_EXPERIENCE',
+        canonicalOwner: 'service-catalog',
+        canonicalApiBase: '/service-catalog',
+        frontendRoutes: ['/dashboard/modules/business-rules'],
+        relatedModules: ['business-rules', 'compliance-checks'],
+        status: 'CANONICAL',
+        duplicateRisk: 'LOW',
+        consolidationRule:
+          'Escopo comercial, condicionantes e bloqueios de atendimento devem evoluir no service-catalog; regras de compliance apenas consomem esse contrato.',
+        publicContract:
+          'Classifica solicitações, plano, competência, prefeitura digital, protocolo físico e limites de atendimento sem usar marca ou conteúdo de concorrente.',
+        integrationPoints: ['BusinessRule', 'ComplianceCheck', 'AuditLog'],
+        forbiddenDuplicates: [
+          'Não criar novo catálogo paralelo em accounting-platform ou compliance-enterprise.',
+          'Não nomear recursos com marcas de concorrentes.',
+        ],
+      },
+      {
+        capabilityId: 'ACCOUNTING_MARKET_READINESS',
+        name: 'Prateleira Accounting as a Service e readiness de mercado',
+        layer: 'GOVERNANCE',
+        canonicalOwner: 'accounting-platform',
+        canonicalApiBase: '/accounting-platform',
+        frontendRoutes: ['/dashboard/enterprise'],
+        relatedModules: ['accounting-platform', 'operational-workflows'],
+        status: 'CANONICAL',
+        duplicateRisk: 'LOW',
+        consolidationRule:
+          'Decisão comercial, maturity map e guardrails executivos pertencem ao accounting-platform; módulos operacionais reportam evidências para ele.',
+        publicContract:
+          'Expõe cobertura, ofertas, readiness, assessment por empresa e bloqueios oficiais para venda assistida.',
+        integrationPoints: [
+          '/accounting-platform/coverage',
+          '/accounting-platform/offerings',
+          '/accounting-platform/market-readiness',
+        ],
+        forbiddenDuplicates: [
+          'Não criar dashboards paralelos de readiness fora do painel enterprise.',
+        ],
+      },
+      {
+        capabilityId: 'SETUP_LEGALIZATION',
+        name: 'Onboarding, legalização e migração contábil',
+        layer: 'ACCOUNTING_CORE',
+        canonicalOwner: 'accounting-platform',
+        canonicalApiBase: '/accounting-platform/setup',
+        frontendRoutes: [
+          '/dashboard/enterprise',
+          '/dashboard/modules/company-formation',
+        ],
+        relatedModules: ['company-formation', 'document-management', 'company'],
+        status: 'SHARED_CAPABILITY',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Readiness e dossiê ficam no accounting-platform; execução real deve abrir workflow operacional por empresa e protocolo oficial.',
+        publicContract:
+          'Valida documentos, viabilidade, certificado, CRC, prefeitura e evidências antes de prometer abertura, migração ou desenquadramento MEI.',
+        integrationPoints: [
+          'Redesim',
+          'Junta Comercial',
+          'Receita Federal',
+          'Prefeitura',
+        ],
+        forbiddenDuplicates: [
+          'Não criar /legalization/* isolado sem delegar readiness para /accounting-platform/setup.',
+        ],
+      },
+      {
+        capabilityId: 'MONTHLY_TAX_CLOSURE',
+        name: 'Fechamento fiscal mensal e apuração do Simples',
+        layer: 'FISCAL_CORE',
+        canonicalOwner: 'fiscal',
+        canonicalApiBase: '/fiscal/tax',
+        frontendRoutes: [
+          '/dashboard/enterprise',
+          '/dashboard/modules/tax-regime-calculations',
+        ],
+        relatedModules: [
+          'tax-obligations',
+          'fiscal-obligations',
+          'indirect-taxes',
+        ],
+        status: 'SHARED_CAPABILITY',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Cálculo, fator R e fechamento pertencem ao fiscal; obrigação e evidência oficial pertencem a obligations-enterprise.',
+        publicContract:
+          'Prévia de apuração, gates de certificado/portal/CRC e dossiê de evidências antes de gerar obrigação oficial.',
+        integrationPoints: [
+          'PGDAS-D',
+          'Portal e-CAC',
+          'AuditLog',
+          'TaxObligation',
+        ],
+        forbiddenDuplicates: [
+          'Não duplicar cálculo de imposto dentro de obligations-enterprise.',
+          'Não gerar guia sem evidence packet e responsável definido.',
+        ],
+      },
+      {
+        capabilityId: 'TAX_OBLIGATION_EVIDENCE',
+        name: 'Evidência oficial de guias e obrigações tributárias',
+        layer: 'FISCAL_CORE',
+        canonicalOwner: 'obligations-enterprise',
+        canonicalApiBase: '/obligations/enterprise/tax',
+        frontendRoutes: ['/dashboard/modules/tax-obligations'],
+        relatedModules: ['tax-obligations', 'audit-logs', 'automation-jobs'],
+        status: 'CANONICAL',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Protocolo, recibo, arquivo oficial e hash ficam em obligations-enterprise; módulos fiscais apenas referenciam o obligationId.',
+        publicContract:
+          'Registra comprovante oficial com URL, código de recibo, versão e auditoria multi-tenant.',
+        integrationPoints: ['TaxObligation', 'AuditLog', 'DocumentManagement'],
+        forbiddenDuplicates: [
+          'Não anexar comprovante fiscal em endpoint genérico sem atualizar TaxObligation.',
+        ],
+      },
+      {
+        capabilityId: 'OFFICIAL_FISCAL_OBLIGATIONS',
+        name: 'Obrigações acessórias oficiais',
+        layer: 'FISCAL_CORE',
+        canonicalOwner: 'obligations-enterprise',
+        canonicalApiBase: '/obligations/enterprise/fiscal',
+        frontendRoutes: ['/dashboard/modules/fiscal-obligations'],
+        relatedModules: [
+          'fiscal-obligations',
+          'sped-fiscal',
+          'efd-contributions',
+        ],
+        status: 'CANONICAL',
+        duplicateRisk: 'LOW',
+        consolidationRule:
+          'Agenda, entrega, recibo e reprocessamento de obrigações acessórias ficam centralizados em obligations-enterprise.',
+        publicContract:
+          'Controla DEFIS, DCTFWeb, SPED/EFD e demais obrigações com status, competência, responsável e evidência.',
+        integrationPoints: ['SPED', 'e-CAC', 'AutomationJob', 'AuditLog'],
+        forbiddenDuplicates: [
+          'Não criar scheduler fiscal fora de automation-jobs e obligations-enterprise.',
+        ],
+      },
+      {
+        capabilityId: 'PAYROLL_ESOCIAL',
+        name: 'Folha, pró-labore e eventos eSocial',
+        layer: 'PAYROLL_CORE',
+        canonicalOwner: 'payroll-enterprise',
+        canonicalApiBase: '/payroll/enterprise',
+        frontendRoutes: ['/dashboard/payroll', '/dashboard/modules/payrolls'],
+        relatedModules: [
+          'employees',
+          'payrolls',
+          'payroll-entries',
+          'payroll-lifecycle',
+        ],
+        status: 'SHARED_CAPABILITY',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Ciclo de folha e eventos eSocial pertencem ao payroll-enterprise; fiscal/payroll deve ser compatibilidade ou integração, não novo core.',
+        publicContract:
+          'Calcula pró-labore, folha básica, INSS/FGTS e trilha de eventos eSocial com validação humana quando aplicável.',
+        integrationPoints: ['eSocial', 'FGTS Digital', 'DCTFWeb', 'AuditLog'],
+        forbiddenDuplicates: [
+          'Não evoluir fiscal/payroll como segundo motor de folha sem plano de migração.',
+        ],
+      },
+      {
+        capabilityId: 'BANKING_RECONCILIATION',
+        name: 'Conta PJ, extrato e conciliação financeira',
+        layer: 'FINTECH_CORE',
+        canonicalOwner: 'banking-enterprise',
+        canonicalApiBase: '/banking/enterprise',
+        frontendRoutes: ['/dashboard/banking', '/dashboard/reconciliation'],
+        relatedModules: [
+          'bank-accounts',
+          'bank-transactions',
+          'finance-operations',
+        ],
+        status: 'NEEDS_CONSOLIDATION',
+        duplicateRisk: 'HIGH',
+        consolidationRule:
+          'Lifecycle de conta e transação pertence ao banking-enterprise; matching contábil pertence a reconciliation; projeções pertencem ao financeiro.',
+        publicContract:
+          'Opera por parceiro BaaS/Open Finance autorizado, consentimento rastreável e conciliação sem misturar tenants.',
+        integrationPoints: [
+          'BaaS partner',
+          'Open Finance',
+          'Reconciliation',
+          'AuditLog',
+        ],
+        forbiddenDuplicates: [
+          'Não criar novo /finance/banking para transações bancárias.',
+          'Não armazenar consentimento Open Finance fora da camada fintech/governança.',
+        ],
+      },
+      {
+        capabilityId: 'DOCUMENT_XML_INTAKE',
+        name: 'Entrada de documentos fiscais e XML',
+        layer: 'INTEGRATIONS',
+        canonicalOwner: 'fiscal',
+        canonicalApiBase: '/fiscal/upload-xml',
+        frontendRoutes: ['/dashboard/xml', '/upload-xml'],
+        relatedModules: ['document-management', 'fiscal-books', 'dfe'],
+        status: 'NEEDS_CONSOLIDATION',
+        duplicateRisk: 'HIGH',
+        consolidationRule:
+          'Upload, validação XML e ingestão DFe devem convergir para fiscal/dfe; /upload-xml deve virar alias controlado de /dashboard/xml.',
+        publicContract:
+          'Recebe XML/documento fiscal, valida estrutura, vincula empresa, gera hash e libera para apuração e obrigações.',
+        integrationPoints: [
+          'SEFAZ',
+          'DFe',
+          'DocumentManagement',
+          'TaxCalculation',
+        ],
+        forbiddenDuplicates: [
+          'Não criar terceira tela de upload fiscal.',
+          'Não permitir fallback demo em ingestão de documento produtivo.',
+        ],
+      },
+      {
+        capabilityId: 'SECURITY_TENANCY_GOVERNANCE',
+        name: 'Segurança, multi-tenant e governança LGPD',
+        layer: 'GOVERNANCE',
+        canonicalOwner: 'security',
+        canonicalApiBase: '/auth',
+        frontendRoutes: ['/login', '/dashboard/modules/audit-logs'],
+        relatedModules: ['users', 'sessions', 'company-users', 'audit-logs'],
+        status: 'CANONICAL',
+        duplicateRisk: 'LOW',
+        consolidationRule:
+          'Autenticação, sessão, isolamento por empresa e auditoria são contratos transversais obrigatórios para todo módulo enterprise.',
+        publicContract:
+          'JWT, guard multi-tenant, auditoria, configurações públicas seguras e fallback demo desabilitado em produção.',
+        integrationPoints: [
+          'AuthGuard',
+          'TenantGuard',
+          'AuditLog',
+          'PublicSettings',
+        ],
+        forbiddenDuplicates: [
+          'Não acessar dados por companyId sem validação de tenant.',
+          'Não reativar fallback demonstrativo em ambiente produtivo.',
+        ],
+      },
+    ];
+  }
+
+  private buildArchitectureRecommendations(
+    items: AccountingArchitectureRegistryItem[],
+  ) {
+    return items
+      .filter(
+        (item) =>
+          item.duplicateRisk === 'HIGH' ||
+          item.status === 'NEEDS_CONSOLIDATION' ||
+          item.status === 'DEPRECATED_ALIAS',
+      )
+      .map((item) => ({
+        id: `${item.capabilityId.toLowerCase()}-consolidation`,
+        priority:
+          item.duplicateRisk === 'HIGH'
+            ? 'P0'
+            : ('P1' as AccountingPlatformPriorityTier),
+        action: item.consolidationRule,
+        owner: item.canonicalOwner as AccountingArchitectureOwner,
+        affectedCapabilities: [item.capabilityId, ...item.relatedModules],
+      }));
+  }
+
   private buildOwnerSummary(
     actionQueue: AccountingOfferingPortfolioAssessment['actionQueue'],
   ): AccountingOfferingPortfolioAssessment['ownerSummary'] {
@@ -238,16 +556,14 @@ export class AccountingPlatformService {
     >();
 
     for (const action of actionQueue) {
-      const current =
-        summary.get(action.owner) ??
-        {
-          owner: action.owner,
-          totalActions: 0,
-          p0: 0,
-          p1: 0,
-          p2: 0,
-          impactedOfferings: [],
-        };
+      const current = summary.get(action.owner) ?? {
+        owner: action.owner,
+        totalActions: 0,
+        p0: 0,
+        p1: 0,
+        p2: 0,
+        impactedOfferings: [],
+      };
 
       current.totalActions += 1;
       if (action.priority === 'P0') current.p0 += 1;
@@ -262,7 +578,12 @@ export class AccountingPlatformService {
         ...item,
         impactedOfferings: [...new Set(item.impactedOfferings)].sort(),
       }))
-      .sort((a, b) => b.p0 - a.p0 || b.totalActions - a.totalActions || a.owner.localeCompare(b.owner));
+      .sort(
+        (a, b) =>
+          b.p0 - a.p0 ||
+          b.totalActions - a.totalActions ||
+          a.owner.localeCompare(b.owner),
+      );
   }
 
   private buildMarketReadinessTracks(): AccountingMarketReadinessTrack[] {
@@ -280,13 +601,21 @@ export class AccountingPlatformService {
           'Criar workflow de revisão/aprovação para DAS, folha, demonstrações e obrigações acessórias.',
           'Vincular parecer técnico e assinatura digital ao dossiê de cada entrega.',
         ],
-        officialDependencies: ['CFC/CRC', 'NBC PG 01', 'Registro de organização contábil'],
+        officialDependencies: [
+          'CFC/CRC',
+          'NBC PG 01',
+          'Registro de organização contábil',
+        ],
         requiredEvidence: [
           'Registro cadastral da organização contábil',
           'Responsável técnico ativo',
           'Política de revisão CRC versionada',
         ],
-        sourceBasis: ['CFC', 'NBC PG', 'Resoluções de registro profissional e cadastral'],
+        sourceBasis: [
+          'CFC',
+          'NBC PG',
+          'Resoluções de registro profissional e cadastral',
+        ],
         estimatedImpact: 'RISK_CRITICAL',
       },
       {
@@ -302,7 +631,12 @@ export class AccountingPlatformService {
           'Conectar Redesim/Junta quando houver API ou RPA governado.',
           'Registrar deferimento, CNPJ, inscrição municipal e comunicação final ao cliente.',
         ],
-        officialDependencies: ['Redesim', 'Receita Federal', 'Junta Comercial', 'Prefeituras'],
+        officialDependencies: [
+          'Redesim',
+          'Receita Federal',
+          'Junta Comercial',
+          'Prefeituras',
+        ],
         requiredEvidence: [
           'Consulta de viabilidade',
           'Protocolo Redesim/Junta',
@@ -325,8 +659,17 @@ export class AccountingPlatformService {
           'Criar fila de transmissão assistida PGDAS-D com retorno de recibo e guia.',
           'Ampliar regras para Lucro Presumido e retenções quando sair do foco Simples.',
         ],
-        officialDependencies: ['Portal do Simples Nacional', 'e-CAC', 'Procuração eletrônica'],
-        requiredEvidence: ['Memória de cálculo', 'Recibo PGDAS-D', 'Guia DAS', 'Parecer CRC'],
+        officialDependencies: [
+          'Portal do Simples Nacional',
+          'e-CAC',
+          'Procuração eletrônica',
+        ],
+        requiredEvidence: [
+          'Memória de cálculo',
+          'Recibo PGDAS-D',
+          'Guia DAS',
+          'Parecer CRC',
+        ],
         sourceBasis: ['Simples Nacional', 'Receita Federal e-CAC'],
         estimatedImpact: 'REVENUE_CRITICAL',
       },
@@ -344,7 +687,12 @@ export class AccountingPlatformService {
           'Adicionar monitor de vencimentos, rejeições, retificações e aceite CRC.',
         ],
         officialDependencies: ['SPED', 'DCTFWeb', 'eSocial', 'Receita Federal'],
-        requiredEvidence: ['Arquivo transmitido', 'Recibo oficial', 'Protocolo de retificação', 'Log de validação'],
+        requiredEvidence: [
+          'Arquivo transmitido',
+          'Recibo oficial',
+          'Protocolo de retificação',
+          'Log de validação',
+        ],
         sourceBasis: ['SPED Receita Federal', 'eSocial', 'DCTFWeb'],
         estimatedImpact: 'RISK_CRITICAL',
       },
@@ -361,8 +709,18 @@ export class AccountingPlatformService {
           'Homologar NFS-e Nacional, provedores municipais e fallback assistido.',
           'Implementar cancelamento, substituição, carta/justificativa e armazenamento XML/PDF.',
         ],
-        officialDependencies: ['NFS-e Nacional', 'Prefeituras', 'SEFAZ', 'Certificado digital'],
-        requiredEvidence: ['XML autorizado', 'PDF/DANFSE', 'Código de verificação', 'Protocolo de cancelamento'],
+        officialDependencies: [
+          'NFS-e Nacional',
+          'Prefeituras',
+          'SEFAZ',
+          'Certificado digital',
+        ],
+        requiredEvidence: [
+          'XML autorizado',
+          'PDF/DANFSE',
+          'Código de verificação',
+          'Protocolo de cancelamento',
+        ],
         sourceBasis: ['Portal NFS-e Nacional', 'Notas técnicas fiscais'],
         estimatedImpact: 'REVENUE_CRITICAL',
       },
@@ -379,8 +737,18 @@ export class AccountingPlatformService {
           'Criar fechamento mensal com S-1299, totalizadores, DCTFWeb e FGTS Digital.',
           'Adicionar revisão CRC/DP e dossiê por colaborador/competência.',
         ],
-        officialDependencies: ['eSocial', 'DCTFWeb', 'FGTS Digital', 'Procuração/certificado'],
-        requiredEvidence: ['Recibos eSocial', 'Totalizadores', 'Guia FGTS Digital', 'DARF DCTFWeb'],
+        officialDependencies: [
+          'eSocial',
+          'DCTFWeb',
+          'FGTS Digital',
+          'Procuração/certificado',
+        ],
+        requiredEvidence: [
+          'Recibos eSocial',
+          'Totalizadores',
+          'Guia FGTS Digital',
+          'DARF DCTFWeb',
+        ],
         sourceBasis: ['Manual eSocial', 'FGTS Digital'],
         estimatedImpact: 'SCALE_CRITICAL',
       },
@@ -397,9 +765,21 @@ export class AccountingPlatformService {
           'Implementar consentimento, reconciliação bancária e trilha de auditoria LGPD.',
           'Integrar baixa automática de impostos, notas, salários e recebíveis.',
         ],
-        officialDependencies: ['Banco Central', 'Instituição autorizada', 'Open Finance Brasil'],
-        requiredEvidence: ['Contrato parceiro', 'Consentimento do cliente', 'Log de API', 'SLA financeiro'],
-        sourceBasis: ['Banco Central Open Finance', 'Regulação de instituições de pagamento'],
+        officialDependencies: [
+          'Banco Central',
+          'Instituição autorizada',
+          'Open Finance Brasil',
+        ],
+        requiredEvidence: [
+          'Contrato parceiro',
+          'Consentimento do cliente',
+          'Log de API',
+          'SLA financeiro',
+        ],
+        sourceBasis: [
+          'Banco Central Open Finance',
+          'Regulação de instituições de pagamento',
+        ],
         estimatedImpact: 'SCALE_CRITICAL',
       },
       {
@@ -416,7 +796,12 @@ export class AccountingPlatformService {
           'Formalizar papéis LGPD, bases legais, retenção e resposta a titulares.',
         ],
         officialDependencies: ['ANPD', 'ICP-Brasil', 'Receita Federal e-CAC'],
-        requiredEvidence: ['DPIA/LIA quando aplicável', 'Log de acesso', 'Termos de tratamento', 'Cofre de credenciais'],
+        requiredEvidence: [
+          'DPIA/LIA quando aplicável',
+          'Log de acesso',
+          'Termos de tratamento',
+          'Cofre de credenciais',
+        ],
         sourceBasis: ['ANPD', 'Receita Federal e-CAC'],
         estimatedImpact: 'RISK_CRITICAL',
       },
@@ -433,28 +818,48 @@ export class AccountingPlatformService {
           'Adicionar macros de atendimento, histórico e handoff CRC/backoffice.',
           'Medir SLA, retrabalho, exigências públicas e satisfação por carteira.',
         ],
-        officialDependencies: ['Contratos de serviço', 'Políticas internas', 'Canais de atendimento'],
-        requiredEvidence: ['SLA contratado', 'Histórico de atendimento', 'Aceite do cliente', 'Checklist de encerramento'],
-        sourceBasis: ['Benchmarks públicos de players contábeis', 'Operação assistida bCost'],
+        officialDependencies: [
+          'Contratos de serviço',
+          'Políticas internas',
+          'Canais de atendimento',
+        ],
+        requiredEvidence: [
+          'SLA contratado',
+          'Histórico de atendimento',
+          'Aceite do cliente',
+          'Checklist de encerramento',
+        ],
+        sourceBasis: [
+          'Benchmarks públicos de players contábeis',
+          'Operação assistida bCost',
+        ],
         estimatedImpact: 'EFFICIENCY',
       },
     ];
   }
 
-  private buildMarketReadinessSummary(tracks: AccountingMarketReadinessTrack[]) {
+  private buildMarketReadinessSummary(
+    tracks: AccountingMarketReadinessTrack[],
+  ) {
     return {
       totalTracks: tracks.length,
-      productionReady: tracks.filter((track) => track.status === 'PRODUCTION_READY').length,
-      assistedReady: tracks.filter((track) => track.status === 'ASSISTED_READY').length,
-      integrationRequired: tracks.filter((track) => track.status === 'INTEGRATION_REQUIRED')
+      productionReady: tracks.filter(
+        (track) => track.status === 'PRODUCTION_READY',
+      ).length,
+      assistedReady: tracks.filter((track) => track.status === 'ASSISTED_READY')
         .length,
+      integrationRequired: tracks.filter(
+        (track) => track.status === 'INTEGRATION_REQUIRED',
+      ).length,
       blocked: tracks.filter((track) => track.status === 'BLOCKED').length,
       p0: tracks.filter((track) => track.priority === 'P0').length,
       p1: tracks.filter((track) => track.priority === 'P1').length,
     };
   }
 
-  private calculateMarketReadinessScore(tracks: AccountingMarketReadinessTrack[]): number {
+  private calculateMarketReadinessScore(
+    tracks: AccountingMarketReadinessTrack[],
+  ): number {
     const scoreByStatus: Record<AccountingMarketReadinessStatus, number> = {
       PRODUCTION_READY: 100,
       ASSISTED_READY: 68,
@@ -479,7 +884,9 @@ export class AccountingPlatformService {
       { score: 0, weight: 0 },
     );
 
-    return weighted.weight > 0 ? Math.round(weighted.score / weighted.weight) : 0;
+    return weighted.weight > 0
+      ? Math.round(weighted.score / weighted.weight)
+      : 0;
   }
 
   private resolveMarketPosition(
@@ -525,7 +932,9 @@ export class AccountingPlatformService {
       }));
   }
 
-  private buildPortfolioActionQueue(assessments: AccountingOfferingCompanyAssessment[]) {
+  private buildPortfolioActionQueue(
+    assessments: AccountingOfferingCompanyAssessment[],
+  ) {
     const queue = new Map<
       string,
       {
@@ -538,9 +947,16 @@ export class AccountingPlatformService {
     >();
 
     for (const assessment of assessments) {
-      for (const check of assessment.checks.filter((item) => item.status !== 'PASS')) {
+      for (const check of assessment.checks.filter(
+        (item) => item.status !== 'PASS',
+      )) {
         const owner = this.ownerFromEligibilityCode(check.code);
-        const priority = check.status === 'FAIL' ? 'P0' : assessment.decision === 'BLOCKED' ? 'P1' : 'P2';
+        const priority =
+          check.status === 'FAIL'
+            ? 'P0'
+            : assessment.decision === 'BLOCKED'
+              ? 'P1'
+              : 'P2';
         const id = `${owner}:${check.code}:${check.status}`;
         const action = `${check.label}: ${check.message}`;
         const existing = queue.get(id);
@@ -577,10 +993,13 @@ export class AccountingPlatformService {
       });
   }
 
-  private ownerFromEligibilityCode(code: string): AccountingOfferingActivationRequirement['owner'] {
+  private ownerFromEligibilityCode(
+    code: string,
+  ): AccountingOfferingActivationRequirement['owner'] {
     if (code === 'CRC_ACCOUNTANT') return 'CRC';
     if (code === 'BACKOFFICE_TEAM') return 'BACKOFFICE';
-    if (code === 'BAAS_PARTNER' || code === 'OPEN_FINANCE_PROVIDER') return 'FINTECH_PARTNERS';
+    if (code === 'BAAS_PARTNER' || code === 'OPEN_FINANCE_PROVIDER')
+      return 'FINTECH_PARTNERS';
     if (
       code === 'DIGITAL_CERTIFICATE' ||
       code === 'MUNICIPAL_COVERAGE' ||
@@ -599,15 +1018,18 @@ export class AccountingPlatformService {
     return {
       total: items.length,
       active: items.filter((item) => item.maturity === 'ACTIVE').length,
-      integrating: items.filter((item) => item.maturity === 'INTEGRATING').length,
-      planned: items.filter((item) => item.maturity === 'PLANNED').length,
-      requiresPartner: items.filter((item) => item.maturity === 'REQUIRES_PARTNER')
+      integrating: items.filter((item) => item.maturity === 'INTEGRATING')
         .length,
+      planned: items.filter((item) => item.maturity === 'PLANNED').length,
+      requiresPartner: items.filter(
+        (item) => item.maturity === 'REQUIRES_PARTNER',
+      ).length,
       requiresHumanOperation: items.filter(
         (item) => item.maturity === 'REQUIRES_HUMAN_OPERATION',
       ).length,
-      crcValidated: items.filter((item) => item.automationBoundary === 'CRC_VALIDATED')
-        .length,
+      crcValidated: items.filter(
+        (item) => item.automationBoundary === 'CRC_VALIDATED',
+      ).length,
       blockers: gaps.filter((gap) => gap.severity === 'BLOCKER').length,
       warnings: gaps.filter((gap) => gap.severity === 'WARNING').length,
       p0: items.filter((item) => item.priorityTier === 'P0').length,
@@ -632,7 +1054,10 @@ export class AccountingPlatformService {
     ];
 
     for (const requirement of offering.activationRequirements) {
-      const capabilityReady = this.isCapabilitySatisfied(requirement.code, profile);
+      const capabilityReady = this.isCapabilitySatisfied(
+        requirement.code,
+        profile,
+      );
       const status = capabilityReady
         ? 'PASS'
         : requirement.status === 'BLOCKED'
@@ -645,7 +1070,10 @@ export class AccountingPlatformService {
         status,
         message: capabilityReady
           ? 'Capacidade declarada como disponível para a empresa avaliada.'
-          : this.capabilityEligibilityMessage(requirement.code, requirement.status),
+          : this.capabilityEligibilityMessage(
+              requirement.code,
+              requirement.status,
+            ),
       });
     }
 
@@ -657,15 +1085,23 @@ export class AccountingPlatformService {
     profile: AccountingOfferingCompanyProfile,
   ): boolean {
     if (capability === 'CUSTOMER_PORTAL') return Boolean(profile.companyId);
-    if (capability === 'AUDIT_EVIDENCE_STORE') return profile.hasAuditEvidenceStore === true;
-    if (capability === 'BACKOFFICE_TEAM') return profile.hasBackofficeOwner === true;
-    if (capability === 'CRC_ACCOUNTANT') return profile.hasCrcResponsible === true;
-    if (capability === 'DIGITAL_CERTIFICATE') return profile.hasDigitalCertificate === true;
-    if (capability === 'MUNICIPAL_COVERAGE') return Boolean(profile.municipalityCode);
-    if (capability === 'OFFICIAL_PORTAL_ACCESS') return profile.hasOfficialPortalAccess === true;
-    if (capability === 'OFFICIAL_API_PROVIDER') return profile.hasOfficialApiProvider === true;
+    if (capability === 'AUDIT_EVIDENCE_STORE')
+      return profile.hasAuditEvidenceStore === true;
+    if (capability === 'BACKOFFICE_TEAM')
+      return profile.hasBackofficeOwner === true;
+    if (capability === 'CRC_ACCOUNTANT')
+      return profile.hasCrcResponsible === true;
+    if (capability === 'DIGITAL_CERTIFICATE')
+      return profile.hasDigitalCertificate === true;
+    if (capability === 'MUNICIPAL_COVERAGE')
+      return Boolean(profile.municipalityCode);
+    if (capability === 'OFFICIAL_PORTAL_ACCESS')
+      return profile.hasOfficialPortalAccess === true;
+    if (capability === 'OFFICIAL_API_PROVIDER')
+      return profile.hasOfficialApiProvider === true;
     if (capability === 'BAAS_PARTNER') return profile.hasBaasPartner === true;
-    if (capability === 'OPEN_FINANCE_PROVIDER') return profile.hasOpenFinanceConsent === true;
+    if (capability === 'OPEN_FINANCE_PROVIDER')
+      return profile.hasOpenFinanceConsent === true;
     return false;
   }
 
@@ -694,7 +1130,8 @@ export class AccountingPlatformService {
     warnings: number,
   ): AccountingOfferingCompanyAssessment['decision'] {
     if (marketStatus === 'INTERNAL_ROADMAP' || fails > 0) return 'BLOCKED';
-    if (marketStatus !== 'MARKET_READY' || warnings > 0) return 'ASSISTED_REQUIRED';
+    if (marketStatus !== 'MARKET_READY' || warnings > 0)
+      return 'ASSISTED_REQUIRED';
     return 'ACTIVATION_ALLOWED';
   }
 
@@ -703,7 +1140,9 @@ export class AccountingPlatformService {
     checks: AccountingOfferingEligibilityCheck[],
   ): string[] {
     if (decision === 'ACTIVATION_ALLOWED') {
-      return ['Gerar proposta, contrato e ordem de serviço com auditoria habilitada.'];
+      return [
+        'Gerar proposta, contrato e ordem de serviço com auditoria habilitada.',
+      ];
     }
 
     return checks
@@ -730,12 +1169,16 @@ export class AccountingPlatformService {
     );
     const avgPriority =
       linkedItems.length > 0
-        ? linkedItems.reduce((sum, item) => sum + (item.priorityScore ?? 0), 0) /
-          linkedItems.length
+        ? linkedItems.reduce(
+            (sum, item) => sum + (item.priorityScore ?? 0),
+            0,
+          ) / linkedItems.length
         : 0;
     const launchReadinessScore = Math.max(
       0,
-      Math.round(100 - blockers.length * 25 - warnings.length * 8 - avgPriority * 0.25),
+      Math.round(
+        100 - blockers.length * 25 - warnings.length * 8 - avgPriority * 0.25,
+      ),
     );
     const marketStatus = this.resolveMarketStatus({
       blockers: blockers.length,
@@ -760,15 +1203,23 @@ export class AccountingPlatformService {
       requiredCapabilities,
       launchReadinessScore,
       marketStatus,
-      marketGuardrails: this.buildMarketGuardrails(marketStatus, blockers.length, warnings.length),
+      marketGuardrails: this.buildMarketGuardrails(
+        marketStatus,
+        blockers.length,
+        warnings.length,
+      ),
       commercialDecision: this.buildCommercialDecision(marketStatus),
       activationRequirements,
       activationSummary: {
         total: activationRequirements.length,
-        ready: activationRequirements.filter((item) => item.status === 'READY').length,
-        requiresSetup: activationRequirements.filter((item) => item.status === 'REQUIRES_SETUP')
+        ready: activationRequirements.filter((item) => item.status === 'READY')
           .length,
-        blocked: activationRequirements.filter((item) => item.status === 'BLOCKED').length,
+        requiresSetup: activationRequirements.filter(
+          (item) => item.status === 'REQUIRES_SETUP',
+        ).length,
+        blocked: activationRequirements.filter(
+          (item) => item.status === 'BLOCKED',
+        ).length,
       },
       activationPlaybook,
     };
@@ -793,7 +1244,9 @@ export class AccountingPlatformService {
     warnings: number,
   ): string[] {
     if (status === 'MARKET_READY') {
-      return ['Oferta liberada para comunicação comercial com monitoramento de SLA e evidências.'];
+      return [
+        'Oferta liberada para comunicação comercial com monitoramento de SLA e evidências.',
+      ];
     }
 
     if (status === 'ASSISTED_SELLABLE') {
@@ -816,7 +1269,9 @@ export class AccountingPlatformService {
     ];
   }
 
-  private buildCommercialDecision(status: AccountingOfferingMarketStatus): string {
+  private buildCommercialDecision(
+    status: AccountingOfferingMarketStatus,
+  ): string {
     if (status === 'MARKET_READY') {
       return 'Liberar para proposta comercial padrão, contrato e onboarding digital.';
     }
@@ -837,7 +1292,9 @@ export class AccountingPlatformService {
     linkedItems: AccountingPlatformCoverageItem[],
     marketStatus: AccountingOfferingMarketStatus,
   ): AccountingOfferingActivationRequirement[] {
-    const officialEvidence = [...new Set(linkedItems.flatMap((item) => item.officialEvidence))];
+    const officialEvidence = [
+      ...new Set(linkedItems.flatMap((item) => item.officialEvidence)),
+    ];
 
     return capabilities.map((capability) => ({
       code: capability,
@@ -848,14 +1305,17 @@ export class AccountingPlatformService {
     }));
   }
 
-  private capabilityActivationLabel(capability: AccountingOffering['requiredCapabilities'][number]) {
+  private capabilityActivationLabel(
+    capability: AccountingOffering['requiredCapabilities'][number],
+  ) {
     const labels: Record<typeof capability, string> = {
       AUDIT_EVIDENCE_STORE: 'Trilha de auditoria e evidências',
       BAAS_PARTNER: 'Parceiro BaaS regulado',
       BACKOFFICE_TEAM: 'Fila operacional e responsáveis',
       CRC_ACCOUNTANT: 'Governança do contador responsável',
       CUSTOMER_PORTAL: 'Portal do cliente e coleta documental',
-      DIGITAL_CERTIFICATE: 'Certificado digital, procuração ou credencial segura',
+      DIGITAL_CERTIFICATE:
+        'Certificado digital, procuração ou credencial segura',
       MUNICIPAL_COVERAGE: 'Cobertura municipal homologada',
       OFFICIAL_API_PROVIDER: 'Provedor oficial/API homologada',
       OFFICIAL_PORTAL_ACCESS: 'Acesso a portal oficial e recibos',
@@ -870,7 +1330,10 @@ export class AccountingPlatformService {
   ): AccountingOfferingActivationRequirement['owner'] {
     if (capability === 'CRC_ACCOUNTANT') return 'CRC';
     if (capability === 'BACKOFFICE_TEAM') return 'BACKOFFICE';
-    if (capability === 'BAAS_PARTNER' || capability === 'OPEN_FINANCE_PROVIDER') {
+    if (
+      capability === 'BAAS_PARTNER' ||
+      capability === 'OPEN_FINANCE_PROVIDER'
+    ) {
       return 'FINTECH_PARTNERS';
     }
     if (
@@ -889,7 +1352,9 @@ export class AccountingPlatformService {
     capability: AccountingOffering['requiredCapabilities'][number],
     marketStatus: AccountingOfferingMarketStatus,
   ): AccountingOfferingActivationStatus {
-    const hardDependencies = new Set<AccountingOffering['requiredCapabilities'][number]>([
+    const hardDependencies = new Set<
+      AccountingOffering['requiredCapabilities'][number]
+    >([
       'BAAS_PARTNER',
       'OFFICIAL_API_PROVIDER',
       'MUNICIPAL_COVERAGE',
@@ -897,8 +1362,13 @@ export class AccountingPlatformService {
     ]);
 
     if (marketStatus === 'INTERNAL_ROADMAP') return 'BLOCKED';
-    if (marketStatus === 'WAITLIST_ONLY' && hardDependencies.has(capability)) return 'BLOCKED';
-    if (capability === 'AUDIT_EVIDENCE_STORE' || capability === 'CUSTOMER_PORTAL') return 'READY';
+    if (marketStatus === 'WAITLIST_ONLY' && hardDependencies.has(capability))
+      return 'BLOCKED';
+    if (
+      capability === 'AUDIT_EVIDENCE_STORE' ||
+      capability === 'CUSTOMER_PORTAL'
+    )
+      return 'READY';
     if (marketStatus === 'MARKET_READY') return 'READY';
     return 'REQUIRES_SETUP';
   }
@@ -907,22 +1377,49 @@ export class AccountingPlatformService {
     capability: AccountingOffering['requiredCapabilities'][number],
     officialEvidence: string[],
   ): string[] {
-    if (capability === 'AUDIT_EVIDENCE_STORE') return officialEvidence.slice(0, 4);
-    if (capability === 'CRC_ACCOUNTANT') return ['Parecer CRC', 'Assinatura técnica', 'Log de revisão'];
+    if (capability === 'AUDIT_EVIDENCE_STORE')
+      return officialEvidence.slice(0, 4);
+    if (capability === 'CRC_ACCOUNTANT')
+      return ['Parecer CRC', 'Assinatura técnica', 'Log de revisão'];
     if (capability === 'DIGITAL_CERTIFICATE') {
-      return ['Procuração eletrônica ou certificado válido', 'Log de uso da credencial'];
+      return [
+        'Procuração eletrônica ou certificado válido',
+        'Log de uso da credencial',
+      ];
     }
-    if (capability === 'BAAS_PARTNER' || capability === 'OPEN_FINANCE_PROVIDER') {
-      return ['Contrato do parceiro', 'Sandbox homologado', 'SLA e evidência de consentimento'];
+    if (
+      capability === 'BAAS_PARTNER' ||
+      capability === 'OPEN_FINANCE_PROVIDER'
+    ) {
+      return [
+        'Contrato do parceiro',
+        'Sandbox homologado',
+        'SLA e evidência de consentimento',
+      ];
     }
     if (capability === 'MUNICIPAL_COVERAGE') {
-      return ['Município homologado', 'Campos obrigatórios mapeados', 'Protocolo alternativo'];
+      return [
+        'Município homologado',
+        'Campos obrigatórios mapeados',
+        'Protocolo alternativo',
+      ];
     }
-    if (capability === 'OFFICIAL_API_PROVIDER' || capability === 'OFFICIAL_PORTAL_ACCESS') {
-      return ['Credencial oficial', 'Recibo/protocolo oficial', 'Teste de homologação'];
+    if (
+      capability === 'OFFICIAL_API_PROVIDER' ||
+      capability === 'OFFICIAL_PORTAL_ACCESS'
+    ) {
+      return [
+        'Credencial oficial',
+        'Recibo/protocolo oficial',
+        'Teste de homologação',
+      ];
     }
 
-    return ['Checklist de ativação', 'Aceite do cliente', 'Registro operacional'];
+    return [
+      'Checklist de ativação',
+      'Aceite do cliente',
+      'Registro operacional',
+    ];
   }
 
   private buildActivationPlaybook(
@@ -932,8 +1429,12 @@ export class AccountingPlatformService {
     linkedItems: AccountingPlatformCoverageItem[],
   ): AccountingOfferingPlaybookStage[] {
     const blocked = requirements.filter((item) => item.status === 'BLOCKED');
-    const setup = requirements.filter((item) => item.status === 'REQUIRES_SETUP');
-    const evidence = [...new Set(linkedItems.flatMap((item) => item.officialEvidence))];
+    const setup = requirements.filter(
+      (item) => item.status === 'REQUIRES_SETUP',
+    );
+    const evidence = [
+      ...new Set(linkedItems.flatMap((item) => item.officialEvidence)),
+    ];
 
     return [
       {
@@ -941,9 +1442,18 @@ export class AccountingPlatformService {
         title: 'Qualificar escopo, elegibilidade e aceite comercial',
         owner: 'PRODUCT',
         targetSlaHours: 8,
-        entryCriteria: ['Lead qualificado', 'Regime tributário e município informados'],
-        exitCriteria: [this.buildCommercialDecision(marketStatus), 'Exclusões apresentadas ao cliente'],
-        evidenceRequired: ['Registro de aceite de escopo', 'Checklist de elegibilidade'],
+        entryCriteria: [
+          'Lead qualificado',
+          'Regime tributário e município informados',
+        ],
+        exitCriteria: [
+          this.buildCommercialDecision(marketStatus),
+          'Exclusões apresentadas ao cliente',
+        ],
+        evidenceRequired: [
+          'Registro de aceite de escopo',
+          'Checklist de elegibilidade',
+        ],
         status: marketStatus === 'INTERNAL_ROADMAP' ? 'BLOCKED' : 'READY',
       },
       {
@@ -960,19 +1470,39 @@ export class AccountingPlatformService {
             : 'Capacidades críticas prontas para execução',
         ],
         evidenceRequired: [
-          ...new Set([...blocked, ...setup].flatMap((item) => item.evidenceRequired)),
+          ...new Set(
+            [...blocked, ...setup].flatMap((item) => item.evidenceRequired),
+          ),
         ].slice(0, 5),
-        status: blocked.length > 0 ? 'BLOCKED' : setup.length > 0 ? 'REQUIRES_SETUP' : 'READY',
+        status:
+          blocked.length > 0
+            ? 'BLOCKED'
+            : setup.length > 0
+              ? 'REQUIRES_SETUP'
+              : 'READY',
       },
       {
         id: `${offeringId}-operation`,
         title: 'Executar, revisar e armazenar evidências da entrega',
-        owner: requirements.some((item) => item.owner === 'CRC') ? 'CRC' : 'BACKOFFICE',
+        owner: requirements.some((item) => item.owner === 'CRC')
+          ? 'CRC'
+          : 'BACKOFFICE',
         targetSlaHours: 48,
-        entryCriteria: ['Setup concluído', 'Credenciais e evidências mínimas disponíveis'],
-        exitCriteria: ['Entrega registrada', 'Recibo, protocolo ou parecer anexado'],
+        entryCriteria: [
+          'Setup concluído',
+          'Credenciais e evidências mínimas disponíveis',
+        ],
+        exitCriteria: [
+          'Entrega registrada',
+          'Recibo, protocolo ou parecer anexado',
+        ],
         evidenceRequired: evidence.slice(0, 5),
-        status: blocked.length > 0 ? 'BLOCKED' : setup.length > 0 ? 'REQUIRES_SETUP' : 'READY',
+        status:
+          blocked.length > 0
+            ? 'BLOCKED'
+            : setup.length > 0
+              ? 'REQUIRES_SETUP'
+              : 'READY',
       },
     ];
   }
@@ -1043,11 +1573,13 @@ export class AccountingPlatformService {
         label: 'Acesso a órgãos oficiais',
         owner: 'GOVERNMENT_INTEGRATIONS',
         status:
-          input.hasOfficialPortalAccess === true || input.hasDigitalCertificate === true
+          input.hasOfficialPortalAccess === true ||
+          input.hasDigitalCertificate === true
             ? 'PASS'
             : 'FAIL',
         message:
-          input.hasOfficialPortalAccess === true || input.hasDigitalCertificate === true
+          input.hasOfficialPortalAccess === true ||
+          input.hasDigitalCertificate === true
             ? 'Acesso oficial ou certificado/procuração declarado.'
             : 'Configurar certificado, procuração ou credencial oficial conforme órgão exigido.',
       },
@@ -1087,18 +1619,16 @@ export class AccountingPlatformService {
         code: 'MEI_DEREGISTRATION',
         label: 'Desenquadramento MEI',
         owner: 'PUBLIC_AGENCY',
-        status:
-          isMeiMigration
-            ? input.hasMeiDeregistrationEvidence === true
-              ? 'PASS'
-              : 'FAIL'
-            : 'PASS',
-        message:
-          isMeiMigration
-            ? input.hasMeiDeregistrationEvidence === true
-              ? 'Evidência de desenquadramento/alteração MEI declarada.'
-              : 'Registrar e evidenciar desenquadramento MEI antes de ativar operação como ME.'
-            : 'Não aplicável para esta operação.',
+        status: isMeiMigration
+          ? input.hasMeiDeregistrationEvidence === true
+            ? 'PASS'
+            : 'FAIL'
+          : 'PASS',
+        message: isMeiMigration
+          ? input.hasMeiDeregistrationEvidence === true
+            ? 'Evidência de desenquadramento/alteração MEI declarada.'
+            : 'Registrar e evidenciar desenquadramento MEI antes de ativar operação como ME.'
+          : 'Não aplicável para esta operação.',
       },
     ];
   }
@@ -1112,7 +1642,11 @@ export class AccountingPlatformService {
     const hasPending = (codes: string[]) =>
       gates.some((gate) => codes.includes(gate.code) && gate.status !== 'PASS');
     const stageStatus = (codes: string[]) =>
-      hasFailed(codes) ? 'BLOCKED' : hasPending(codes) ? 'REQUIRES_ACTION' : 'READY';
+      hasFailed(codes)
+        ? 'BLOCKED'
+        : hasPending(codes)
+          ? 'REQUIRES_ACTION'
+          : 'READY';
 
     return [
       {
@@ -1120,7 +1654,10 @@ export class AccountingPlatformService {
         title: 'Intake, escopo e documentos do cliente',
         owner: 'CUSTOMER',
         automationBoundary: 'ASSISTED_AUTOMATION',
-        status: stageStatus(['CUSTOMER_DOCUMENTS', 'PREVIOUS_ACCOUNTING_DOSSIER']),
+        status: stageStatus([
+          'CUSTOMER_DOCUMENTS',
+          'PREVIOUS_ACCOUNTING_DOSSIER',
+        ]),
         evidenceRequired: [
           'Documentos dos sócios/titular',
           'Comprovante de endereço',
@@ -1175,7 +1712,9 @@ export class AccountingPlatformService {
     ];
   }
 
-  private setupOfficialDependencies(operation: AccountingSetupOperation): string[] {
+  private setupOfficialDependencies(
+    operation: AccountingSetupOperation,
+  ): string[] {
     const dependencies = [
       'Receita Federal / CNPJ',
       'Redesim',
@@ -1188,7 +1727,9 @@ export class AccountingPlatformService {
     }
 
     if (operation === 'ACCOUNTING_MIGRATION') {
-      dependencies.push('Contabilidade anterior e procurações/obrigações históricas');
+      dependencies.push(
+        'Contabilidade anterior e procurações/obrigações históricas',
+      );
     }
 
     return dependencies;
@@ -1277,7 +1818,11 @@ export class AccountingPlatformService {
         {
           code: 'PUBLIC_AGENCY_PROTOCOLS',
           label: 'Protocolos oficiais de Receita, Junta e Prefeitura',
-          status: stages.some((stage) => stage.id.endsWith('official-protocol') && stage.status === 'READY')
+          status: stages.some(
+            (stage) =>
+              stage.id.endsWith('official-protocol') &&
+              stage.status === 'READY',
+          )
             ? 'READY'
             : 'PENDING',
           source: 'PUBLIC_AGENCY',
@@ -1454,32 +1999,46 @@ export class AccountingPlatformService {
 
     for (const gap of gaps) {
       if (gap.code === 'MODULE_NOT_IMPLEMENTED') {
-        actions.add('Priorizar endpoint, workflow, tela, testes e evidências mínimas do módulo.');
+        actions.add(
+          'Priorizar endpoint, workflow, tela, testes e evidências mínimas do módulo.',
+        );
       }
 
       if (gap.code === 'PARTNER_REQUIRED') {
-        actions.add('Selecionar parceiro/provedor e definir contrato, sandbox, SLA e homologação.');
+        actions.add(
+          'Selecionar parceiro/provedor e definir contrato, sandbox, SLA e homologação.',
+        );
       }
 
       if (gap.code === 'BACKOFFICE_REQUIRED') {
-        actions.add('Definir fila operacional, responsáveis, checklist, SLA e trilha de auditoria.');
+        actions.add(
+          'Definir fila operacional, responsáveis, checklist, SLA e trilha de auditoria.',
+        );
       }
 
       if (gap.code === 'CRC_GOVERNANCE_REQUIRED') {
-        actions.add('Configurar política de revisão CRC, assinatura técnica e responsabilidades.');
+        actions.add(
+          'Configurar política de revisão CRC, assinatura técnica e responsabilidades.',
+        );
       }
 
       if (gap.code === 'CERTIFICATE_CREDENTIAL_REQUIRED') {
-        actions.add('Implementar cofre seguro de certificados/credenciais e logs de uso.');
+        actions.add(
+          'Implementar cofre seguro de certificados/credenciais e logs de uso.',
+        );
       }
 
       if (gap.code === 'MUNICIPAL_COVERAGE_REQUIRED') {
-        actions.add('Mapear cobertura municipal, portal, credenciais, campos e protocolo alternativo.');
+        actions.add(
+          'Mapear cobertura municipal, portal, credenciais, campos e protocolo alternativo.',
+        );
       }
     }
 
     if (actions.size === 0) {
-      actions.add(`Manter monitoramento, auditoria e testes de regressão para ${item.title}.`);
+      actions.add(
+        `Manter monitoramento, auditoria e testes de regressão para ${item.title}.`,
+      );
     }
 
     return [...actions];

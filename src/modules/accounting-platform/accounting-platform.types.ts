@@ -32,7 +32,11 @@ export type AccountingPlatformCoverageItem = {
   bcostModules: string[];
   serviceCatalogIds: string[];
   requiredCapabilities: OperationalCapability[];
-  automationBoundary: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
+  automationBoundary:
+    | 'SOFTWARE_ONLY'
+    | 'ASSISTED_AUTOMATION'
+    | 'CRC_VALIDATED'
+    | 'HUMAN_LED';
   maturity: AccountingPlatformMaturity;
   officialEvidence: string[];
   readinessGaps?: AccountingPlatformReadinessGap[];
@@ -89,13 +93,21 @@ export type AccountingMarketReadinessTrack = {
     | 'SECURITY'
     | 'CUSTOMER_SUCCESS';
   status: AccountingMarketReadinessStatus;
-  automationBoundary: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
+  automationBoundary:
+    | 'SOFTWARE_ONLY'
+    | 'ASSISTED_AUTOMATION'
+    | 'CRC_VALIDATED'
+    | 'HUMAN_LED';
   gap: string;
   implementationActions: string[];
   officialDependencies: string[];
   requiredEvidence: string[];
   sourceBasis: string[];
-  estimatedImpact: 'REVENUE_CRITICAL' | 'RISK_CRITICAL' | 'SCALE_CRITICAL' | 'EFFICIENCY';
+  estimatedImpact:
+    | 'REVENUE_CRITICAL'
+    | 'RISK_CRITICAL'
+    | 'SCALE_CRITICAL'
+    | 'EFFICIENCY';
 };
 
 export type AccountingMarketReadinessResponse = {
@@ -124,6 +136,71 @@ export type AccountingMarketReadinessResponse = {
     unlocks: string[];
   }[];
   executiveGuardrails: string[];
+  generatedAt: string;
+};
+
+export type AccountingArchitectureLayer =
+  | 'CUSTOMER_EXPERIENCE'
+  | 'ACCOUNTING_CORE'
+  | 'FISCAL_CORE'
+  | 'PAYROLL_CORE'
+  | 'FINTECH_CORE'
+  | 'GOVERNANCE'
+  | 'INTEGRATIONS';
+
+export type AccountingArchitectureOwner =
+  | 'accounting-platform'
+  | 'service-catalog'
+  | 'operational-workflows'
+  | 'fiscal'
+  | 'obligations-enterprise'
+  | 'payroll-enterprise'
+  | 'banking-enterprise'
+  | 'accounting-enterprise'
+  | 'company'
+  | 'security';
+
+export type AccountingArchitectureStatus =
+  | 'CANONICAL'
+  | 'SHARED_CAPABILITY'
+  | 'NEEDS_CONSOLIDATION'
+  | 'DEPRECATED_ALIAS';
+
+export type AccountingArchitectureRegistryItem = {
+  capabilityId: string;
+  name: string;
+  layer: AccountingArchitectureLayer;
+  canonicalOwner: AccountingArchitectureOwner;
+  canonicalApiBase: string;
+  frontendRoutes: string[];
+  relatedModules: string[];
+  status: AccountingArchitectureStatus;
+  duplicateRisk: 'LOW' | 'MEDIUM' | 'HIGH';
+  consolidationRule: string;
+  publicContract: string;
+  integrationPoints: string[];
+  forbiddenDuplicates: string[];
+};
+
+export type AccountingArchitectureRegistryResponse = {
+  status: 'OK';
+  items: AccountingArchitectureRegistryItem[];
+  summary: {
+    total: number;
+    canonical: number;
+    shared: number;
+    needsConsolidation: number;
+    deprecatedAlias: number;
+    highRisk: number;
+    mediumRisk: number;
+  };
+  recommendations: {
+    id: string;
+    priority: AccountingPlatformPriorityTier;
+    action: string;
+    owner: AccountingArchitectureOwner;
+    affectedCapabilities: string[];
+  }[];
   generatedAt: string;
 };
 
@@ -179,7 +256,11 @@ export type AccountingSetupReadinessResponse = {
       | 'CRC'
       | 'GOVERNMENT_INTEGRATIONS'
       | 'PUBLIC_AGENCY';
-    automationBoundary: 'SOFTWARE_ONLY' | 'ASSISTED_AUTOMATION' | 'CRC_VALIDATED' | 'HUMAN_LED';
+    automationBoundary:
+      | 'SOFTWARE_ONLY'
+      | 'ASSISTED_AUTOMATION'
+      | 'CRC_VALIDATED'
+      | 'HUMAN_LED';
     status: 'READY' | 'REQUIRES_ACTION' | 'BLOCKED';
     evidenceRequired: string[];
   }[];
@@ -191,7 +272,12 @@ export type AccountingSetupReadinessResponse = {
       code: string;
       label: string;
       status: 'READY' | 'PENDING' | 'MISSING';
-      source: 'CUSTOMER' | 'BCOST' | 'CRC' | 'GOVERNMENT_PORTAL' | 'PUBLIC_AGENCY';
+      source:
+        | 'CUSTOMER'
+        | 'BCOST'
+        | 'CRC'
+        | 'GOVERNMENT_PORTAL'
+        | 'PUBLIC_AGENCY';
     }[];
   };
   officialDependencies: string[];

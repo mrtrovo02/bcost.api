@@ -31,7 +31,9 @@ describe('AccountingPlatformService', () => {
   it('declara capacidades criticas para rotinas reguladas e fintech', () => {
     const coverage = service.coverage();
     const das = coverage.items.find((item) => item.id === 'simples-tax-engine');
-    const banking = coverage.items.find((item) => item.id === 'embedded-pj-account');
+    const banking = coverage.items.find(
+      (item) => item.id === 'embedded-pj-account',
+    );
 
     expect(das?.requiredCapabilities).toEqual(
       expect.arrayContaining([
@@ -48,8 +50,12 @@ describe('AccountingPlatformService', () => {
 
   it('expõe lacunas acionáveis antes de vender serviços não prontos', () => {
     const coverage = service.coverage();
-    const formation = coverage.items.find((item) => item.id === 'company-formation-engine');
-    const issuer = coverage.items.find((item) => item.id === 'universal-nfse-issuer');
+    const formation = coverage.items.find(
+      (item) => item.id === 'company-formation-engine',
+    );
+    const issuer = coverage.items.find(
+      (item) => item.id === 'universal-nfse-issuer',
+    );
 
     expect(formation?.readinessGaps).toEqual(
       expect.arrayContaining([
@@ -72,8 +78,12 @@ describe('AccountingPlatformService', () => {
 
   it('prioriza lacunas críticas como backlog executivo', () => {
     const coverage = service.coverage();
-    const nfse = coverage.items.find((item) => item.id === 'universal-nfse-issuer');
-    const matrix = coverage.items.find((item) => item.id === 'service-delivery-matrix');
+    const nfse = coverage.items.find(
+      (item) => item.id === 'universal-nfse-issuer',
+    );
+    const matrix = coverage.items.find(
+      (item) => item.id === 'service-delivery-matrix',
+    );
 
     expect(nfse?.priorityTier).toBe('P0');
     expect(nfse?.priorityScore).toBeGreaterThanOrEqual(80);
@@ -131,7 +141,64 @@ describe('AccountingPlatformService', () => {
         owner: 'CRC',
       }),
     );
-    expect(JSON.stringify(readiness).toLowerCase()).not.toContain('contabilizei');
+    expect(JSON.stringify(readiness).toLowerCase()).not.toContain(
+      'contabilizei',
+    );
+  });
+
+  it('gera registry canônico para evitar duplicação de módulos e APIs', () => {
+    const registry = service.architectureRegistry();
+    const capabilityIds = registry.items.map((item) => item.capabilityId);
+    const canonicalApiBases = registry.items.map(
+      (item) => item.canonicalApiBase,
+    );
+
+    expect(registry.summary.total).toBeGreaterThanOrEqual(10);
+    expect(new Set(capabilityIds).size).toBe(capabilityIds.length);
+    expect(new Set(canonicalApiBases).size).toBe(canonicalApiBases.length);
+    expect(registry.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          capabilityId: 'SERVICE_SCOPE_CATALOG',
+          canonicalOwner: 'service-catalog',
+          duplicateRisk: 'LOW',
+        }),
+        expect.objectContaining({
+          capabilityId: 'DOCUMENT_XML_INTAKE',
+          status: 'NEEDS_CONSOLIDATION',
+          duplicateRisk: 'HIGH',
+        }),
+        expect.objectContaining({
+          capabilityId: 'BANKING_RECONCILIATION',
+          canonicalOwner: 'banking-enterprise',
+          duplicateRisk: 'HIGH',
+        }),
+      ]),
+    );
+  });
+
+  it('prioriza consolidação quando capacidade enterprise tem risco de sobreposição', () => {
+    const registry = service.architectureRegistry();
+
+    expect(registry.summary.highRisk).toBeGreaterThanOrEqual(2);
+    expect(registry.recommendations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'document_xml_intake-consolidation',
+          priority: 'P0',
+          owner: 'fiscal',
+          affectedCapabilities: expect.arrayContaining(['DOCUMENT_XML_INTAKE']),
+        }),
+        expect.objectContaining({
+          id: 'banking_reconciliation-consolidation',
+          priority: 'P0',
+          owner: 'banking-enterprise',
+          affectedCapabilities: expect.arrayContaining([
+            'BANKING_RECONCILIATION',
+          ]),
+        }),
+      ]),
+    );
   });
 
   it('bloqueia comunicação plena quando a oferta depende de parceiro ou módulo planejado', () => {
@@ -152,7 +219,9 @@ describe('AccountingPlatformService', () => {
 
   it('gera plano de ativação com donos, evidências e bloqueios por oferta', () => {
     const response = service.offerings();
-    const fintech = response.offerings.find((item) => item.id === 'bcost-fintech');
+    const fintech = response.offerings.find(
+      (item) => item.id === 'bcost-fintech',
+    );
     const core = response.offerings.find((item) => item.id === 'bcost-core');
 
     expect(fintech?.commercialDecision).toContain('piloto controlado');
@@ -176,7 +245,9 @@ describe('AccountingPlatformService', () => {
         }),
       ]),
     );
-    expect(core?.activationSummary.total).toBe(core?.requiredCapabilities.length);
+    expect(core?.activationSummary.total).toBe(
+      core?.requiredCapabilities.length,
+    );
   });
 
   it('gera playbook operacional de ativação para cada oferta', () => {
@@ -188,13 +259,19 @@ describe('AccountingPlatformService', () => {
         `${offering.id}-setup`,
         `${offering.id}-operation`,
       ]);
-      expect(offering.activationPlaybook.every((stage) => stage.targetSlaHours > 0)).toBe(true);
-      expect(offering.activationPlaybook.every((stage) => stage.exitCriteria.length > 0)).toBe(
-        true,
-      );
+      expect(
+        offering.activationPlaybook.every((stage) => stage.targetSlaHours > 0),
+      ).toBe(true);
+      expect(
+        offering.activationPlaybook.every(
+          (stage) => stage.exitCriteria.length > 0,
+        ),
+      ).toBe(true);
     }
 
-    const fintech = response.offerings.find((item) => item.id === 'bcost-fintech');
+    const fintech = response.offerings.find(
+      (item) => item.id === 'bcost-fintech',
+    );
     expect(fintech?.activationPlaybook[1]).toEqual(
       expect.objectContaining({
         owner: 'FINTECH_PARTNERS',
@@ -254,7 +331,9 @@ describe('AccountingPlatformService', () => {
 
     expect(portfolio.summary.total).toBe(6);
     expect(portfolio.assessments).toHaveLength(6);
-    expect(portfolio.summary.assistedRequired + portfolio.summary.blocked).toBeGreaterThan(0);
+    expect(
+      portfolio.summary.assistedRequired + portfolio.summary.blocked,
+    ).toBeGreaterThan(0);
     expect(portfolio.summary.averageScore).toBeGreaterThan(0);
     expect(portfolio.actionQueue.length).toBeGreaterThan(0);
     expect(portfolio.actionQueue[0]).toEqual(
@@ -293,7 +372,10 @@ describe('AccountingPlatformService', () => {
       expect.arrayContaining([
         expect.objectContaining({ code: 'CUSTOMER_DOCUMENTS', status: 'FAIL' }),
         expect.objectContaining({ code: 'CRC_REVIEW', status: 'FAIL' }),
-        expect.objectContaining({ code: 'OFFICIAL_PORTAL_ACCESS', status: 'FAIL' }),
+        expect.objectContaining({
+          code: 'OFFICIAL_PORTAL_ACCESS',
+          status: 'FAIL',
+        }),
       ]),
     );
     expect(readiness.guardrails.join(' ')).toContain('100% automática');
@@ -303,9 +385,18 @@ describe('AccountingPlatformService', () => {
     expect(readiness.setupDossier.integrityHash).toMatch(/^[a-f0-9]{64}$/);
     expect(readiness.setupDossier.requiredArtifacts).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'CUSTOMER_ID_DOCUMENTS', status: 'MISSING' }),
-        expect.objectContaining({ code: 'CRC_TECHNICAL_REVIEW', status: 'MISSING' }),
-        expect.objectContaining({ code: 'VIABILITY_PROTOCOL', status: 'PENDING' }),
+        expect.objectContaining({
+          code: 'CUSTOMER_ID_DOCUMENTS',
+          status: 'MISSING',
+        }),
+        expect.objectContaining({
+          code: 'CRC_TECHNICAL_REVIEW',
+          status: 'MISSING',
+        }),
+        expect.objectContaining({
+          code: 'VIABILITY_PROTOCOL',
+          status: 'PENDING',
+        }),
       ]),
     );
   });
@@ -334,18 +425,28 @@ describe('AccountingPlatformService', () => {
         expect.objectContaining({ code: 'MUNICIPAL_COVERAGE', status: 'PASS' }),
       ]),
     );
-    expect(readiness.stages.every((stage) => stage.status === 'READY')).toBe(true);
+    expect(readiness.stages.every((stage) => stage.status === 'READY')).toBe(
+      true,
+    );
     expect(readiness.evidenceRequired).toEqual(
       expect.arrayContaining([
         'Protocolo de desenquadramento MEI quando aplicável',
         'Dossiê de evidências vinculado à empresa',
       ]),
     );
-    expect(readiness.setupDossier.id).toBe('setup:MEI_TO_ME_MIGRATION:company-mei:3550308');
+    expect(readiness.setupDossier.id).toBe(
+      'setup:MEI_TO_ME_MIGRATION:company-mei:3550308',
+    );
     expect(readiness.setupDossier.requiredArtifacts).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'MEI_DEREGISTRATION_PROTOCOL', status: 'READY' }),
-        expect.objectContaining({ code: 'AUDIT_DOSSIER_STORE', status: 'READY' }),
+        expect.objectContaining({
+          code: 'MEI_DEREGISTRATION_PROTOCOL',
+          status: 'READY',
+        }),
+        expect.objectContaining({
+          code: 'AUDIT_DOSSIER_STORE',
+          status: 'READY',
+        }),
       ]),
     );
   });

@@ -29,14 +29,23 @@ export class AccountingPlatformController {
     return this.accountingPlatform.marketReadiness();
   }
 
+  @Get('architecture-registry')
+  architectureRegistry() {
+    return this.accountingPlatform.architectureRegistry();
+  }
+
   @Get('setup/readiness')
   setupReadiness(@Query() query: Record<string, string | undefined>) {
-    return this.accountingPlatform.setupReadiness(this.toSetupReadinessInput(query));
+    return this.accountingPlatform.setupReadiness(
+      this.toSetupReadinessInput(query),
+    );
   }
 
   @Get('offerings/assessment')
   offeringsAssessment(@Query() query: Record<string, string | undefined>) {
-    return this.accountingPlatform.assessOfferings(this.toCompanyProfile(query));
+    return this.accountingPlatform.assessOfferings(
+      this.toCompanyProfile(query),
+    );
   }
 
   @Get('offerings/:offeringId/assessment')
@@ -44,10 +53,15 @@ export class AccountingPlatformController {
     @Param('offeringId') offeringId: string,
     @Query() query: Record<string, string | undefined>,
   ) {
-    return this.accountingPlatform.assessOffering(offeringId, this.toCompanyProfile(query));
+    return this.accountingPlatform.assessOffering(
+      offeringId,
+      this.toCompanyProfile(query),
+    );
   }
 
-  private toCompanyProfile(query: Record<string, string | undefined>): AccountingOfferingCompanyProfile {
+  private toCompanyProfile(
+    query: Record<string, string | undefined>,
+  ): AccountingOfferingCompanyProfile {
     return {
       companyId: query.companyId,
       taxRegime: this.toTaxRegime(query.taxRegime),
@@ -83,8 +97,12 @@ export class AccountingPlatformController {
       hasAuditEvidenceStore: this.toBoolean(query.hasAuditEvidenceStore),
       hasOfficialPortalAccess: this.toBoolean(query.hasOfficialPortalAccess),
       hasMunicipalCoverage: this.toBoolean(query.hasMunicipalCoverage),
-      hasPreviousAccountingDocs: this.toBoolean(query.hasPreviousAccountingDocs),
-      hasMeiDeregistrationEvidence: this.toBoolean(query.hasMeiDeregistrationEvidence),
+      hasPreviousAccountingDocs: this.toBoolean(
+        query.hasPreviousAccountingDocs,
+      ),
+      hasMeiDeregistrationEvidence: this.toBoolean(
+        query.hasMeiDeregistrationEvidence,
+      ),
     };
   }
 
@@ -93,7 +111,9 @@ export class AccountingPlatformController {
     return ['1', 'true', 'yes', 'sim'].includes(value.toLowerCase());
   }
 
-  private toTaxRegime(value?: string): AccountingOfferingCompanyProfile['taxRegime'] {
+  private toTaxRegime(
+    value?: string,
+  ): AccountingOfferingCompanyProfile['taxRegime'] {
     if (
       value === 'SIMPLES_NACIONAL' ||
       value === 'LUCRO_PRESUMIDO' ||
@@ -105,7 +125,9 @@ export class AccountingPlatformController {
     return undefined;
   }
 
-  private toSetupOperation(value?: string): AccountingSetupOperation | undefined {
+  private toSetupOperation(
+    value?: string,
+  ): AccountingSetupOperation | undefined {
     if (
       value === 'COMPANY_OPENING' ||
       value === 'ACCOUNTING_MIGRATION' ||
@@ -117,7 +139,9 @@ export class AccountingPlatformController {
     return undefined;
   }
 
-  private toLegalNature(value?: string): AccountingSetupReadinessInput['legalNature'] {
+  private toLegalNature(
+    value?: string,
+  ): AccountingSetupReadinessInput['legalNature'] {
     if (
       value === 'LTDA' ||
       value === 'SLU' ||
