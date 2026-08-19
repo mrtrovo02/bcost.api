@@ -115,6 +115,7 @@ export class FiscalController {
   // ---------------------------------------------------------------------------
 
   @Get('diagnostics/:companyId')
+  @LegacyApiAlias('/compliance/enterprise/run/:companyId')
   @ApiOperation({
     summary:
       'FISCAL INTELLIGENCE: Diagnóstico consolidado para telas comerciais do frontend',

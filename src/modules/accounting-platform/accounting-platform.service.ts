@@ -437,6 +437,64 @@ export class AccountingPlatformService {
         legacyAliases: [],
       },
       {
+        capabilityId: 'FISCAL_COMPLIANCE_CHECKS',
+        name: 'Compliance fiscal, pendências e auditoria operacional',
+        layer: 'GOVERNANCE',
+        canonicalOwner: 'compliance-enterprise',
+        canonicalApiBase: '/compliance/enterprise',
+        frontendRoutes: [
+          '/dashboard/compliance',
+          '/dashboard/modules/compliance-checks',
+        ],
+        relatedModules: [
+          'compliance-checks',
+          'business-rules',
+          'digital-certificates',
+        ],
+        status: 'SHARED_CAPABILITY',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Checks, regras, execução e resolução pertencem a compliance-enterprise; rotas fiscal/compliance devem servir apenas como gatilhos internos ou aliases.',
+        publicContract:
+          'Executa auditoria fiscal, registra pendências, severidade, responsável, resolução e evidências sem substituir revisão técnica quando houver risco tributário.',
+        integrationPoints: [
+          'ComplianceCheck',
+          'BusinessRule',
+          'DigitalCertificate',
+          'AuditLog',
+        ],
+        forbiddenDuplicates: [
+          'Não criar novo motor de compliance em fiscal/compliance.',
+          'Não tratar readiness da reforma como entrega oficial sem evidência e responsável.',
+        ],
+        legacyAliases: [
+          {
+            method: 'GET',
+            path: '/fiscal/diagnostics/:companyId',
+            migrationTarget: '/compliance/enterprise/run/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'GET',
+            path: '/fiscal/compliance/health-check/:companyId',
+            migrationTarget: '/compliance/enterprise/run/:companyId',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
+          {
+            method: 'POST',
+            path: '/fiscal/compliance/recalculate-fator-r/:companyId',
+            migrationTarget: '/fiscal/tax/monthly-preview/:companyId',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
+          {
+            method: 'POST',
+            path: '/fiscal/compliance/audit-certificates',
+            migrationTarget: '/digital-certificates/enterprise',
+            deprecationStage: 'INTERNAL_ONLY',
+          },
+        ],
+      },
+      {
         capabilityId: 'PAYROLL_ESOCIAL',
         name: 'Folha, pró-labore e eventos eSocial',
         layer: 'PAYROLL_CORE',

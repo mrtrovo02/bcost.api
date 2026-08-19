@@ -187,6 +187,18 @@ describe('AccountingPlatformService', () => {
             }),
           ]),
         }),
+        expect.objectContaining({
+          capabilityId: 'FISCAL_COMPLIANCE_CHECKS',
+          canonicalOwner: 'compliance-enterprise',
+          canonicalApiBase: '/compliance/enterprise',
+          duplicateRisk: 'MEDIUM',
+          legacyAliases: expect.arrayContaining([
+            expect.objectContaining({
+              path: '/fiscal/compliance/health-check/:companyId',
+              migrationTarget: '/compliance/enterprise/run/:companyId',
+            }),
+          ]),
+        }),
       ]),
     );
   });
