@@ -648,6 +648,55 @@ export class AccountingPlatformService {
         ],
       },
       {
+        capabilityId: 'NOTIFICATIONS_WEBHOOKS',
+        name: 'Notificações, ciência e webhooks operacionais',
+        layer: 'INTEGRATIONS',
+        canonicalOwner: 'notifications-enterprise',
+        canonicalApiBase: '/notifications/enterprise',
+        frontendRoutes: [
+          '/dashboard/modules/notifications',
+          '/dashboard/modules/webhooks',
+        ],
+        relatedModules: ['notifications', 'webhooks', 'automation-jobs'],
+        status: 'SHARED_CAPABILITY',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Notificações, ciência, arquivamento e webhooks pertencem à camada enterprise; /notifications deve permanecer apenas como alias autenticado por contexto do usuário.',
+        publicContract:
+          'Entrega alertas auditáveis por empresa, status de leitura, reconhecimento, arquivamento e disparo de webhooks com trilha multi-tenant.',
+        integrationPoints: [
+          'NotificationLog',
+          'WebhookConfig',
+          'AuditLog',
+          'AutomationJob',
+        ],
+        forbiddenDuplicates: [
+          'Não criar nova central de alertas fora de notifications-enterprise.',
+          'Não enviar webhook sem vínculo com empresa, evento e auditoria.',
+        ],
+        legacyAliases: [
+          {
+            method: 'GET',
+            path: '/notifications',
+            migrationTarget: '/notifications/enterprise/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'PATCH',
+            path: '/notifications/:id/ack',
+            migrationTarget:
+              '/notifications/enterprise/:companyId/:notificationId/acknowledge',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'GET',
+            path: '/webhooks',
+            migrationTarget: '/webhooks/enterprise/:companyId',
+            deprecationStage: 'REMOVE_AFTER_MIGRATION',
+          },
+        ],
+      },
+      {
         capabilityId: 'SECURITY_TENANCY_GOVERNANCE',
         name: 'Segurança, multi-tenant e governança LGPD',
         layer: 'GOVERNANCE',

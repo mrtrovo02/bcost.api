@@ -199,6 +199,18 @@ describe('AccountingPlatformService', () => {
             }),
           ]),
         }),
+        expect.objectContaining({
+          capabilityId: 'NOTIFICATIONS_WEBHOOKS',
+          canonicalOwner: 'notifications-enterprise',
+          canonicalApiBase: '/notifications/enterprise',
+          duplicateRisk: 'MEDIUM',
+          legacyAliases: expect.arrayContaining([
+            expect.objectContaining({
+              path: '/notifications',
+              migrationTarget: '/notifications/enterprise/:companyId',
+            }),
+          ]),
+        }),
       ]),
     );
   });
