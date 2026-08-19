@@ -211,6 +211,18 @@ describe('AccountingPlatformService', () => {
             }),
           ]),
         }),
+        expect.objectContaining({
+          capabilityId: 'DIGITAL_CERTIFICATE_VAULT',
+          canonicalOwner: 'digital-certificates-enterprise',
+          canonicalApiBase: '/digital-certificates/enterprise',
+          duplicateRisk: 'MEDIUM',
+          legacyAliases: expect.arrayContaining([
+            expect.objectContaining({
+              path: '/digital-certificates',
+              migrationTarget: '/digital-certificates/enterprise/:companyId',
+            }),
+          ]),
+        }),
       ]),
     );
   });

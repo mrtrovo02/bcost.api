@@ -495,6 +495,70 @@ export class AccountingPlatformService {
         ],
       },
       {
+        capabilityId: 'DIGITAL_CERTIFICATE_VAULT',
+        name: 'Cofre e governança de certificados digitais',
+        layer: 'GOVERNANCE',
+        canonicalOwner: 'digital-certificates-enterprise',
+        canonicalApiBase: '/digital-certificates/enterprise',
+        frontendRoutes: ['/dashboard/modules/digital-certificates'],
+        relatedModules: [
+          'digital-certificates',
+          'compliance-checks',
+          'tax-obligations',
+        ],
+        status: 'SHARED_CAPABILITY',
+        duplicateRisk: 'MEDIUM',
+        consolidationRule:
+          'Cadastro, validade, revogação e vínculo multi-tenant de certificados pertencem ao módulo enterprise; /digital-certificates sem empresa deve operar apenas como alias legado.',
+        publicContract:
+          'Controla certificados A1/A3, validade, vencimento, revogação e evidência de uso para integrações com Receita, SEFAZ, e-CAC e prefeituras.',
+        integrationPoints: [
+          'DigitalCertificate',
+          'ComplianceCheck',
+          'TaxObligation',
+          'AuditLog',
+        ],
+        forbiddenDuplicates: [
+          'Não armazenar certificado sem companyId e trilha de auditoria.',
+          'Não automatizar órgão público com certificado vencido, revogado ou sem autorização.',
+        ],
+        legacyAliases: [
+          {
+            method: 'GET',
+            path: '/digital-certificates',
+            migrationTarget: '/digital-certificates/enterprise/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'POST',
+            path: '/digital-certificates',
+            migrationTarget: '/digital-certificates/enterprise/:companyId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'GET',
+            path: '/digital-certificates/:id',
+            migrationTarget:
+              '/digital-certificates/enterprise/:companyId/:certificateId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'PATCH',
+            path: '/digital-certificates/:id',
+            migrationTarget:
+              '/digital-certificates/enterprise/:companyId/:certificateId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+          {
+            method: 'DELETE',
+            path: '/digital-certificates/:id',
+            migrationTarget:
+              '/digital-certificates/enterprise/:companyId/:certificateId',
+            deprecationStage: 'SUPPORTED_ALIAS',
+          },
+        ],
+      },
+      {
         capabilityId: 'PAYROLL_ESOCIAL',
         name: 'Folha, pró-labore e eventos eSocial',
         layer: 'PAYROLL_CORE',

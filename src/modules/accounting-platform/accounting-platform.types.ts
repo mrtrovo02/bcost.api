@@ -158,6 +158,7 @@ export type AccountingArchitectureOwner =
   | 'payroll-enterprise'
   | 'banking-enterprise'
   | 'notifications-enterprise'
+  | 'digital-certificates-enterprise'
   | 'accounting-enterprise'
   | 'company'
   | 'security';
