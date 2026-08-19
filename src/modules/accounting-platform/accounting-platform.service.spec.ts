@@ -154,6 +154,9 @@ describe('AccountingPlatformService', () => {
     );
 
     expect(registry.summary.total).toBeGreaterThanOrEqual(10);
+    expect(registry.summary.legacyAliases).toBeGreaterThanOrEqual(9);
+    expect(registry.summary.supportedAliases).toBeGreaterThan(0);
+    expect(registry.summary.internalOnlyAliases).toBeGreaterThan(0);
     expect(new Set(capabilityIds).size).toBe(capabilityIds.length);
     expect(new Set(canonicalApiBases).size).toBe(canonicalApiBases.length);
     expect(registry.items).toEqual(

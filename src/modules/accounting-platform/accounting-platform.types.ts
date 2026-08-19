@@ -202,6 +202,10 @@ export type AccountingArchitectureRegistryResponse = {
     deprecatedAlias: number;
     highRisk: number;
     mediumRisk: number;
+    legacyAliases: number;
+    supportedAliases: number;
+    internalOnlyAliases: number;
+    removableAliases: number;
   };
   recommendations: {
     id: string;

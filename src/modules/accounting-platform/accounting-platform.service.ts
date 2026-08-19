@@ -99,6 +99,7 @@ export class AccountingPlatformService {
 
   architectureRegistry(): AccountingArchitectureRegistryResponse {
     const items = this.buildArchitectureRegistryItems();
+    const legacyAliases = items.flatMap((item) => item.legacyAliases);
 
     return {
       status: 'OK',
@@ -117,6 +118,16 @@ export class AccountingPlatformService {
         highRisk: items.filter((item) => item.duplicateRisk === 'HIGH').length,
         mediumRisk: items.filter((item) => item.duplicateRisk === 'MEDIUM')
           .length,
+        legacyAliases: legacyAliases.length,
+        supportedAliases: legacyAliases.filter(
+          (alias) => alias.deprecationStage === 'SUPPORTED_ALIAS',
+        ).length,
+        internalOnlyAliases: legacyAliases.filter(
+          (alias) => alias.deprecationStage === 'INTERNAL_ONLY',
+        ).length,
+        removableAliases: legacyAliases.filter(
+          (alias) => alias.deprecationStage === 'REMOVE_AFTER_MIGRATION',
+        ).length,
       },
       recommendations: this.buildArchitectureRecommendations(items),
       generatedAt: new Date().toISOString(),
