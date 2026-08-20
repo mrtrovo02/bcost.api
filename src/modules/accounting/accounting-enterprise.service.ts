@@ -8,11 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  AccountType,
-  EntryOrigin,
-  Prisma,
-} from '@prisma/client';
+import { AccountType, EntryOrigin, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateAccountPlanDto } from './dto/create-account-plan.dto.js';
 import { CreateAccountingEntryDto } from './dto/create-accounting-entry.dto.js';
@@ -164,7 +160,11 @@ export class AccountingEnterpriseService {
     return company;
   }
 
-  private async assertPeriodUnlocked(companyId: string, month: number, year: number) {
+  private async assertPeriodUnlocked(
+    companyId: string,
+    month: number,
+    year: number,
+  ) {
     const lock = await this.balanceLockModel.findFirst({
       where: {
         companyId,
@@ -180,7 +180,11 @@ export class AccountingEnterpriseService {
     }
   }
 
-  private async validateAccountExists(companyId: string, code: string, label: string) {
+  private async validateAccountExists(
+    companyId: string,
+    code: string,
+    label: string,
+  ) {
     const account = await this.accountPlanModel.findFirst({
       where: {
         code,
@@ -468,7 +472,10 @@ export class AccountingEnterpriseService {
       ...item,
       date: item.date ? new Date(item.date).toISOString() : null,
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
-      amount: item.amount instanceof Prisma.Decimal ? item.amount.toNumber() : Number(item.amount || 0),
+      amount:
+        item.amount instanceof Prisma.Decimal
+          ? item.amount.toNumber()
+          : Number(item.amount || 0),
       periodLabel: `${String(item.month).padStart(2, '0')}/${item.year}`,
     };
   }
@@ -532,12 +539,18 @@ export class AccountingEnterpriseService {
       else summary.unlocked += 1;
     }
 
-    summary.balanced = Number(summary.totalDebit.toFixed(2)) === Number(summary.totalCredit.toFixed(2));
+    summary.balanced =
+      Number(summary.totalDebit.toFixed(2)) ===
+      Number(summary.totalCredit.toFixed(2));
 
     return summary;
   }
 
-  async listAccountPlan(companyId: string, query: QueryAccountingDto, user?: AuthUser) {
+  async listAccountPlan(
+    companyId: string,
+    query: QueryAccountingDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -555,7 +568,9 @@ export class AccountingEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichPlan(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichPlan(item));
 
     return {
       status: 'OK',
@@ -597,7 +612,11 @@ export class AccountingEnterpriseService {
     }
 
     if (dto.parentCode) {
-      await this.validateAccountExists(companyId, dto.parentCode.trim(), 'parentCode');
+      await this.validateAccountExists(
+        companyId,
+        dto.parentCode.trim(),
+        'parentCode',
+      );
     }
 
     const created = await this.accountPlanModel.create({
@@ -654,18 +673,25 @@ export class AccountingEnterpriseService {
     });
 
     if (!current) {
-      throw new NotFoundException(`Conta contábil não encontrada: ${accountId}`);
+      throw new NotFoundException(
+        `Conta contábil não encontrada: ${accountId}`,
+      );
     }
 
     if (dto.parentCode) {
-      await this.validateAccountExists(companyId, dto.parentCode.trim(), 'parentCode');
+      await this.validateAccountExists(
+        companyId,
+        dto.parentCode.trim(),
+        'parentCode',
+      );
     }
 
     const data: Record<string, unknown> = {};
 
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.type !== undefined) data.type = dto.type;
-    if (dto.parentCode !== undefined) data.parentCode = dto.parentCode?.trim() || null;
+    if (dto.parentCode !== undefined)
+      data.parentCode = dto.parentCode?.trim() || null;
     if (dto.active !== undefined) data.active = dto.active;
 
     const updated = await this.accountPlanModel.update({
@@ -701,7 +727,11 @@ export class AccountingEnterpriseService {
     };
   }
 
-  async deactivateAccountPlan(companyId: string, accountId: string, user?: AuthUser) {
+  async deactivateAccountPlan(
+    companyId: string,
+    accountId: string,
+    user?: AuthUser,
+  ) {
     return this.updateAccountPlan(
       companyId,
       accountId,
@@ -730,7 +760,11 @@ export class AccountingEnterpriseService {
       { code: '6.1.01', name: 'Custos operacionais', type: 'CUSTO' },
     ];
 
-    const results: Array<{ code: string; status: 'CREATED' | 'SKIPPED'; id?: string }> = [];
+    const results: Array<{
+      code: string;
+      status: 'CREATED' | 'SKIPPED';
+      id?: string;
+    }> = [];
 
     for (const item of defaults) {
       const existing = await this.accountPlanModel.findFirst({
@@ -792,7 +826,11 @@ export class AccountingEnterpriseService {
     };
   }
 
-  async listEntries(companyId: string, query: QueryAccountingDto, user?: AuthUser) {
+  async listEntries(
+    companyId: string,
+    query: QueryAccountingDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -813,7 +851,9 @@ export class AccountingEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichEntry(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichEntry(item));
 
     return {
       status: 'OK',
@@ -910,7 +950,9 @@ export class AccountingEnterpriseService {
     });
 
     if (!item) {
-      throw new NotFoundException(`Lançamento contábil não encontrado: ${entryId}`);
+      throw new NotFoundException(
+        `Lançamento contábil não encontrado: ${entryId}`,
+      );
     }
 
     return {
@@ -940,15 +982,23 @@ export class AccountingEnterpriseService {
     });
 
     if (!current) {
-      throw new NotFoundException(`Lançamento contábil não encontrado: ${entryId}`);
+      throw new NotFoundException(
+        `Lançamento contábil não encontrado: ${entryId}`,
+      );
     }
 
     await this.assertPeriodUnlocked(companyId, current.month, current.year);
 
-    const nextDate = dto.date ? this.parseDate(dto.date, 'date') : new Date(current.date);
+    const nextDate = dto.date
+      ? this.parseDate(dto.date, 'date')
+      : new Date(current.date);
     const nextPeriod = this.getMonthYear(nextDate);
 
-    await this.assertPeriodUnlocked(companyId, nextPeriod.month, nextPeriod.year);
+    await this.assertPeriodUnlocked(
+      companyId,
+      nextPeriod.month,
+      nextPeriod.year,
+    );
 
     const nextDebitCode = dto.debitCode?.trim() || current.debitCode;
     const nextCreditCode = dto.creditCode?.trim() || current.creditCode;
@@ -970,11 +1020,14 @@ export class AccountingEnterpriseService {
       year: nextPeriod.year,
     };
 
-    if (dto.description !== undefined) data.description = dto.description.trim();
+    if (dto.description !== undefined)
+      data.description = dto.description.trim();
     if (dto.amount !== undefined) data.amount = dto.amount;
     if (dto.origin !== undefined) data.origin = dto.origin;
-    if (dto.referenceId !== undefined) data.referenceId = dto.referenceId?.trim() || null;
-    if (dto.referenceType !== undefined) data.referenceType = dto.referenceType?.trim() || null;
+    if (dto.referenceId !== undefined)
+      data.referenceId = dto.referenceId?.trim() || null;
+    if (dto.referenceType !== undefined)
+      data.referenceType = dto.referenceType?.trim() || null;
 
     const updated = await this.accountingEntryModel.update({
       where: {
@@ -1021,7 +1074,9 @@ export class AccountingEnterpriseService {
     });
 
     if (!current) {
-      throw new NotFoundException(`Lançamento contábil não encontrado: ${entryId}`);
+      throw new NotFoundException(
+        `Lançamento contábil não encontrado: ${entryId}`,
+      );
     }
 
     await this.assertPeriodUnlocked(companyId, current.month, current.year);
@@ -1092,11 +1147,7 @@ export class AccountingEnterpriseService {
     await this.findCompany(companyId);
 
     const lockedBy =
-      dto.lockedBy?.trim() ||
-      user?.email ||
-      user?.id ||
-      user?.sub ||
-      'system';
+      dto.lockedBy?.trim() || user?.email || user?.id || user?.sub || 'system';
 
     const existing = await this.balanceLockModel.findFirst({
       where: {
@@ -1155,7 +1206,12 @@ export class AccountingEnterpriseService {
     };
   }
 
-  async unlockPeriod(companyId: string, month: number, year: number, user?: AuthUser) {
+  async unlockPeriod(
+    companyId: string,
+    month: number,
+    year: number,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
     this.validateWritePermission(user);
 

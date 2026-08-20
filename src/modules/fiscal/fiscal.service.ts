@@ -1,6 +1,7 @@
 'use strict';
 
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -56,6 +57,14 @@ type FiscalPerformancePoint = {
 };
 
 type SimplesAnnex = 'III' | 'V';
+export type FiscalExportFormat = 'DOMINIO' | 'QUESTOR' | 'ALTERDATA';
+
+export interface FiscalExportFile {
+  filename: string;
+  mimeType: string;
+  content: Buffer;
+  records: number;
+}
 
 const SIMPLES_TABLES: Record<
   SimplesAnnex,
@@ -142,6 +151,48 @@ export class FiscalService implements OnModuleInit {
     ];
 
     return names[Math.max(0, Math.min(11, month - 1))] ?? String(month);
+  }
+
+  private escapeCsvValue(value: unknown): string {
+    if (value === null || value === undefined) return '';
+
+    const normalized =
+      value instanceof Date ? value.toISOString() : String(value);
+
+    if (
+      normalized.includes(';') ||
+      normalized.includes('"') ||
+      normalized.includes('\n') ||
+      normalized.includes('\r')
+    ) {
+      return `"${normalized.replace(/"/g, '""')}"`;
+    }
+
+    return normalized;
+  }
+
+  private buildCsv(rows: unknown[][]): Buffer {
+    const csv = rows
+      .map((row) => row.map((value) => this.escapeCsvValue(value)).join(';'))
+      .join('\r\n');
+
+    return Buffer.from(`\uFEFF${csv}\r\n`, 'utf-8');
+  }
+
+  private normalizeExportFormat(format: string): FiscalExportFormat {
+    const normalized = format.trim().toUpperCase();
+
+    if (
+      normalized === 'DOMINIO' ||
+      normalized === 'QUESTOR' ||
+      normalized === 'ALTERDATA'
+    ) {
+      return normalized;
+    }
+
+    throw new BadRequestException(
+      'Formato de exportação inválido. Use DOMINIO, QUESTOR ou ALTERDATA.',
+    );
   }
 
   private getEffectiveSimplesRate(rbt12: number, annex: SimplesAnnex) {
@@ -795,6 +846,102 @@ export class FiscalService implements OnModuleInit {
       orderBy: { issuedAt: 'desc' },
       take: 50,
     });
+  }
+
+  async exportCompanyInvoices(
+    companyId: string,
+    format: string,
+  ): Promise<FiscalExportFile> {
+    const normalizedFormat = this.normalizeExportFormat(format);
+
+    const company = await this.prisma.extended.company.findUnique({
+      where: { id: companyId },
+      select: {
+        id: true,
+        cnpj: true,
+        name: true,
+        taxRegime: true,
+        active: true,
+        deletedAt: true,
+      },
+    });
+
+    if (!company || company.deletedAt || !company.active) {
+      throw new NotFoundException('Empresa ativa não cadastrada.');
+    }
+
+    const invoices = await this.prisma.extended.invoice.findMany({
+      where: {
+        companyId,
+        deletedAt: null,
+      },
+      include: {
+        customer: {
+          select: {
+            name: true,
+            document: true,
+          },
+        },
+      },
+      orderBy: [{ issuedAt: 'asc' }, { number: 'asc' }],
+      take: 5_000,
+    });
+
+    const generatedAt = new Date().toISOString();
+    const rows: unknown[][] = [
+      [
+        'layout',
+        'company_id',
+        'company_cnpj',
+        'company_name',
+        'tax_regime',
+        'invoice_id',
+        'number',
+        'serie',
+        'type',
+        'status',
+        'issued_at',
+        'access_key',
+        'customer_document',
+        'customer_name',
+        'amount',
+        'tax_amount',
+        'reconciled',
+        'generated_at',
+      ],
+      ...invoices.map((invoice) => [
+        normalizedFormat,
+        company.id,
+        company.cnpj,
+        company.name,
+        company.taxRegime,
+        invoice.id,
+        invoice.number ?? '',
+        invoice.serie ?? '',
+        invoice.type,
+        invoice.status,
+        invoice.issuedAt.toISOString(),
+        invoice.accessKey ?? '',
+        invoice.customer?.document ?? '',
+        invoice.customer?.name ?? '',
+        this.toNumber(invoice.amount).toFixed(2),
+        this.toNumber(invoice.taxAmount).toFixed(2),
+        invoice.reconciled ? 'true' : 'false',
+        generatedAt,
+      ]),
+    ];
+
+    const filename = `bcost-fiscal-${normalizedFormat.toLowerCase()}-${company.cnpj}-${generatedAt.slice(
+      0,
+      10,
+    )}.csv`;
+
+    return {
+      filename,
+      mimeType: 'text/csv; charset=utf-8',
+      content: this.buildCsv(rows),
+      records: invoices.length,
+    };
   }
 
   // ---------------------------------------------------------------------------

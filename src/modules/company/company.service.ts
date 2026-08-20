@@ -4,11 +4,16 @@ import {
   NotFoundException,
   Logger,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js'; // Você precisará criar este DTO
-import { CompanyRole } from '@prisma/client';
+import { CompanyRole, Prisma, TaxRegime } from '@prisma/client';
+import {
+  isValidCnpj,
+  normalizeCnpj,
+} from '../../common/validators/cnpj.util.js';
 
 @Injectable()
 export class CompanyService {
@@ -16,20 +21,71 @@ export class CompanyService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private companyAuditPayload(
+    company: {
+      id: string;
+      name: string;
+      cnpj: string;
+      taxRegime: TaxRegime;
+      cnae?: string | null;
+      anexo?: number | null;
+      active?: boolean;
+    },
+    extra: Record<string, unknown> = {},
+  ): Prisma.InputJsonObject {
+    return {
+      company: {
+        id: company.id,
+        name: company.name,
+        cnpj: company.cnpj,
+        taxRegime: company.taxRegime,
+        cnae: company.cnae ?? null,
+        anexo: company.anexo ?? null,
+        active: company.active ?? true,
+      },
+      ...extra,
+    };
+  }
+
+  private async assertCanManageCompany(companyId: string, userId: string) {
+    const membership = await this.prisma.companyUser.findFirst({
+      where: { companyId, userId, deletedAt: null },
+      select: { role: true },
+    });
+
+    if (!membership || !['OWNER', 'MANAGER'].includes(membership.role)) {
+      throw new ForbiddenException(
+        'Acesso negado para gerenciar esta empresa.',
+      );
+    }
+
+    return membership;
+  }
+
   /**
    * Registra uma nova empresa validando a duplicidade de CNPJ e incluindo dados fiscais.
    */
   async create(dto: CreateCompanyDto, userId: string) {
+    const normalizedCnpj = normalizeCnpj(dto.cnpj);
+
+    if (!isValidCnpj(normalizedCnpj)) {
+      throw new BadRequestException(
+        'Informe um CNPJ válido para cadastrar a empresa.',
+      );
+    }
+
     this.logger.log(
-      `Iniciando cadastro da empresa: ${dto.name} - CNPJ: ${dto.cnpj}`,
+      `Iniciando cadastro da empresa: ${dto.name} - CNPJ: ${normalizedCnpj}`,
     );
 
     const exists = await this.prisma.company.findUnique({
-      where: { cnpj: dto.cnpj },
+      where: { cnpj: normalizedCnpj },
     });
 
     if (exists) {
-      this.logger.warn(`Tentativa de cadastro com CNPJ duplicado: ${dto.cnpj}`);
+      this.logger.warn(
+        `Tentativa de cadastro com CNPJ duplicado: ${normalizedCnpj}`,
+      );
       throw new ConflictException(
         'Uma empresa com este CNPJ já está cadastrada no sistema.',
       );
@@ -40,8 +96,8 @@ export class CompanyService {
         const company = await tx.company.create({
           data: {
             name: dto.name,
-            cnpj: dto.cnpj,
-            taxRegime: dto.taxRegime,
+            cnpj: normalizedCnpj,
+            taxRegime: dto.taxRegime ?? TaxRegime.SIMPLES_NACIONAL,
             // Agora suportando os novos campos do Prisma que sincronizamos
             cnae: dto.cnae ?? null,
             anexo: dto.anexo ?? 3,
@@ -55,6 +111,21 @@ export class CompanyService {
             userId,
             companyId: company.id,
             role: CompanyRole.OWNER,
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            userId,
+            companyId: company.id,
+            action: 'COMPANY_CREATED',
+            module: 'COMPANY',
+            entity: 'Company',
+            entityId: company.id,
+            payload: this.companyAuditPayload(company, {
+              assignedRole: CompanyRole.OWNER,
+            }),
+            statusCode: 201,
           },
         });
 
@@ -113,13 +184,35 @@ export class CompanyService {
    * Essencial para o ajuste do motor de cálculo (TaxService).
    */
   async update(id: string, dto: UpdateCompanyDto, userId: string) {
-    await this.findOne(id, userId); // Valida se existe e pertence ao usuário
+    const current = await this.findOne(id, userId); // Valida se existe e pertence ao usuário
+    await this.assertCanManageCompany(id, userId);
 
     try {
       this.logger.log(`Atualizando dados fiscais da empresa ID: ${id}`);
-      return await this.prisma.company.update({
-        where: { id },
-        data: dto,
+      return await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.company.update({
+          where: { id },
+          data: dto,
+        });
+
+        await tx.auditLog.create({
+          data: {
+            userId,
+            companyId: id,
+            action: 'COMPANY_UPDATED',
+            module: 'COMPANY',
+            entity: 'Company',
+            entityId: id,
+            payload: {
+              before: this.companyAuditPayload(current),
+              after: this.companyAuditPayload(updated),
+              changedFields: Object.keys(dto),
+            },
+            statusCode: 200,
+          },
+        });
+
+        return updated;
       });
     } catch (error) {
       this.logger.error(`Erro ao atualizar empresa ${id}`, error);
@@ -132,18 +225,7 @@ export class CompanyService {
    */
   async delete(id: string, userId: string) {
     const company = await this.findOne(id, userId);
-
-    // Somente OWNER ou MANAGER podem desativar
-    const membership = await this.prisma.companyUser.findFirst({
-      where: { companyId: id, userId, deletedAt: null },
-      select: { role: true },
-    });
-
-    if (!membership || !['OWNER', 'MANAGER'].includes(membership.role)) {
-      throw new ForbiddenException(
-        'Acesso negado para desativar esta empresa.',
-      );
-    }
+    await this.assertCanManageCompany(id, userId);
 
     if (!company.active) {
       throw new ConflictException('Esta empresa já se encontra desativada.');
@@ -151,9 +233,29 @@ export class CompanyService {
 
     this.logger.log(`Desativando empresa ID: ${id} (${company.name})`);
 
-    return this.prisma.company.update({
-      where: { id },
-      data: { active: false, deletedAt: new Date() },
+    return this.prisma.$transaction(async (tx) => {
+      const deletedAt = new Date();
+      const updated = await tx.company.update({
+        where: { id },
+        data: { active: false, deletedAt },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId,
+          companyId: id,
+          action: 'COMPANY_DEACTIVATED',
+          module: 'COMPANY',
+          entity: 'Company',
+          entityId: id,
+          payload: this.companyAuditPayload(company, {
+            deletedAt: deletedAt.toISOString(),
+          }),
+          statusCode: 200,
+        },
+      });
+
+      return updated;
     });
   }
 }

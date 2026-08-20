@@ -136,7 +136,12 @@ export class ComplianceEnterpriseController {
     @Param('checkId', new ParseUUIDPipe()) checkId: string,
     @Req() req: any,
   ) {
-    return this.service.setCheckStatus(companyId, checkId, 'RESOLVED', req.user);
+    return this.service.setCheckStatus(
+      companyId,
+      checkId,
+      'RESOLVED',
+      req.user,
+    );
   }
 
   @Post('checks/:companyId/:checkId/ignore')

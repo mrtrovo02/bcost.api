@@ -52,8 +52,21 @@ export class UpdateFiscalObligationDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['PENDING', 'GENERATED', 'SUBMITTED', 'ACCEPTED', 'REJECTED', 'OVERDUE'])
-  status?: 'PENDING' | 'GENERATED' | 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'OVERDUE';
+  @IsIn([
+    'PENDING',
+    'GENERATED',
+    'SUBMITTED',
+    'ACCEPTED',
+    'REJECTED',
+    'OVERDUE',
+  ])
+  status?:
+    | 'PENDING'
+    | 'GENERATED'
+    | 'SUBMITTED'
+    | 'ACCEPTED'
+    | 'REJECTED'
+    | 'OVERDUE';
 
   @IsOptional()
   @IsString()

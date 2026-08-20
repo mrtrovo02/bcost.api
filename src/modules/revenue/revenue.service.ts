@@ -1,10 +1,7 @@
 'use strict';
 
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  InvoiceStatus,
-  Prisma,
-} from '@prisma/client';
+import { ContractStatus, InvoiceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 
 type BillingMode = 'MANUAL' | 'MONTHLY_JOB' | 'QUEUE' | 'AUTOMATION';
@@ -156,7 +153,9 @@ export class RevenueService {
 
     for (const contract of contracts as any[]) {
       const contractId = String(contract.id);
-      const customerId = contract.customerId ? String(contract.customerId) : null;
+      const customerId = contract.customerId
+        ? String(contract.customerId)
+        : null;
       const amount = this.toNumber(contract.amount);
 
       try {
@@ -230,7 +229,8 @@ export class RevenueService {
             status: 'SKIPPED',
             invoiceId: existing.id,
             amount,
-            reason: 'Já existe invoice de serviço para este cliente no período.',
+            reason:
+              'Já existe invoice de serviço para este cliente no período.',
           });
           continue;
         }
@@ -397,6 +397,115 @@ export class RevenueService {
         isEligibleAnexoIII: factorR.isEligibleForAnexoIII,
       },
     };
+  }
+
+  async getRevenueStats(companyId: string) {
+    const now = new Date();
+    const currentMonth = now.getUTCMonth() + 1;
+    const currentYear = now.getUTCFullYear();
+    const currentPeriod = this.getMonthPeriod(currentMonth, currentYear);
+    const previousPeriodDate = new Date(
+      Date.UTC(currentYear, currentMonth - 2, 1),
+    );
+    const previousPeriod = this.getMonthPeriod(
+      previousPeriodDate.getUTCMonth() + 1,
+      previousPeriodDate.getUTCFullYear(),
+    );
+    const yearStart = new Date(Date.UTC(currentYear, 0, 1));
+    const nextYearStart = new Date(Date.UTC(currentYear + 1, 0, 1));
+
+    const [yearRevenue, currentRevenue, previousRevenue, activeContracts] =
+      await Promise.all([
+        this.prisma.invoice.aggregate({
+          where: {
+            companyId,
+            status: InvoiceStatus.NORMAL,
+            deletedAt: null,
+            issuedAt: {
+              gte: yearStart,
+              lt: nextYearStart,
+            },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.invoice.aggregate({
+          where: {
+            companyId,
+            status: InvoiceStatus.NORMAL,
+            deletedAt: null,
+            issuedAt: {
+              gte: currentPeriod.start,
+              lt: currentPeriod.end,
+            },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.invoice.aggregate({
+          where: {
+            companyId,
+            status: InvoiceStatus.NORMAL,
+            deletedAt: null,
+            issuedAt: {
+              gte: previousPeriod.start,
+              lt: previousPeriod.end,
+            },
+          },
+          _sum: { amount: true },
+        }),
+        this.prisma.contract.aggregate({
+          where: {
+            companyId,
+            status: ContractStatus.ACTIVE,
+            deletedAt: null,
+          },
+          _count: { id: true },
+          _sum: { amount: true },
+        }),
+      ]);
+
+    const totalRevenue = this.toNumber(yearRevenue._sum.amount);
+    const currentMonthRevenue = this.toNumber(currentRevenue._sum.amount);
+    const previousMonthRevenue = this.toNumber(previousRevenue._sum.amount);
+    const monthlyRecurringRevenue = this.toNumber(activeContracts._sum.amount);
+    const growthRate =
+      previousMonthRevenue > 0
+        ? Number(
+            (
+              ((currentMonthRevenue - previousMonthRevenue) /
+                previousMonthRevenue) *
+              100
+            ).toFixed(2),
+          )
+        : currentMonthRevenue > 0
+          ? 100
+          : 0;
+
+    return {
+      totalRevenue: Number(totalRevenue.toFixed(2)),
+      projectedRevenue: Number((monthlyRecurringRevenue * 12).toFixed(2)),
+      growthRate,
+      activeContracts: activeContracts._count.id,
+      period: {
+        year: currentYear,
+        currentMonth,
+        current: currentPeriod.label,
+        previous: previousPeriod.label,
+      },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async getRevenueContracts(companyId: string) {
+    return this.prisma.contract.findMany({
+      where: {
+        companyId,
+        deletedAt: null,
+      },
+      include: {
+        customer: true,
+      },
+      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    });
   }
 
   async getFactorR(companyId: string) {

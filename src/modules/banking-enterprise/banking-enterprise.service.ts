@@ -8,11 +8,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  FinancialEventType,
-  Prisma,
-  TransactionType,
-} from '@prisma/client';
+import { FinancialEventType, Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AutoReconciliationEnterpriseDto } from './dto/auto-reconciliation-enterprise.dto.js';
 import { BankingEnterpriseQueryDto } from './dto/banking-enterprise-query.dto.js';
@@ -203,9 +199,15 @@ export class BankingEnterpriseService {
       ...account,
       balanceCache: balance,
       status: account.deletedAt ? 'DELETED' : 'ACTIVE',
-      createdAt: account.createdAt ? new Date(account.createdAt).toISOString() : null,
-      updatedAt: account.updatedAt ? new Date(account.updatedAt).toISOString() : null,
-      deletedAt: account.deletedAt ? new Date(account.deletedAt).toISOString() : null,
+      createdAt: account.createdAt
+        ? new Date(account.createdAt).toISOString()
+        : null,
+      updatedAt: account.updatedAt
+        ? new Date(account.updatedAt).toISOString()
+        : null,
+      deletedAt: account.deletedAt
+        ? new Date(account.deletedAt).toISOString()
+        : null,
     };
   }
 
@@ -305,7 +307,10 @@ export class BankingEnterpriseService {
     return summary;
   }
 
-  private buildAccountsWhere(companyId: string, query: BankingEnterpriseQueryDto) {
+  private buildAccountsWhere(
+    companyId: string,
+    query: BankingEnterpriseQueryDto,
+  ) {
     const and: Record<string, unknown>[] = [{ companyId }];
 
     if (query.search) {
@@ -349,7 +354,8 @@ export class BankingEnterpriseService {
       and.push({ type: query.type });
     }
     if (query.invoiceId) and.push({ invoiceId: query.invoiceId });
-    if (query.taxObligationId) and.push({ taxObligationId: query.taxObligationId });
+    if (query.taxObligationId)
+      and.push({ taxObligationId: query.taxObligationId });
 
     if (query.reconciled !== undefined) {
       and.push({
@@ -434,47 +440,48 @@ export class BankingEnterpriseService {
       userAgent: null,
     };
 
-    const candidates: Array<{ label: string; data: Record<string, unknown> }> = [
-      {
-        label: 'scalar-schema-first',
-        data: {
-          companyId: params.companyId,
-          ...(userId ? { userId } : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation-schema-first',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
+    const candidates: Array<{ label: string; data: Record<string, unknown> }> =
+      [
+        {
+          label: 'scalar-schema-first',
+          data: {
+            companyId: params.companyId,
+            ...(userId ? { userId } : {}),
+            ...baseData,
           },
-          ...(userId
-            ? {
-                user: {
-                  connect: {
-                    id: userId,
+        },
+        {
+          label: 'relation-schema-first',
+          data: {
+            company: {
+              connect: {
+                id: params.companyId,
+              },
+            },
+            ...(userId
+              ? {
+                  user: {
+                    connect: {
+                      id: userId,
+                    },
                   },
-                },
-              }
-            : {}),
-          ...baseData,
+                }
+              : {}),
+            ...baseData,
+          },
         },
-      },
-      {
-        label: 'scalar-minimal',
-        data: {
-          companyId: params.companyId,
-          module: params.module,
-          action: params.action,
-          entity: params.entity,
-          entityId: params.entityId ?? null,
-          payload,
+        {
+          label: 'scalar-minimal',
+          data: {
+            companyId: params.companyId,
+            module: params.module,
+            action: params.action,
+            entity: params.entity,
+            entityId: params.entityId ?? null,
+            payload,
+          },
         },
-      },
-    ];
+      ];
 
     const errors: string[] = [];
 
@@ -591,7 +598,9 @@ export class BankingEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichAccount(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichAccount(item));
 
     return {
       status: 'OK',
@@ -904,7 +913,9 @@ export class BankingEnterpriseService {
     });
 
     if (!current) {
-      throw new NotFoundException(`Transação bancária não encontrada: ${transactionId}`);
+      throw new NotFoundException(
+        `Transação bancária não encontrada: ${transactionId}`,
+      );
     }
 
     if (current.reconciled) {
@@ -921,7 +932,8 @@ export class BankingEnterpriseService {
 
     if (dto.type !== undefined) data.type = dto.type;
     if (dto.amount !== undefined) data.amount = dto.amount;
-    if (dto.description !== undefined) data.description = dto.description.trim();
+    if (dto.description !== undefined)
+      data.description = dto.description.trim();
     if (dto.occurredAt !== undefined) {
       data.occurredAt = this.parseDate(dto.occurredAt, 'occurredAt');
     }
@@ -971,7 +983,11 @@ export class BankingEnterpriseService {
     };
   }
 
-  async detailTransaction(companyId: string, transactionId: string, user?: AuthUser) {
+  async detailTransaction(
+    companyId: string,
+    transactionId: string,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const item = await this.bankTransactionModel.findFirst({
@@ -987,7 +1003,9 @@ export class BankingEnterpriseService {
     });
 
     if (!item) {
-      throw new NotFoundException(`Transação bancária não encontrada: ${transactionId}`);
+      throw new NotFoundException(
+        `Transação bancária não encontrada: ${transactionId}`,
+      );
     }
 
     return {
@@ -1033,18 +1051,14 @@ export class BankingEnterpriseService {
   }) {
     const amountDiff = Math.abs(params.transactionAmount - params.targetAmount);
     const amountScore =
-      amountDiff <= params.amountTolerance
-        ? 60
-        : Math.max(0, 60 - amountDiff);
+      amountDiff <= params.amountTolerance ? 60 : Math.max(0, 60 - amountDiff);
 
     const diffMs = Math.abs(
       params.transactionDate.getTime() - params.targetDate.getTime(),
     );
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
     const dateScore =
-      diffDays <= params.dateToleranceDays
-        ? Math.max(0, 20 - diffDays)
-        : 0;
+      diffDays <= params.dateToleranceDays ? Math.max(0, 20 - diffDays) : 0;
 
     const descriptionScore = this.calculateDescriptionScore(
       params.transactionDescription,
@@ -1088,7 +1102,9 @@ export class BankingEnterpriseService {
     });
 
     if (!transaction) {
-      throw new NotFoundException(`Transação bancária não encontrada: ${transactionId}`);
+      throw new NotFoundException(
+        `Transação bancária não encontrada: ${transactionId}`,
+      );
     }
 
     if (transaction.reconciled) {
@@ -1249,7 +1265,10 @@ export class BankingEnterpriseService {
       );
     }
 
-    if (dto.targetType === 'INVOICE' && transaction.type !== TransactionType.CREDIT) {
+    if (
+      dto.targetType === 'INVOICE' &&
+      transaction.type !== TransactionType.CREDIT
+    ) {
       throw new BadRequestException(
         'Conciliação com Invoice exige transação do tipo CREDIT.',
       );
@@ -1277,7 +1296,9 @@ export class BankingEnterpriseService {
         });
 
         if (!target) {
-          throw new NotFoundException(`Invoice não encontrada: ${dto.targetId}`);
+          throw new NotFoundException(
+            `Invoice não encontrada: ${dto.targetId}`,
+          );
         }
 
         const alreadyLinked = await tx.bankTransaction.findFirst({
@@ -1556,7 +1577,9 @@ export class BankingEnterpriseService {
     });
 
     if (!transaction) {
-      throw new NotFoundException(`Transação bancária não encontrada: ${transactionId}`);
+      throw new NotFoundException(
+        `Transação bancária não encontrada: ${transactionId}`,
+      );
     }
 
     if (!transaction.reconciled) {
@@ -1665,7 +1688,9 @@ export class BankingEnterpriseService {
       }),
     ]);
 
-    const enrichedAccounts = accounts.map((item: any) => this.enrichAccount(item));
+    const enrichedAccounts = accounts.map((item: any) =>
+      this.enrichAccount(item),
+    );
     const enrichedTransactions = transactions.map((item: any) =>
       this.enrichTransaction(item),
     );

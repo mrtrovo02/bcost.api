@@ -1,11 +1,6 @@
-// =============================================================================
-// ARQUIVO: prisma/schema.prisma
-// bCost Engine — Schema Enterprise 2026
-// =============================================================================
-
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "postgresqlExtensions", "driverAdapters"]
+  previewFeatures = ["driverAdapters", "fullTextSearch", "postgresqlExtensions"]
 }
 
 datasource db {
@@ -13,10 +8,6 @@ datasource db {
   url        = env("DATABASE_URL")
   extensions = [pg_stat_statements, pgcrypto, uuid_ossp(map: "uuid-ossp"), vector]
 }
-
-// =============================================================================
-// USUÁRIOS E SESSÕES
-// =============================================================================
 
 model User {
   id                        String            @id @default(uuid())
@@ -53,55 +44,50 @@ model UserSession {
   @@map("user_sessions")
 }
 
-// =============================================================================
-// EMPRESA
-// =============================================================================
-
 model Company {
-  id            String    @id @default(uuid())
-  cnpj          String    @unique
-  name          String
-  taxRegime     TaxRegime @default(SIMPLES_NACIONAL)
-  anexo         Int       @default(3)
-  cnae          String?
-  cnae2         String?
-  municipalCode String?
-  active        Boolean   @default(true)
-  planLevel     String    @default("FREE")
-  lastSyncAt    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
-  version       Int       @default(1)
-  settings      Json?     @default("{}")
-
-  logs                 AuditLog[]
-  automationJobs       AutomationJob[]
-  balanceLocks         BalanceLock[]
-  bankAccounts         BankAccount[]
-  bankTransactions     BankTransaction[]
-  businessRules        BusinessRule[]
-  cashFlowProjections  CashFlowProjection[]
-  users                CompanyUser[]
-  complianceChecks     ComplianceCheck[]
-  contracts            Contract[]
-  customers            Customer[]
-  certificates         DigitalCertificate[]
-  financialEvents      FinancialEvent[]
-  financialSnapshots   FinancialSnapshot[]
-  invoices             Invoice[]
-  notifications        NotificationLog[]
-  payrolls             Payroll[]
-  taxCalculations      TaxCalculation[]
-  taxObligations       TaxObligation[]
-  webhooks             WebhookConfig[]
-  employees            Employee[]
-  accountingEntries    AccountingEntry[]
-  fiscalObligations    FiscalObligation[]
-  accountPlans         AccountPlan[]
+  id                  String                @id @default(uuid())
+  cnpj                String                @unique
+  name                String
+  taxRegime           TaxRegime             @default(SIMPLES_NACIONAL)
+  anexo               Int                   @default(3)
+  cnae                String?
+  cnae2               String?
+  municipalCode       String?
+  active              Boolean               @default(true)
+  planLevel           String                @default("FREE")
+  lastSyncAt          DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  deletedAt           DateTime?
+  version             Int                   @default(1)
+  settings            Json?                 @default("{}")
+  logs                AuditLog[]
+  automationJobs      AutomationJob[]
+  balanceLocks        BalanceLock[]
+  bankAccounts        BankAccount[]
+  bankTransactions    BankTransaction[]
+  businessRules       BusinessRule[]
+  cashFlowProjections CashFlowProjection[]
+  users               CompanyUser[]
+  complianceChecks    ComplianceCheck[]
+  contracts           Contract[]
+  customers           Customer[]
+  certificates        DigitalCertificate[]
+  financialEvents     FinancialEvent[]
+  financialSnapshots  FinancialSnapshot[]
   fiscalSimulationLogs FiscalSimulationLog[]
-  taxReformRates       TaxReformRate[]
-  taxDestinationRules  TaxDestinationRule[]
+  employees           Employee[]
+  accountingEntries   AccountingEntry[]
+  fiscalObligations   FiscalObligation[]
+  accountPlans        AccountPlan[]
+  invoices            Invoice[]
+  notifications       NotificationLog[]
+  payrolls            Payroll[]
+  taxCalculations     TaxCalculation[]
+  taxDestinationRules TaxDestinationRule[]
+  taxObligations      TaxObligation[]
+  taxReformRates      TaxReformRate[]
+  webhooks            WebhookConfig[]
 
   @@index([cnpj])
   @@index([active])
@@ -124,43 +110,38 @@ model CompanyUser {
   @@map("company_users")
 }
 
-// =============================================================================
-// FISCAL — NOTAS FISCAIS
-// =============================================================================
-
 model Invoice {
-  id                          String                 @id @default(uuid())
+  id                          String                @id @default(uuid())
   companyId                   String
   customerId                  String
   type                        InvoiceType
-  status                      InvoiceStatus          @default(NORMAL)
-  nfeStatus                   NFeStatus              @default(DRAFT)
-  amount                      Decimal                @db.Decimal(18, 2)
-  taxAmount                   Decimal?               @db.Decimal(18, 2)
+  status                      InvoiceStatus         @default(NORMAL)
+  nfeStatus                   NFeStatus             @default(DRAFT)
+  amount                      Decimal               @db.Decimal(18, 2)
+  taxAmount                   Decimal?              @db.Decimal(18, 2)
   issuedAt                    DateTime
-  accessKey                   String?                @unique
+  accessKey                   String?               @unique
   number                      String?
-  serie                       String?                @default("1")
-  finNFe                      String                 @default("1") @db.VarChar(1)
-  issuePurpose                NFeIssuePurpose        @default(NORMAL)
-  cstCode                     String?                @db.VarChar(3)
-  cClassTribCode              String?                @db.VarChar(6)
-  destinationStateIbge        String?                @db.VarChar(2)
-  destinationMunicipalityIbge String?                @db.VarChar(7)
-  hasLegacyTaxes              Boolean                @default(true)
-  taxReformPayload            Json?
+  serie                       String?               @default("1")
   xmlUrl                      String?
-  reconciled                  Boolean                @default(false)
-  version                     Int                    @default(1)
+  reconciled                  Boolean               @default(false)
+  version                     Int                   @default(1)
   vectorData                  Unsupported("vector")?
-  createdAt                   DateTime               @default(now())
-  updatedAt                   DateTime               @updatedAt
+  createdAt                   DateTime              @default(now())
+  updatedAt                   DateTime              @updatedAt
   deletedAt                   DateTime?
-
-  bankTransaction BankTransaction?    @relation("InvoiceBankTransaction")
-  company         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer        Customer            @relation(fields: [customerId], references: [id])
-  sefazEvents     InvoiceSefazEvent[]
+  finNFe                      String                @default("1") @db.VarChar(1)
+  issuePurpose                NFeIssuePurpose       @default(NORMAL)
+  cstCode                     String?               @db.VarChar(3)
+  cClassTribCode              String?               @db.VarChar(6)
+  destinationStateIbge        String?               @db.VarChar(2)
+  destinationMunicipalityIbge String?               @db.VarChar(7)
+  hasLegacyTaxes              Boolean               @default(true)
+  taxReformPayload            Json?
+  bankTransaction             BankTransaction?      @relation("InvoiceBankTransaction")
+  company                     Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer                    Customer              @relation(fields: [customerId], references: [id])
+  sefazEvents                 InvoiceSefazEvent[]
 
   @@unique([companyId, accessKey])
   @@index([companyId, issuedAt])
@@ -203,10 +184,9 @@ model TaxClassification {
   active         Boolean          @default(true)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  rates          TaxReformRate[]
 
-  rates TaxReformRate[]
-
-  @@unique([cstCode, cClassTribCode, taxType, validFrom])
+  @@unique([cstCode, cClassTribCode, taxType, validFrom], map: "tax_classifications_cstCode_cClassTribCode_taxType_validFrom_ke")
   @@index([cstCode, cClassTribCode])
   @@index([taxType, active])
   @@map("tax_classifications")
@@ -231,9 +211,8 @@ model TaxReformRate {
   active           Boolean              @default(true)
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
-
-  classification TaxClassification? @relation(fields: [classificationId], references: [id])
-  company        Company?           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  classification   TaxClassification?   @relation(fields: [classificationId], references: [id])
+  company          Company?             @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([taxType, scope, jurisdictionCode])
   @@index([cstCode, cClassTribCode])
@@ -260,38 +239,53 @@ model TaxDestinationRule {
   active                      Boolean   @default(true)
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
+  company                     Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([destinationStateIbge, destinationMunicipalityIbge])
   @@index([cstCode, cClassTribCode])
   @@index([validFrom, validTo])
+  @@index([destinationStateIbge, destinationMunicipalityIbge], map: "tax_destination_rules_destinationStateIbge_destinationMunicipal")
   @@map("tax_destination_rules")
 }
 
-// =============================================================================
-// BANCÁRIO
-// =============================================================================
+model FiscalSimulationLog {
+  id                   String    @id @default(dbgenerated("extensions.uuid_generate_v4()")) @db.Uuid
+  companyId            String?   @map("company_id")
+  monthlyRevenue       Decimal   @map("monthly_revenue") @db.Decimal(18, 2)
+  cbsRate              Decimal   @map("cbs_rate") @db.Decimal(5, 4)
+  ibsRate              Decimal   @map("ibs_rate") @db.Decimal(5, 4)
+  cbsValue             Decimal   @map("cbs_value") @db.Decimal(18, 2)
+  ibsValue             Decimal   @map("ibs_value") @db.Decimal(18, 2)
+  totalTransitionalTax Decimal   @map("total_transitional_tax") @db.Decimal(18, 2)
+  netRevenue           Decimal   @map("net_revenue") @db.Decimal(18, 2)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt            DateTime? @map("deleted_at") @db.Timestamptz
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId], map: "idx_fiscal_sim_company")
+  @@index([deletedAt], map: "idx_fiscal_sim_deleted")
+  @@map("fiscal_simulation_logs")
+}
 
 model BankTransaction {
-  id              String          @id @default(uuid())
+  id              String           @id @default(uuid())
   companyId       String
   bankAccountId   String
-  reconciled      Boolean         @default(false)
-  invoiceId       String?         @unique
-  taxObligationId String?         @unique
+  reconciled      Boolean          @default(false)
+  invoiceId       String?          @unique
+  taxObligationId String?          @unique
   type            TransactionType
-  amount          Decimal         @db.Decimal(18, 2)
+  amount          Decimal          @db.Decimal(18, 2)
   description     String
   occurredAt      DateTime
   metadata        Json?
-  createdAt       DateTime        @default(now())
-  version         Int             @default(1)
-
-  bankAccount   BankAccount    @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  invoice       Invoice?       @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
-  taxObligation TaxObligation? @relation("TaxObligationBankTransaction", fields: [taxObligationId], references: [id])
+  createdAt       DateTime         @default(now())
+  version         Int              @default(1)
+  bankAccount     BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice         Invoice?         @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
+  taxObligation   TaxObligation?   @relation("TaxObligationBankTransaction", fields: [taxObligationId], references: [id])
 
   @@index([companyId, occurredAt])
   @@index([bankAccountId, reconciled])
@@ -313,6 +307,7 @@ model BankAccount {
   transactions BankTransaction[]
 
   @@index([companyId])
+  @@index([companyId, deletedAt], map: "idx_bank_accounts_company_deleted_at")
   @@map("bank_accounts")
 }
 
@@ -328,10 +323,6 @@ model BalanceLock {
   @@unique([companyId, month, year])
   @@map("balance_locks")
 }
-
-// =============================================================================
-// CLIENTES E CONTRATOS
-// =============================================================================
 
 model Customer {
   id        String     @id @default(uuid())
@@ -374,21 +365,16 @@ model Contract {
   @@map("contracts")
 }
 
-// =============================================================================
-// OBRIGAÇÕES TRIBUTÁRIAS
-// =============================================================================
-
 model TaxObligation {
-  id        String           @id @default(uuid())
-  companyId String
-  name      String
-  dueDate   DateTime
-  amount    Decimal          @db.Decimal(18, 2)
-  status    ObligationStatus @default(PENDING)
-  fileUrl   String?
-  createdAt DateTime         @default(now())
-  version   Int              @default(1)
-
+  id              String           @id @default(uuid())
+  companyId       String
+  name            String
+  dueDate         DateTime
+  amount          Decimal          @db.Decimal(18, 2)
+  status          ObligationStatus @default(PENDING)
+  fileUrl         String?
+  createdAt       DateTime         @default(now())
+  version         Int              @default(1)
   bankTransaction BankTransaction? @relation("TaxObligationBankTransaction")
   company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
@@ -435,28 +421,6 @@ model FiscalObligation {
   @@map("fiscal_obligations")
 }
 
-model FiscalSimulationLog {
-  id                   String   @id @default(uuid())
-  companyId            String?  @map("company_id")
-  monthlyRevenue       Float    @map("monthly_revenue")
-  cbsRate              Float    @map("cbs_rate")
-  ibsRate              Float    @map("ibs_rate")
-  cbsValue             Float    @map("cbs_value")
-  ibsValue             Float    @map("ibs_value")
-  totalTransitionalTax Float    @map("total_transitional_tax")
-  netRevenue           Float    @map("net_revenue")
-  createdAt            DateTime @default(now()) @map("created_at")
-
-  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
-  @@index([companyId])
-  @@map("fiscal_simulation_logs")
-}
-
-// =============================================================================
-// FOLHA DE PAGAMENTO
-// =============================================================================
-
 model Employee {
   id             String         @id @default(uuid())
   companyId      String
@@ -481,15 +445,15 @@ model Employee {
 }
 
 model Payroll {
-  id              String         @id @default(uuid())
+  id              String   @id @default(uuid())
   companyId       String
   month           Int
   year            Int
-  salariesAmount  Decimal        @default(0) @db.Decimal(18, 2)
-  proLaboreAmount Decimal        @default(0) @db.Decimal(18, 2)
-  totalAmount     Decimal        @db.Decimal(18, 2)
-  createdAt       DateTime       @default(now())
-  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salariesAmount  Decimal  @default(0) @db.Decimal(18, 2)
+  proLaboreAmount Decimal  @default(0) @db.Decimal(18, 2)
+  totalAmount     Decimal  @db.Decimal(18, 2)
+  createdAt       DateTime @default(now())
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   entries         PayrollEntry[]
 
   @@unique([companyId, month, year])
@@ -517,10 +481,6 @@ model PayrollEntry {
   @@index([employeeId])
   @@map("payroll_entries")
 }
-
-// =============================================================================
-// CONTABILIDADE
-// =============================================================================
 
 model AccountPlan {
   id         String      @id @default(uuid())
@@ -563,10 +523,6 @@ model AccountingEntry {
   @@index([referenceId, referenceType])
   @@map("accounting_entries")
 }
-
-// =============================================================================
-// FINANCEIRO
-// =============================================================================
 
 model FinancialEvent {
   id            String             @id @default(uuid())
@@ -619,10 +575,6 @@ model CashFlowProjection {
   @@map("cash_flow_projections")
 }
 
-// =============================================================================
-// AUDITORIA
-// =============================================================================
-
 model AuditLog {
   id           String   @id @default(uuid())
   action       String
@@ -646,10 +598,6 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-// =============================================================================
-// NOTIFICAÇÕES
-// =============================================================================
-
 model NotificationLog {
   id               String               @id @default(uuid())
   companyId        String
@@ -668,20 +616,15 @@ model NotificationLog {
   metadata         Json?
   createdAt        DateTime             @default(now())
   sentAt           DateTime?
-
-  acknowledger User?   @relation("notification_acknowledger", fields: [acknowledgedById], references: [id])
-  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user         User?   @relation("notification_recipient", fields: [userId], references: [id])
+  acknowledger     User?                @relation("notification_acknowledger", fields: [acknowledgedById], references: [id])
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user             User?                @relation("notification_recipient", fields: [userId], references: [id])
 
   @@index([companyId, status])
   @@index([userId, read])
   @@index([companyId, severity, status])
   @@map("notification_logs")
 }
-
-// =============================================================================
-// COMPLIANCE E AUTOMAÇÃO
-// =============================================================================
 
 model ComplianceCheck {
   id          String               @id @default(uuid())
@@ -741,10 +684,6 @@ model BusinessRule {
   @@map("business_rules")
 }
 
-// =============================================================================
-// CERTIFICADOS E WEBHOOKS
-// =============================================================================
-
 model DigitalCertificate {
   id           String            @id @default(uuid())
   companyId    String
@@ -775,10 +714,6 @@ model WebhookConfig {
   @@index([companyId, active])
   @@map("webhook_configs")
 }
-
-// =============================================================================
-// ENUMS
-// =============================================================================
 
 enum TaxRegime {
   SIMPLES_NACIONAL

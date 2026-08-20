@@ -6,11 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  ComplianceStatus,
-  NotificationSeverity,
-  Prisma,
-} from '@prisma/client';
+import { ComplianceStatus, NotificationSeverity, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ComplianceEnterpriseQueryDto } from './dto/compliance-enterprise-query.dto.js';
 import { CreateBusinessRuleEnterpriseDto } from './dto/create-business-rule-enterprise.dto.js';
@@ -59,7 +55,9 @@ export class ComplianceEnterpriseService {
     const model = (this.prisma as any).complianceCheck;
 
     if (!model) {
-      throw new NotFoundException('Modelo Prisma complianceCheck não encontrado.');
+      throw new NotFoundException(
+        'Modelo Prisma complianceCheck não encontrado.',
+      );
     }
 
     return model;
@@ -269,8 +267,12 @@ export class ComplianceEnterpriseService {
       resolvedAt: check.resolvedAt
         ? new Date(check.resolvedAt).toISOString()
         : null,
-      createdAt: check.createdAt ? new Date(check.createdAt).toISOString() : null,
-      updatedAt: check.updatedAt ? new Date(check.updatedAt).toISOString() : null,
+      createdAt: check.createdAt
+        ? new Date(check.createdAt).toISOString()
+        : null,
+      updatedAt: check.updatedAt
+        ? new Date(check.updatedAt).toISOString()
+        : null,
       operationalStatus: check.resolved ? 'CLOSED' : check.status,
     };
   }
@@ -455,7 +457,9 @@ export class ComplianceEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichRule(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichRule(item));
 
     return {
       status: 'OK',
@@ -562,7 +566,10 @@ export class ComplianceEnterpriseService {
       entity: 'BusinessRule',
       entityId: ruleId,
       payload: {
-        before: this.normalize(this.enrichRule(current)) as Record<string, unknown>,
+        before: this.normalize(this.enrichRule(current)) as Record<
+          string,
+          unknown
+        >,
         after: this.normalize(item) as Record<string, unknown>,
       },
     });
@@ -650,8 +657,7 @@ export class ComplianceEnterpriseService {
       },
       {
         name: 'Jobs de automação com falha',
-        description:
-          'Gera riscos para jobs de automação com status FAILED.',
+        description: 'Gera riscos para jobs de automação com status FAILED.',
         condition: {
           type: 'builtin',
           sourceModule: 'automation-jobs',
@@ -740,7 +746,9 @@ export class ComplianceEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichCheck(item));
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichCheck(item));
 
     return {
       status: 'OK',
@@ -824,7 +832,9 @@ export class ComplianceEnterpriseService {
     });
 
     if (!current) {
-      throw new NotFoundException(`Check de compliance não encontrado: ${checkId}`);
+      throw new NotFoundException(
+        `Check de compliance não encontrado: ${checkId}`,
+      );
     }
 
     const data: Record<string, unknown> = {};
@@ -862,7 +872,10 @@ export class ComplianceEnterpriseService {
       entity: 'ComplianceCheck',
       entityId: checkId,
       payload: {
-        before: this.normalize(this.enrichCheck(current)) as Record<string, unknown>,
+        before: this.normalize(this.enrichCheck(current)) as Record<
+          string,
+          unknown
+        >,
         after: this.normalize(item) as Record<string, unknown>,
       },
     });
@@ -1100,8 +1113,7 @@ export class ComplianceEnterpriseService {
         key: 'PAYROLL_NO_ACTIVE_EMPLOYEES',
         checkName: 'Nenhum colaborador ativo',
         severity: NotificationSeverity.INFO,
-        description:
-          'Não há colaboradores ativos cadastrados para a empresa.',
+        description: 'Não há colaboradores ativos cadastrados para a empresa.',
         source: 'employees',
         entity: 'Employee',
         metadata: {
@@ -1169,11 +1181,7 @@ export class ComplianceEnterpriseService {
     const invalidEntries = await model.findMany({
       where: {
         companyId,
-        OR: [
-          { debitCode: '' },
-          { creditCode: '' },
-          { amount: { lte: 0 } },
-        ],
+        OR: [{ debitCode: '' }, { creditCode: '' }, { amount: { lte: 0 } }],
       },
       take: 100,
     });

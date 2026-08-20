@@ -62,7 +62,6 @@ export class AuditIntelligenceEnterpriseService {
 
   private readonly EXECUTIVE_CACHE_TTL_MS = 30_000;
 
-
   constructor(private readonly prisma: PrismaService) {}
 
   private getUserId(user?: AuthUser): string | null {
@@ -460,7 +459,9 @@ export class AuditIntelligenceEnterpriseService {
 
     const activeSignals = Math.max(
       0,
-      uniqueCriticalEvents + uniqueWarningEvents - Math.floor(historicalNoise / 2),
+      uniqueCriticalEvents +
+        uniqueWarningEvents -
+        Math.floor(historicalNoise / 2),
     );
 
     const penalty =
@@ -567,10 +568,7 @@ export class AuditIntelligenceEnterpriseService {
 
     const company = await this.ensureCompany(companyId);
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
-    const lookback = Math.min(
-      Math.max(Number(query.lookback || 300), 1),
-      3000,
-    );
+    const lookback = Math.min(Math.max(Number(query.lookback || 300), 1), 3000);
     const includeSamples = query.includeSamples === 'true';
     const includeRecommendations = query.includeRecommendations !== 'false';
     const includeRaw = query.includeRaw === 'true';

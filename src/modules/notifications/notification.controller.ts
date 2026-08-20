@@ -21,6 +21,7 @@ import {
 import { NotificationService } from './notification.service.js';
 import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
+import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
 
 /**
  * NotificationController: Camada de Orquestração de Alertas bCost.
@@ -40,6 +41,7 @@ export class NotificationController {
    * Recupera o histórico de notificações isolado por empresa.
    */
   @Get()
+  @LegacyApiAlias('/notifications/enterprise/:companyId')
   @ApiOperation({ summary: 'Listar notificações da empresa vinculada' })
   @ApiResponse({
     status: 200,
@@ -68,6 +70,9 @@ export class NotificationController {
    * Gera trilha de auditoria e ciência do cliente.
    */
   @Patch(':id/ack')
+  @LegacyApiAlias(
+    '/notifications/enterprise/:companyId/:notificationId/acknowledge',
+  )
   @ApiOperation({ summary: 'Confirmar ciência e processamento da notificação' })
   @ApiParam({
     name: 'id',

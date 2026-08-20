@@ -1,17 +1,22 @@
-'use strict';
-
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PrismaService } from '../../database/prisma.service.js';
+import { PrismaService } from '#database/prisma.service.js';
+import {
+  normalizePlanToTier,
+  EntitlementTier,
+  CommercialPlan,
+  mapTierToDefaultCommercialPlan,
+} from './domain/plan-mapping.js';
 
-type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
+export type PlanLevel = 'FREE' | 'PRO' | 'ENTERPRISE';
 
-type AuthUser = {
+export type AuthUser = {
   id?: string;
   sub?: string;
   email?: string;
@@ -20,7 +25,7 @@ type AuthUser = {
   [key: string]: unknown;
 };
 
-type FeatureKey =
+export type FeatureKey =
   | 'dashboard.enterprise'
   | 'automation.jobs'
   | 'automation.retry'
@@ -35,16 +40,17 @@ type FeatureKey =
   | 'webhooks'
   | 'ai.copilot'
   | 'ai.rag'
-  | 'support.priority';
+  | 'support.priority'
+  | 'international.invoices';
 
-type FeatureDefinition = {
+export type FeatureDefinition = {
   key: FeatureKey;
   label: string;
   description: string;
   minPlan: PlanLevel;
 };
 
-type PlanDefinition = {
+export type PlanDefinition = {
   level: PlanLevel;
   label: string;
   description: string;
@@ -59,6 +65,19 @@ type PlanDefinition = {
   };
 };
 
+export type LimitKey = keyof PlanDefinition['limits'];
+
+interface CompanyRecord {
+  id: string;
+  name?: string;
+  cnpj?: string;
+  taxRegime?: string;
+  active?: boolean;
+  planLevel?: string | null;
+  settings?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
 const PLAN_ORDER: Record<PlanLevel, number> = {
   FREE: 1,
   PRO: 2,
@@ -68,8 +87,8 @@ const PLAN_ORDER: Record<PlanLevel, number> = {
 const PLAN_DEFINITIONS: Record<PlanLevel, PlanDefinition> = {
   FREE: {
     level: 'FREE',
-    label: 'Free',
-    description: 'Plano inicial para validação do produto.',
+    label: 'Free / Basic',
+    description: 'Plano inicial para validação e microempresas.',
     limits: {
       companies: 1,
       users: 2,
@@ -82,8 +101,9 @@ const PLAN_DEFINITIONS: Record<PlanLevel, PlanDefinition> = {
   },
   PRO: {
     level: 'PRO',
-    label: 'Pro',
-    description: 'Plano profissional para operação fiscal/financeira recorrente.',
+    label: 'Pro / Standard',
+    description:
+      'Plano profissional para operação fiscal e financeira recorrente.',
     limits: {
       companies: 3,
       users: 10,
@@ -96,8 +116,9 @@ const PLAN_DEFINITIONS: Record<PlanLevel, PlanDefinition> = {
   },
   ENTERPRISE: {
     level: 'ENTERPRISE',
-    label: 'Enterprise',
-    description: 'Plano enterprise multiusuário, auditável e com automação avançada.',
+    label: 'Enterprise / Experts / MultiBenefits',
+    description:
+      'Plano enterprise multiusuário com assessoria avançada e automação total.',
     limits: {
       companies: 999,
       users: 999,
@@ -138,13 +159,21 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   {
     key: 'banking.reconciliation',
     label: 'Conciliação bancária',
-    description: 'Motor de conciliação automática entre banco e documentos fiscais.',
+    description:
+      'Motor de conciliação automática entre banco e documentos fiscais.',
     minPlan: 'PRO',
   },
   {
     key: 'revenue.billing',
     label: 'Revenue Billing',
     description: 'Faturamento automático recorrente a partir de contratos.',
+    minPlan: 'PRO',
+  },
+  {
+    key: 'international.invoices',
+    label: 'Contabilidade Internacional & Invoices',
+    description:
+      'Gestão contábil, tributária e emissão de invoices para prestação de serviços ao exterior.',
     minPlan: 'PRO',
   },
   {
@@ -192,7 +221,8 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
   {
     key: 'ai.rag',
     label: 'RAG documental',
-    description: 'Busca inteligente em documentos, XMLs, obrigações e auditoria.',
+    description:
+      'Busca inteligente em documentos, XMLs, obrigações e auditoria.',
     minPlan: 'ENTERPRISE',
   },
   {
@@ -218,7 +248,7 @@ export class BillingEntitlementsService {
       return value.map((item) => this.normalize(item));
     }
 
-    if (value && typeof value === 'object') {
+    if (value && typeof value === 'object' && value.constructor === Object) {
       const output: Record<string, unknown> = {};
 
       for (const [key, innerValue] of Object.entries(value)) {
@@ -235,13 +265,12 @@ export class BillingEntitlementsService {
     return user?.id || user?.sub || null;
   }
 
+  /**
+   * Utiliza a camada Anti-Corruption (plan-mapping.ts) para aceitar
+   * tanto tiers técnicas (FREE, PRO, ENTERPRISE) quanto nomes do catálogo comercial.
+   */
   private normalizePlan(plan?: string | null): PlanLevel {
-    const value = String(plan || 'FREE').toUpperCase();
-
-    if (value === 'ENTERPRISE') return 'ENTERPRISE';
-    if (value === 'PRO') return 'PRO';
-
-    return 'FREE';
+    return normalizePlanToTier(plan) as PlanLevel;
   }
 
   private canAccess(plan: PlanLevel, minPlan: PlanLevel): boolean {
@@ -266,12 +295,7 @@ export class BillingEntitlementsService {
   private validatePlanManagementPermission(user?: AuthUser) {
     const role = String(user?.role || '').toUpperCase();
 
-    const allowedRoles = [
-      'OWNER',
-      'ADMIN',
-      'SUPER_ADMIN',
-      'PLATFORM_ADMIN',
-    ];
+    const allowedRoles = ['OWNER', 'ADMIN', 'SUPER_ADMIN', 'PLATFORM_ADMIN'];
 
     if (role && !allowedRoles.includes(role)) {
       throw new ForbiddenException(
@@ -280,19 +304,19 @@ export class BillingEntitlementsService {
     }
   }
 
-  private async findCompany(companyId: string) {
-    const company = await this.prisma.company.findFirst({
+  private async findCompany(companyId: string): Promise<CompanyRecord> {
+    const company = await (this.prisma as any).company.findFirst({
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
       throw new NotFoundException(`Empresa não encontrada: ${companyId}`);
     }
 
-    return company as any;
+    return company as CompanyRecord;
   }
 
   private async safeAuditLog(params: {
@@ -314,31 +338,6 @@ export class BillingEntitlementsService {
       };
     }
 
-    /**
-     * IMPORTANTE — schema.prisma real:
-     *
-     * AuditLog possui:
-     * - action
-     * - module
-     * - entity
-     * - entityId
-     * - payload
-     * - statusCode
-     * - responseTime
-     * - ipAddress
-     * - userAgent
-     * - userId
-     * - companyId
-     * - company relation
-     * - user relation
-     *
-     * AuditLog NÃO possui:
-     * - severity
-     * - source
-     * - metadata
-     *
-     * Por isso, severity/source/reason/contexto comercial vão dentro do payload.
-     */
     const payload = {
       ...(params.payload ?? {}),
       severity: params.severity ?? 'INFO',
@@ -449,10 +448,12 @@ export class BillingEntitlementsService {
     };
   }
 
-
-  buildEntitlements(company: any) {
+  buildEntitlements(company: CompanyRecord) {
     const planLevel = this.normalizePlan(company.planLevel);
     const plan = PLAN_DEFINITIONS[planLevel];
+    const defaultCommercialPlan = mapTierToDefaultCommercialPlan(
+      planLevel as EntitlementTier,
+    );
 
     const features = FEATURE_DEFINITIONS.map((feature) => {
       const enabled = this.canAccess(planLevel, feature.minPlan);
@@ -472,7 +473,7 @@ export class BillingEntitlementsService {
       .filter((feature) => feature.locked)
       .map((feature) => feature.key);
 
-    return {
+    const result = {
       companyId: company.id,
       company: {
         id: company.id,
@@ -483,6 +484,7 @@ export class BillingEntitlementsService {
       },
       plan,
       planLevel,
+      commercialPlan: defaultCommercialPlan,
       features,
       enabledFeatures,
       lockedFeatures,
@@ -499,13 +501,13 @@ export class BillingEntitlementsService {
           planLevel === 'FREE'
             ? [
                 'Desbloquear conciliação bancária',
-                'Liberar billing recorrente',
+                'Liberar faturamento e invoices internacionais',
                 'Acessar auditoria enterprise',
                 'Aumentar limites operacionais',
               ]
             : planLevel === 'PRO'
               ? [
-                  'Liberar retry executável',
+                  'Liberar reprocessamento executável',
                   'Liberar certificado digital',
                   'Liberar webhooks',
                   'Liberar Copilot fiscal e RAG documental',
@@ -514,6 +516,8 @@ export class BillingEntitlementsService {
       },
       generatedAt: new Date().toISOString(),
     };
+
+    return this.normalize(result);
   }
 
   async getEntitlements(companyId: string, user?: AuthUser) {
@@ -524,13 +528,13 @@ export class BillingEntitlementsService {
 
     return {
       status: 'OK',
-      ...entitlements,
+      ...(entitlements as Record<string, unknown>),
     };
   }
 
   async updatePlan(
     companyId: string,
-    planLevel: PlanLevel,
+    planLevelInput: string,
     user?: AuthUser,
     reason?: string,
   ) {
@@ -539,14 +543,14 @@ export class BillingEntitlementsService {
 
     const before = await this.findCompany(companyId);
     const oldPlan = this.normalizePlan(before.planLevel);
-    const newPlan = this.normalizePlan(planLevel);
+    const newPlan = this.normalizePlan(planLevelInput);
 
     const currentSettings =
       before.settings && typeof before.settings === 'object'
         ? before.settings
         : {};
 
-    const updated = await this.prisma.company.update({
+    const updated = await (this.prisma as any).company.update({
       where: {
         id: companyId,
       },
@@ -561,12 +565,13 @@ export class BillingEntitlementsService {
             lastPlanChangeAt: new Date().toISOString(),
             lastPlanChangeBy: this.getUserId(user),
             lastPlanChangeReason: reason ?? null,
+            requestedPlanInput: planLevelInput,
           },
-        } as any,
-      } as any,
+        },
+      },
     });
 
-    const entitlements = this.buildEntitlements(updated as any);
+    const entitlements = this.buildEntitlements(updated as CompanyRecord);
 
     const audit = await this.safeAuditLog({
       companyId,
@@ -579,46 +584,41 @@ export class BillingEntitlementsService {
         companyId,
         oldPlan,
         newPlan,
+        requestedPlanInput: planLevelInput,
         reason: reason ?? null,
         userId: this.getUserId(user),
       },
     });
 
-    return {
+    return this.normalize({
       status: 'OK',
       message: `Plano atualizado de ${oldPlan} para ${newPlan}.`,
       oldPlan,
       newPlan,
       audit,
-      ...entitlements,
+      ...(entitlements as Record<string, unknown>),
       generatedAt: new Date().toISOString(),
-    };
+    });
   }
 
   async getPlans() {
-    return {
+    return this.normalize({
       status: 'OK',
       plans: Object.values(PLAN_DEFINITIONS),
       features: FEATURE_DEFINITIONS,
       generatedAt: new Date().toISOString(),
-    };
+    });
   }
 
-  async checkFeature(
-    companyId: string,
-    featureKey: string,
-    user?: AuthUser,
-  ) {
+  async checkFeature(companyId: string, featureKey: string, user?: AuthUser) {
     this.validateCompanyAccess(companyId, user);
 
     const company = await this.findCompany(companyId);
     const planLevel = this.normalizePlan(company.planLevel);
-    const feature = FEATURE_DEFINITIONS.find(
-      (item) => item.key === featureKey,
-    );
+    const feature = FEATURE_DEFINITIONS.find((item) => item.key === featureKey);
 
     if (!feature) {
-      return {
+      return this.normalize({
         status: 'UNKNOWN_FEATURE',
         allowed: false,
         companyId,
@@ -626,12 +626,12 @@ export class BillingEntitlementsService {
         featureKey,
         message: 'Feature não catalogada.',
         generatedAt: new Date().toISOString(),
-      };
+      });
     }
 
     const allowed = this.canAccess(planLevel, feature.minPlan);
 
-    return {
+    return this.normalize({
       status: allowed ? 'ALLOWED' : 'LOCKED',
       allowed,
       companyId,
@@ -641,6 +641,46 @@ export class BillingEntitlementsService {
         ? 'Feature liberada para o plano atual.'
         : `Feature exige plano mínimo ${feature.minPlan}.`,
       generatedAt: new Date().toISOString(),
-    };
+    });
+  }
+
+  /**
+   * Valida se o uso atual de um recurso da empresa está dentro do limite permitido pelo plano.
+   */
+  async checkLimit(
+    companyId: string,
+    limitKey: LimitKey,
+    currentUsage: number,
+    user?: AuthUser,
+  ) {
+    this.validateCompanyAccess(companyId, user);
+
+    const company = await this.findCompany(companyId);
+    const planLevel = this.normalizePlan(company.planLevel);
+    const planDef = PLAN_DEFINITIONS[planLevel];
+
+    if (!(limitKey in planDef.limits)) {
+      throw new BadRequestException(
+        `Limite inválido ou não suportado: ${limitKey}`,
+      );
+    }
+
+    const maxAllowed = planDef.limits[limitKey];
+    const allowed = currentUsage < maxAllowed;
+
+    return this.normalize({
+      status: allowed ? 'ALLOWED' : 'LIMIT_EXCEEDED',
+      allowed,
+      companyId,
+      planLevel,
+      limitKey,
+      currentUsage,
+      maxAllowed,
+      remaining: Math.max(0, maxAllowed - currentUsage),
+      message: allowed
+        ? `Uso dentro do limite permitido (${currentUsage}/${maxAllowed}).`
+        : `Limite do plano excedido (${currentUsage}/${maxAllowed}). Realize o upgrade para continuar.`,
+      generatedAt: new Date().toISOString(),
+    });
   }
 }

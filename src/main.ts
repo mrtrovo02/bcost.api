@@ -18,6 +18,7 @@ import {
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { collectDefaultMetrics, register } from 'prom-client';
+import type { FastifyRequest, FastifyReply } from 'fastify';
 
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCompress from '@fastify/compress';
@@ -39,61 +40,145 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { redactSensitiveHeaders } from './common/security/redact-headers.util.js';
 import { TenantContext } from './common/tenant/tenant.context.js';
 
+// Previne duplicação de métricas em ambientes com hot-reload ou execuções repetidas
+register.clear();
 collectDefaultMetrics();
 
-process.on('unhandledRejection', (reason) => {
-  console.error('❌ Unhandled Rejection:', reason);
-});
+/**
+ * Interface auxiliar para garantir tipagem em cabeçalhos sanitizados
+ */
+interface ExtendedHeaders {
+  'x-bcost-trace-id'?: string;
+  'x-api-key'?: string;
+  [key: string]: unknown;
+}
 
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  process.exit(1);
-});
-
+/**
+ * Inicia o listener HTTP com timeout e tentativas progressivas em caso de porta ocupada (EADDRINUSE)
+ */
 async function listenWithTimeout(
   app: NestFastifyApplication,
   port: number,
   host: string,
+  maxRetries = 3,
   timeoutMs = 30000,
 ): Promise<number> {
-  try {
-    await Promise.race([
-      app.listen(port, host),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(
-                `Timeout ao iniciar listener HTTP em ${host}:${port} após ${timeoutMs}ms`,
+  let currentPort = port;
+  let retries = 0;
+
+  while (retries <= maxRetries) {
+    try {
+      await Promise.race([
+        app.listen({ port: currentPort, host }),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `Timeout ao iniciar listener HTTP em ${host}:${currentPort} após ${timeoutMs}ms`,
+                ),
               ),
-            ),
-          timeoutMs,
+            timeoutMs,
+          ),
         ),
-      ),
-    ]);
-    return port;
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('EADDRINUSE')) {
-      const fallbackPort = port + 1;
-      console.warn(`⚠️ Porta ${port} ocupada. Tentando ${fallbackPort}...`);
-      await app.listen(fallbackPort, host);
-      return fallbackPort;
+      ]);
+      return currentPort;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes('EADDRINUSE') && retries < maxRetries) {
+        retries++;
+        const fallbackPort = port + retries;
+        console.warn(
+          `⚠️ Porta ${currentPort} ocupada. Tentativa ${retries}/${maxRetries} na porta ${fallbackPort}...`,
+        );
+        currentPort = fallbackPort;
+      } else {
+        throw error;
+      }
     }
-    throw error;
   }
+  throw new Error(
+    `Não foi possível alocar uma porta HTTP após ${maxRetries} tentativas.`,
+  );
 }
 
-async function bootstrap(): Promise<void> {
+/**
+ * Gerencia o encerramento gracioso (Graceful Shutdown) para contêineres Docker, Kubernetes e PM2
+ */
+function setupGracefulShutdown(
+  app: NestFastifyApplication,
+  prismaService: PrismaService,
+  logger: Logger,
+): void {
+  let isShuttingDown = false;
+
+  const handleShutdown = async (signal: string) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    logger.warn(
+      `🛑 Sinal ${signal} recebido. Iniciando encerramento gracioso (Graceful Shutdown)...`,
+    );
+
+    // Timeout de segurança para forçar o fechamento se o processo travar
+    const forceExitTimeout = setTimeout(() => {
+      logger.error(
+        '💥 Encerramento gracioso excedeu o tempo limite (15s). Forçando exit process(1).',
+      );
+      process.exit(1);
+    }, 15000);
+
+    try {
+      // 1. Interrompe a recepção de novas requisições e fecha o servidor Fastify
+      await app.close();
+      logger.log('✅ Servidor HTTP/Fastify encerrado com sucesso.');
+
+      // 2. Desconecta do banco de dados Prisma de forma limpa
+      if (prismaService && typeof prismaService.$disconnect === 'function') {
+        await prismaService.$disconnect();
+        logger.log('✅ Conexões do banco de dados (Prisma) fechadas.');
+      }
+
+      clearTimeout(forceExitTimeout);
+      logger.log('👋 Aplicação finalizada de forma segura.');
+      process.exit(0);
+    } catch (error) {
+      logger.error(
+        '❌ Erro inesperado durante o encerramento gracioso:',
+        error,
+      );
+      clearTimeout(forceExitTimeout);
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => void handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => void handleShutdown('SIGINT'));
+}
+
+// Handlers globais de exceções não tratadas do Node.js
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('❌ Unhandled Rejection crítico:', reason);
+});
+
+process.on('uncaughtException', (error: Error) => {
+  console.error('❌ Uncaught Exception crítica:', error);
+  process.exit(1);
+});
+
+/**
+ * Função principal de boot da API bCost
+ */
+export async function bootstrap(): Promise<NestFastifyApplication> {
   const logger = new Logger('bCost-Bootstrap');
   const isProd = process.env.NODE_ENV === 'production';
 
   try {
-    console.log('[BOOT-001] bootstrap iniciado');
+    logger.log('[BOOT-001] Bootstrap iniciado');
 
-    // Inicialização do Fastify com suporte nativo Pino Redact para evitar vazamento de dados sensíveis
+    // Configuração do FastifyAdapter com Pino Logger e Redação de Dados Sensíveis
     const adapter = new FastifyAdapter({
-      bodyLimit: 52_428_800,
+      bodyLimit: 52_428_800, // 50MB
       trustProxy: true,
       requestIdHeader: 'x-bcost-trace-id',
       genReqId: () => randomUUID(),
@@ -125,7 +210,7 @@ async function bootstrap(): Promise<void> {
       },
     });
 
-    console.log('[BOOT-002] criando Nest app');
+    logger.log('[BOOT-002] Criando aplicação NestJS');
 
     const app = await NestFactory.create<NestFastifyApplication>(
       AppModule,
@@ -139,17 +224,19 @@ async function bootstrap(): Promise<void> {
       },
     );
 
-    console.log('[BOOT-003] Nest app criado');
+    logger.log('[BOOT-003] Aplicação NestJS criada com sucesso');
 
     const config = app.get(ConfigService);
     const PORT = Number(config.get<number>('PORT') ?? process.env.PORT ?? 5000);
+    const HOST = config.get<string>('HOST') || process.env.HOST || '0.0.0.0';
     const publicBaseUrl =
-      config.get<string>('PUBLIC_BASE_URL') || 'https://api.bcost.com.br';
+      config.get<string>('PUBLIC_BASE_URL') || `http://127.0.0.1:${PORT}`;
     const swaggerEnabled = shouldEnableSwagger(
       isProd,
       config.get<string>('ENABLE_SWAGGER'),
     );
 
+    // Registra o Fastify Helmet (Cabeçalhos de Segurança HTTP e CSP)
     await app.register(fastifyHelmet, {
       crossOriginEmbedderPolicy: false,
       contentSecurityPolicy: {
@@ -168,64 +255,68 @@ async function bootstrap(): Promise<void> {
       },
     });
 
+    // Registra Compressão HTTP (Gzip / Brotli)
     await app.register(fastifyCompress, { global: true });
 
     const fastifyInstance = app.getHttpAdapter().getInstance();
 
-    // ⚡ Ajuste no ciclo de vida do AsyncLocalStorage para evitar vazamentos de escopo assíncrono
-    fastifyInstance.addHook('onRequest', (request, reply, done) => {
-      const redactedHeaders = redactSensitiveHeaders(
-        request.headers as Record<string, unknown>,
-      );
-      const rawTraceId = redactedHeaders['x-bcost-trace-id'];
+    // Hook de contexto assíncrono para Trace ID e Isolação de Tenant (Multi-Tenancy)
+    fastifyInstance.addHook(
+      'onRequest',
+      (request: FastifyRequest, reply: FastifyReply, done) => {
+        const redactedHeaders = redactSensitiveHeaders(
+          request.headers as Record<string, unknown>,
+        ) as ExtendedHeaders;
+        const rawTraceId = redactedHeaders['x-bcost-trace-id'];
 
-      const traceId =
-        typeof rawTraceId === 'string' && rawTraceId.trim().length > 0
-          ? rawTraceId
-          : String(request.id || randomUUID());
+        const traceId =
+          typeof rawTraceId === 'string' && rawTraceId.trim().length > 0
+            ? rawTraceId
+            : String(request.id || randomUUID());
 
-      request.headers['x-bcost-trace-id'] = traceId;
-      reply.header('x-bcost-trace-id', traceId);
+        request.headers['x-bcost-trace-id'] = traceId;
+        void reply.header('x-bcost-trace-id', traceId);
 
-      const store: RequestContextStore = {
-        requestId: traceId,
-        traceId,
-        startedAt: Date.now(),
-        method: request.method,
-        url: request.url,
-        userId: null,
-        companyId: null,
-        role: null,
-      };
+        const store: RequestContextStore = {
+          requestId: traceId,
+          traceId,
+          startedAt: Date.now(),
+          method: request.method,
+          url: request.url,
+          userId: null,
+          companyId: null,
+          role: null,
+        };
 
-      contextStorage.run(store, () => {
-        // Inicializa também o TenantContext (AsyncLocalStorage separado,
-        // consultado pelo PrismaService para isolamento multi-tenant).
-        // Populado sem tenantId/userId aqui; o TenantContextGuard os
-        // preenche via patch() assim que req.user estiver disponível
-        // (pós-autenticação).
-        TenantContext.run({ requestId: traceId }, () => {
-          done();
+        contextStorage.run(store, () => {
+          TenantContext.run({ requestId: traceId }, () => {
+            done();
+          });
         });
-      });
-    });
+      },
+    );
 
+    // Versionamento da API via URI (/v1, /v2, etc.)
     app.enableVersioning({
       type: VersioningType.URI,
       defaultVersion: '1',
       prefix: 'v',
     });
 
+    // Prefixo global com exceções para rotas operacionais / infraestrutura
     app.setGlobalPrefix('api', {
       exclude: [
         { path: 'health', method: RequestMethod.GET },
+        { path: 'live', method: RequestMethod.GET },
+        { path: 'ready', method: RequestMethod.GET },
         { path: 'metrics', method: RequestMethod.GET },
         { path: 'docs', method: RequestMethod.GET },
         { path: 'docs/(.*)', method: RequestMethod.GET },
+        { path: 'v2/settings', method: RequestMethod.GET },
       ],
     });
 
-    // 🔐 ALINHAMENTO DO CORS: Tratamento das variações léxicas de cabeçalhos de organização requisitados pelo front
+    // Configuração de CORS
     app.enableCors({
       origin: resolveCorsOriginsFromConfig(config, isProd),
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -251,11 +342,11 @@ async function bootstrap(): Promise<void> {
     const healthService = app.get(HealthService);
     const httpAdapterHost = app.get(HttpAdapterHost);
 
+    // Filtros e Pipes Globais
     app.useGlobalFilters(
       new GlobalExceptionFilter(httpAdapterHost, prismaService),
     );
 
-    // Ordem previsível de execução de pipes globais
     app.useGlobalPipes(
       new ZodValidationPipe(),
       new ValidationPipe({
@@ -267,6 +358,7 @@ async function bootstrap(): Promise<void> {
       }),
     );
 
+    // Documentação Swagger
     if (swaggerEnabled) {
       const swaggerConfig = new DocumentBuilder()
         .setTitle('bCost API')
@@ -287,57 +379,75 @@ async function bootstrap(): Promise<void> {
       });
     }
 
-    fastifyInstance.get('/health', async (_request, reply) => {
-      const dbStatus = await prismaService.isHealthy().catch(() => false);
+    // Rotas Nativas do Fastify para Health/Liveness/Readiness/Metrics
+    fastifyInstance.get(
+      '/health',
+      async (_request: FastifyRequest, reply: FastifyReply) => {
+        const dbStatus = await prismaService.isHealthy().catch(() => false);
 
-      return reply.status(dbStatus ? 200 : 503).send({
-        status: dbStatus ? 'UP' : 'DOWN',
-        timestamp: new Date().toISOString(),
-      });
-    });
-
-    fastifyInstance.get('/live', async (_request, reply) =>
-      reply.status(200).send({
-        status: 'alive',
-        service: 'bcost-api',
-        uptimeSeconds: Math.floor(process.uptime()),
-        timestamp: new Date().toISOString(),
-      }),
+        return reply.status(dbStatus ? 200 : 503).send({
+          status: dbStatus ? 'UP' : 'DOWN',
+          timestamp: new Date().toISOString(),
+        });
+      },
     );
 
-    fastifyInstance.get('/ready', async (_request, reply) => {
-      const readiness = await healthService.getReadiness().catch((error) => ({
-        status: 'not_ready' as const,
-        error: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      }));
+    fastifyInstance.get(
+      '/live',
+      async (_request: FastifyRequest, reply: FastifyReply) =>
+        reply.status(200).send({
+          status: 'alive',
+          service: 'bcost-api',
+          uptimeSeconds: Math.floor(process.uptime()),
+          timestamp: new Date().toISOString(),
+        }),
+    );
 
-      return reply
-        .status(readiness.status === 'ready' ? 200 : 503)
-        .send(readiness);
-    });
+    fastifyInstance.get(
+      '/ready',
+      async (_request: FastifyRequest, reply: FastifyReply) => {
+        const readiness = await healthService.getReadiness().catch((error) => ({
+          status: 'not_ready' as const,
+          error: error instanceof Error ? error.message : String(error),
+          timestamp: new Date().toISOString(),
+        }));
 
-    fastifyInstance.get('/metrics', async (request, reply) => {
-      const metricsApiKey = config.get<string>('METRICS_API_KEY');
-      const providedApiKey = request.headers['x-api-key'];
+        return reply
+          .status(readiness.status === 'ready' ? 200 : 503)
+          .send(readiness);
+      },
+    );
 
-      if (metricsApiKey && providedApiKey !== metricsApiKey) {
-        return reply.status(401).send({ error: 'Unauthorized' });
-      }
+    fastifyInstance.get(
+      '/metrics',
+      async (request: FastifyRequest, reply: FastifyReply) => {
+        const metricsApiKey = config.get<string>('METRICS_API_KEY');
+        const providedApiKey = (request.headers as ExtendedHeaders)[
+          'x-api-key'
+        ];
 
-      reply.header('Content-Type', register.contentType);
-      return reply.send(await register.metrics());
-    });
+        if (metricsApiKey && providedApiKey !== metricsApiKey) {
+          return reply.status(401).send({ error: 'Unauthorized' });
+        }
 
+        void reply.header('Content-Type', register.contentType);
+        return reply.send(await register.metrics());
+      },
+    );
+
+    // Ativa os Hooks de shutdown do NestJS
     app.enableShutdownHooks();
 
-    console.log(`[BOOT-004] inicializando Nest`);
+    // Ativa o Graceful Shutdown customizado do processo Node.js
+    setupGracefulShutdown(app, prismaService, logger);
+
+    logger.log('[BOOT-004] Inicializando aplicação NestJS');
     await app.init();
 
-    const effectivePort = await listenWithTimeout(app, PORT, '0.0.0.0', 30000);
+    const effectivePort = await listenWithTimeout(app, PORT, HOST, 3, 30000);
 
-    console.log(`[BOOT-005] iniciando listener em 0.0.0.0:${effectivePort}`);
-    console.log('[BOOT-006] listener iniciado');
+    logger.log(`[BOOT-005] Servidor ativo em ${HOST}:${effectivePort}`);
+    logger.log('[BOOT-006] Listener concluído com sucesso');
 
     logger.log(`🚀 API local: http://127.0.0.1:${effectivePort}/api/v1`);
     logger.log(`🚀 API pública: ${publicBaseUrl}/api/v1`);
@@ -350,6 +460,8 @@ async function bootstrap(): Promise<void> {
     logger.log(`✅ Readiness: ${publicBaseUrl}/ready`);
     logger.log(`📊 Metrics: ${publicBaseUrl}/metrics`);
     logger.log(`🧪 Diagnostics: ${publicBaseUrl}/api/v1/diagnostics`);
+
+    return app;
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
@@ -361,4 +473,7 @@ async function bootstrap(): Promise<void> {
   }
 }
 
-void bootstrap();
+// Executa automaticamente apenas se não estiver em ambiente de testes
+if (process.env.NODE_ENV !== 'test') {
+  void bootstrap();
+}

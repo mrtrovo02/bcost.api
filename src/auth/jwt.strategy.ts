@@ -44,6 +44,7 @@ export interface JwtPayload {
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  name: string;
   /**
    * ID da empresa ativa do usuário.
    * Null quando o usuário não tem nenhuma empresa vinculada.
@@ -51,10 +52,28 @@ export interface AuthenticatedUser {
    */
   companyId: string | null;
   /**
+   * Todas as empresas ativas vinculadas ao usuário.
+   * Usado por guards multi-tenant para permitir troca segura de contexto.
+   */
+  companyIds: string[];
+  /**
+   * Papel do usuário por empresa vinculada.
+   * Permite que o request assuma a role correta ao acessar outro tenant válido.
+   */
+  rolesByCompany: Record<string, string>;
+  /**
    * Role do usuário na empresa ativa.
    * Usado pelo RolesGuard para RBAC.
    */
   role: string | null;
+  activeCompanyId: string | null;
+  companies: Array<{
+    id: string;
+    name: string;
+    cnpj: string;
+    role: string;
+    taxRegime: string;
+  }>;
 }
 
 /**
@@ -123,15 +142,30 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       select: {
         id: true,
         email: true,
+        name: true,
         active: true,
         // FIX: busca empresas para resolver empresa ativa e validar o companyId do token
         companies: {
           select: {
             companyId: true,
             role: true,
+            company: {
+              select: {
+                id: true,
+                name: true,
+                cnpj: true,
+                taxRegime: true,
+              },
+            },
           },
           // Filtra empresas com soft delete aplicado
-          where: { deletedAt: null },
+          where: {
+            deletedAt: null,
+            company: {
+              active: true,
+              deletedAt: null,
+            },
+          },
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -159,6 +193,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     //    d) null (sem empresa vinculada)
     let companyId: string | null = null;
     let role: string | null = null;
+    const companyIds = user.companies.map((company) => company.companyId);
+    const rolesByCompany = Object.fromEntries(
+      user.companies.map((company) => [company.companyId, company.role]),
+    );
+    const companies = user.companies
+      .filter((entry) => entry.company)
+      .map((entry) => ({
+        id: entry.company.id,
+        name: entry.company.name,
+        cnpj: entry.company.cnpj,
+        role: entry.role,
+        taxRegime: entry.company.taxRegime,
+      }));
 
     if (payload.companyId) {
       // Valida se o companyId do token ainda é válido (empresa não removida/deletada)
@@ -187,8 +234,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       id: user.id,
       email: user.email,
+      name: user.name,
       companyId,
+      activeCompanyId: companyId,
+      companyIds,
+      rolesByCompany,
       role,
+      companies,
     };
   }
 }

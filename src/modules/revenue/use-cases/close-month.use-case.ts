@@ -18,12 +18,19 @@ export class CloseMonthUseCase {
   ) {}
 
   async execute(companyId: string, month: number, year: number) {
-    this.logger.log(`🔒 Iniciando fechamento do mês ${month}/${year} para empresa: ${companyId}`);
+    this.logger.log(
+      `🔒 Iniciando fechamento do mês ${month}/${year} para empresa: ${companyId}`,
+    );
 
     // 1. Validação de Competência (Não fecha meses futuros)
     const now = new Date();
-    if (year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth() + 1)) {
-      throw new BadRequestException('Não é possível fechar uma competência futura.');
+    if (
+      year > now.getFullYear() ||
+      (year === now.getFullYear() && month > now.getMonth() + 1)
+    ) {
+      throw new BadRequestException(
+        'Não é possível fechar uma competência futura.',
+      );
     }
 
     // 2. Busca dados finais para o Snapshot
@@ -54,7 +61,9 @@ export class CloseMonthUseCase {
       isEligibleAnexoIII: factorR >= 0.28,
     });
 
-    this.logger.log(`✅ Mês ${month}/${year} fechado com sucesso para ${companyId}`);
+    this.logger.log(
+      `✅ Mês ${month}/${year} fechado com sucesso para ${companyId}`,
+    );
 
     return {
       message: 'Mês encerrado com sucesso.',

@@ -30,8 +30,6 @@ function redactSensitiveHeaders(headers: Record<string, unknown> = {}) {
   );
 }
 
-
-
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger(LoggingInterceptor.name);
@@ -42,16 +40,18 @@ export class LoggingInterceptor implements NestInterceptor {
     const startedAt = Date.now();
 
     const http = context.switchToHttp();
-    const request = http.getRequest<FastifyRequest & { user?: any; companyId?: string }>();
+    const request = http.getRequest<
+      FastifyRequest & { user?: any; companyId?: string }
+    >();
     const reply = http.getResponse<FastifyReply>();
 
     const method = request.method;
     const url = request.url;
-    const headers = redactSensitiveHeaders(request.headers as Record<string, unknown>);
+    const headers = redactSensitiveHeaders(
+      request.headers as Record<string, unknown>,
+    );
     const ipAddress =
-      (headers['x-forwarded-for'] as string) ||
-      request.ip ||
-      '127.0.0.1';
+      (headers['x-forwarded-for'] as string) || request.ip || '127.0.0.1';
 
     const userAgent = (headers['user-agent'] as string) || 'unknown';
     const traceId =

@@ -62,13 +62,11 @@ export class FinanceService {
     const startTime = Date.now();
 
     // Define o escopo global para esta execução (segurança Multi-tenant)
-    
 
-    const pendingObligations =
-      await this.prisma.taxObligation.findMany({
-        where: {companyId,  status: ObligationStatus.PENDING }, // companyId é injetado automaticamente
-        orderBy: { dueDate: 'asc' },
-      });
+    const pendingObligations = await this.prisma.taxObligation.findMany({
+      where: { companyId, status: ObligationStatus.PENDING }, // companyId é injetado automaticamente
+      orderBy: { dueDate: 'asc' },
+    });
 
     if (pendingObligations.length === 0)
       return { message: 'Nada a conciliar.' };
@@ -91,21 +89,20 @@ export class FinanceService {
       }
 
       const amountToMatch = obligation.amount.mul(-1);
-      const potentialMatch =
-        await this.prisma.bankTransaction.findFirst({
-          where: {
-            amount: amountToMatch,
-            reconciled: false,
-            occurredAt: {
-              gte: new Date(
-                obligation.dueDate.getTime() - 15 * 24 * 60 * 60 * 1000,
-              ),
-              lte: new Date(
-                obligation.dueDate.getTime() + 5 * 24 * 60 * 60 * 1000,
-              ),
-            },
+      const potentialMatch = await this.prisma.bankTransaction.findFirst({
+        where: {
+          amount: amountToMatch,
+          reconciled: false,
+          occurredAt: {
+            gte: new Date(
+              obligation.dueDate.getTime() - 15 * 24 * 60 * 60 * 1000,
+            ),
+            lte: new Date(
+              obligation.dueDate.getTime() + 5 * 24 * 60 * 60 * 1000,
+            ),
           },
-        });
+        },
+      });
 
       if (potentialMatch) {
         try {
@@ -150,7 +147,7 @@ export class FinanceService {
       }
     }
 
-     // Limpa o escopo após o processamento
+    // Limpa o escopo após o processamento
     return {
       processed: pendingObligations.length,
       matched: matchedResults.length,
@@ -193,9 +190,8 @@ export class FinanceService {
    * TRILHA DE AUDITORIA DO MÓDULO
    */
   async getModuleAuditTrail(companyId: string, module: string) {
-    
     return await this.prisma.auditLog.findMany({
-      where: {companyId,  module },
+      where: { companyId, module },
       orderBy: { createdAt: 'desc' },
       take: 50,
       include: {
@@ -208,10 +204,9 @@ export class FinanceService {
    * HEALTH SUMMARY
    */
   async getFinancialHealthSummary(companyId: string) {
-    
-
     const [balance, pendingTax] = await Promise.all([
-      this.prisma.bankTransaction.aggregate({ where: { companyId },
+      this.prisma.bankTransaction.aggregate({
+        where: { companyId },
         _sum: { amount: true },
       }),
       this.prisma.taxObligation.aggregate({

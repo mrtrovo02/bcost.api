@@ -597,7 +597,9 @@ export class EnterpriseModulesService {
       persistence: 'ROADMAP',
     }));
 
-    return [...persisted, ...roadmap].sort((a, b) => a.slug.localeCompare(b.slug));
+    return [...persisted, ...roadmap].sort((a, b) =>
+      a.slug.localeCompare(b.slug),
+    );
   }
 
   private getConfig(slug: string): ModuleConfig {

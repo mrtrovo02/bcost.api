@@ -18,6 +18,16 @@ export class RevenueController {
     return this.revenueService.processBilling(companyId);
   }
 
+  @Get('stats/:companyId')
+  getStats(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    return this.revenueService.getRevenueStats(companyId);
+  }
+
+  @Get('contracts/:companyId')
+  getContracts(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    return this.revenueService.getRevenueContracts(companyId);
+  }
+
   @Get('metrics/:companyId')
   getMetrics(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,

@@ -27,7 +27,9 @@ describe('DigitalCertificatesController', () => {
       ],
     }).compile();
 
-    controller = module.get<DigitalCertificatesController>(DigitalCertificatesController);
+    controller = module.get<DigitalCertificatesController>(
+      DigitalCertificatesController,
+    );
   });
 
   it('should be defined', () => {

@@ -42,26 +42,42 @@ export class ReconciliationService {
 
     return this.prisma.$transaction(
       async (tx) => {
-        const trn = await tx.bankTransaction.findUnique({ where: { id: bankTransactionId } });
-        if (!trn) throw new NotFoundException('Transação bancária não encontrada.');
-        
+        const trn = await tx.bankTransaction.findUnique({
+          where: { id: bankTransactionId },
+        });
+        if (!trn)
+          throw new NotFoundException('Transação bancária não encontrada.');
+
         if (companyId && trn.companyId !== companyId) {
-          throw new BadRequestException('A transação não pertence a esta empresa.');
+          throw new BadRequestException(
+            'A transação não pertence a esta empresa.',
+          );
         }
         if (trn.reconciled && !force) {
-          throw new ConflictException('Esta transação já possui um vínculo ativo.');
+          throw new ConflictException(
+            'Esta transação já possui um vínculo ativo.',
+          );
         }
 
         if (invoiceId) {
           const inv = await tx.invoice.findUnique({ where: { id: invoiceId } });
           if (!inv) throw new NotFoundException('Nota fiscal não encontrada.');
-          await tx.invoice.update({ where: { id: invoiceId }, data: { reconciled: true } });
+          await tx.invoice.update({
+            where: { id: invoiceId },
+            data: { reconciled: true },
+          });
         }
 
         if (taxObligationId) {
-          const tax = await tx.taxObligation.findUnique({ where: { id: taxObligationId } });
-          if (!tax) throw new NotFoundException('Obrigação fiscal não encontrada.');
-          await tx.taxObligation.update({ where: { id: taxObligationId }, data: { status: ObligationStatus.PAID } });
+          const tax = await tx.taxObligation.findUnique({
+            where: { id: taxObligationId },
+          });
+          if (!tax)
+            throw new NotFoundException('Obrigação fiscal não encontrada.');
+          await tx.taxObligation.update({
+            where: { id: taxObligationId },
+            data: { status: ObligationStatus.PAID },
+          });
         }
 
         await tx.auditLog.create({
@@ -79,7 +95,11 @@ export class ReconciliationService {
 
         const updatedTransaction = await tx.bankTransaction.update({
           where: { id: bankTransactionId },
-          data: { reconciled: true, invoiceId: invoiceId || null, taxObligationId: taxObligationId || null },
+          data: {
+            reconciled: true,
+            invoiceId: invoiceId || null,
+            taxObligationId: taxObligationId || null,
+          },
         });
 
         if (userId !== this.SYSTEM_USER_ID) {
@@ -96,7 +116,9 @@ export class ReconciliationService {
   }
 
   async runAutoMatch(companyId: string) {
-    this.logger.log(`[Auto-Match] Iniciando processamento para Company=${companyId}`);
+    this.logger.log(
+      `[Auto-Match] Iniciando processamento para Company=${companyId}`,
+    );
 
     const BATCH_SIZE = 500;
     let reconciledCount = 0;
@@ -121,8 +143,14 @@ export class ReconciliationService {
       lastId = transactions[transactions.length - 1].id;
       totalProcessed += transactions.length;
 
-      const minDate = new Date(Math.min(...transactions.map(t => t.occurredAt.getTime())) - 7 * 86400000);
-      const maxDate = new Date(Math.max(...transactions.map(t => t.occurredAt.getTime())) + 3 * 86400000);
+      const minDate = new Date(
+        Math.min(...transactions.map((t) => t.occurredAt.getTime())) -
+          7 * 86400000,
+      );
+      const maxDate = new Date(
+        Math.max(...transactions.map((t) => t.occurredAt.getTime())) +
+          3 * 86400000,
+      );
 
       const candidateInvoices = await this.prisma.invoice.findMany({
         where: {
@@ -135,9 +163,10 @@ export class ReconciliationService {
       });
 
       for (const trn of transactions) {
-        const possibleMatches = candidateInvoices.filter(inv =>
-          inv.issuedAt.getTime() >= (trn.occurredAt.getTime() - 7 * 86400000) &&
-          inv.issuedAt.getTime() <= (trn.occurredAt.getTime() + 3 * 86400000)
+        const possibleMatches = candidateInvoices.filter(
+          (inv) =>
+            inv.issuedAt.getTime() >= trn.occurredAt.getTime() - 7 * 86400000 &&
+            inv.issuedAt.getTime() <= trn.occurredAt.getTime() + 3 * 86400000,
         );
 
         let bestScore = 0;
@@ -145,8 +174,17 @@ export class ReconciliationService {
 
         for (const inv of possibleMatches) {
           const score = ReconciliationScoreEngine.calculate({
-            transaction: { amount: trn.amount, date: trn.occurredAt, description: trn.description },
-            invoice: { totalValue: inv.amount, issueDate: inv.issuedAt, hasCustomer: !!inv.customerId, customerName: inv.customer?.name },
+            transaction: {
+              amount: trn.amount,
+              date: trn.occurredAt,
+              description: trn.description,
+            },
+            invoice: {
+              totalValue: inv.amount,
+              issueDate: inv.issuedAt,
+              hasCustomer: !!inv.customerId,
+              customerName: inv.customer?.name,
+            },
           });
 
           if (score > bestScore && score >= 85) {
@@ -157,10 +195,16 @@ export class ReconciliationService {
 
         if (candidateId) {
           try {
-            await this.manualMatch(trn.id, { invoiceId: candidateId, companyId }, this.SYSTEM_USER_ID);
+            await this.manualMatch(
+              trn.id,
+              { invoiceId: candidateId, companyId },
+              this.SYSTEM_USER_ID,
+            );
             reconciledCount++;
           } catch (err) {
-            this.logger.error(`[Auto-Match Error] Tx=${trn.id}: ${err instanceof Error ? err.message : String(err)}`);
+            this.logger.error(
+              `[Auto-Match Error] Tx=${trn.id}: ${err instanceof Error ? err.message : String(err)}`,
+            );
           }
         }
       }
@@ -169,7 +213,10 @@ export class ReconciliationService {
     const result = {
       totalProcessed,
       autoReconciled: reconciledCount,
-      accuracy: totalProcessed > 0 ? Number(((reconciledCount / totalProcessed) * 100).toFixed(2)) : 0,
+      accuracy:
+        totalProcessed > 0
+          ? Number(((reconciledCount / totalProcessed) * 100).toFixed(2))
+          : 0,
     };
 
     this.notificationGateway.sendReconciliationFinished(companyId, result);
@@ -196,15 +243,34 @@ export class ReconciliationService {
 
   async undoMatch(transactionId: string, userId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const trn = await tx.bankTransaction.findUnique({ where: { id: transactionId } });
+      const trn = await tx.bankTransaction.findUnique({
+        where: { id: transactionId },
+      });
       if (!trn) throw new NotFoundException('Transação não encontrada.');
-      if (!trn.reconciled) throw new BadRequestException('Esta transação não está conciliada.');
+      if (!trn.reconciled)
+        throw new BadRequestException('Esta transação não está conciliada.');
 
-      if (trn.invoiceId) await tx.invoice.update({ where: { id: trn.invoiceId }, data: { reconciled: false } });
-      if (trn.taxObligationId) await tx.taxObligation.update({ where: { id: trn.taxObligationId }, data: { status: ObligationStatus.PENDING } });
+      if (trn.invoiceId)
+        await tx.invoice.update({
+          where: { id: trn.invoiceId },
+          data: { reconciled: false },
+        });
+      if (trn.taxObligationId)
+        await tx.taxObligation.update({
+          where: { id: trn.taxObligationId },
+          data: { status: ObligationStatus.PENDING },
+        });
 
       await tx.auditLog.create({
-        data: { userId, companyId: trn.companyId, action: 'UNDO_MATCH', module: 'RECONCILIATION', entity: 'BankTransaction', entityId: transactionId, statusCode: 200 },
+        data: {
+          userId,
+          companyId: trn.companyId,
+          action: 'UNDO_MATCH',
+          module: 'RECONCILIATION',
+          entity: 'BankTransaction',
+          entityId: transactionId,
+          statusCode: 200,
+        },
       });
 
       const updated = await tx.bankTransaction.update({
@@ -212,7 +278,9 @@ export class ReconciliationService {
         data: { reconciled: false, invoiceId: null, taxObligationId: null },
       });
 
-      this.notificationGateway.sendDashboardUpdate(trn.companyId, { refresh: true });
+      this.notificationGateway.sendDashboardUpdate(trn.companyId, {
+        refresh: true,
+      });
       return updated;
     });
   }

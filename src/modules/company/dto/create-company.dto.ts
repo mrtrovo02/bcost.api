@@ -11,6 +11,8 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { TaxRegime } from '@prisma/client';
+import { Transform } from 'class-transformer';
+import { IsCnpj } from '../../../common/validators/cnpj.util.js';
 
 export class CreateCompanyDto {
   @ApiProperty({
@@ -27,8 +29,12 @@ export class CreateCompanyDto {
   })
   @IsString()
   @IsNotEmpty({ message: 'O CNPJ é obrigatório.' })
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.replace(/\D/g, '') : value,
+  )
   @Length(14, 14, { message: 'O CNPJ deve ter exatamente 14 dígitos.' })
   @Matches(/^\d+$/, { message: 'O CNPJ deve conter apenas números.' })
+  @IsCnpj({ message: 'Informe um CNPJ válido.' })
   cnpj: string;
 
   @ApiProperty({
@@ -40,8 +46,8 @@ export class CreateCompanyDto {
     message:
       'Regime tributário deve ser: SIMPLES_NACIONAL, LUCRO_PRESUMIDO ou LUCRO_REAL',
   })
-  @IsNotEmpty({ message: 'O regime tributário é obrigatório.' })
-  taxRegime: TaxRegime;
+  @IsOptional()
+  taxRegime?: TaxRegime;
 
   @IsOptional()
   @IsString()

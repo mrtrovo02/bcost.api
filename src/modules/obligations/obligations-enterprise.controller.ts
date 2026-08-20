@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CreateFiscalObligationDto } from './dto/create-fiscal-obligation.dto.js';
 import { CreateTaxObligationDto } from './dto/create-tax-obligation.dto.js';
 import { QueryObligationsDto } from './dto/query-obligations.dto.js';
+import { RegisterTaxEvidenceDto } from './dto/register-tax-evidence.dto.js';
 import { SubmitFiscalObligationDto } from './dto/submit-fiscal-obligation.dto.js';
 import { UpdateFiscalObligationDto } from './dto/update-fiscal-obligation.dto.js';
 import { UpdateTaxObligationDto } from './dto/update-tax-obligation.dto.js';
@@ -79,6 +80,21 @@ export class ObligationsEnterpriseController {
     @Req() req: any,
   ) {
     return this.service.markTaxAsPaid(companyId, obligationId, req.user);
+  }
+
+  @Post('tax/:companyId/:obligationId/evidence')
+  registerTaxEvidence(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
+    @Body() body: RegisterTaxEvidenceDto,
+    @Req() req: any,
+  ) {
+    return this.service.registerTaxEvidence(
+      companyId,
+      obligationId,
+      body,
+      req.user,
+    );
   }
 
   @Post('tax/:companyId/:obligationId/cancel')

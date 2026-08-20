@@ -124,6 +124,11 @@ export class PayrollEnterpriseController {
     @Body() body: UpdatePayrollEntryEnterpriseDto,
     @Req() req: any,
   ) {
-    return this.service.updatePayrollEntry(companyId, payrollEntryId, body, req.user);
+    return this.service.updatePayrollEntry(
+      companyId,
+      payrollEntryId,
+      body,
+      req.user,
+    );
   }
 }

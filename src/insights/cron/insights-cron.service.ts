@@ -31,9 +31,7 @@ export class InsightsCronService {
       );
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(
-        `❌ [Cron] Falha crítica no lote diário: ${message}`,
-      );
+      this.logger.error(`❌ [Cron] Falha crítica no lote diário: ${message}`);
     }
   }
 }

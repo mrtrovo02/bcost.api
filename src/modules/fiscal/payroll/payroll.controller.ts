@@ -25,7 +25,9 @@ import {
 } from '@nestjs/swagger';
 import { PayrollService } from './payroll.service.js';
 import { CreatePayrollDto } from './dto/create-payroll.dto.js';
+import { SyncPayrollDto } from './dto/sync-payroll.dto.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
+import { LegacyApiAlias } from '../../../common/decorators/legacy-api-alias.decorator.js';
 
 @ApiTags('Fiscal - Gestão de Folha & Fator R')
 @ApiBearerAuth('JWT')
@@ -39,6 +41,7 @@ export class PayrollController {
    * CORREÇÃO: Uso de ParseUUIDPipe para garantir que IDs de empresa sejam UUIDs.
    */
   @Post(':companyId')
+  @LegacyApiAlias('/payroll/enterprise/payrolls/:companyId')
   @HttpCode(HttpStatus.OK)
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
   @ApiOperation({
@@ -67,10 +70,36 @@ export class PayrollController {
     return await this.payrollService.createPayrollRecord(companyId, data);
   }
 
+  @Post('sync/:companyId')
+  @LegacyApiAlias('/payroll/enterprise/payrolls/:companyId/generate')
+  @HttpCode(HttpStatus.OK)
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @ApiOperation({
+    summary: 'Sincronizar folha a partir de ERP externo',
+    description:
+      'Recebe uma competência de folha de sistema externo e faz upsert idempotente para alimentar Fator R e análises fiscais.',
+  })
+  @ApiParam({
+    name: 'companyId',
+    description: 'UUID da empresa no bCost',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Folha externa sincronizada com sucesso.',
+  })
+  async syncExternal(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Body() data: SyncPayrollDto,
+  ) {
+    return await this.payrollService.syncExternalPayrollRecord(companyId, data);
+  }
+
   /**
    * DASHBOARD: HISTÓRICO E ESTATÍSTICAS
    */
   @Get('history/:companyId')
+  @LegacyApiAlias('/payroll/enterprise/payrolls/:companyId')
   @ApiOperation({
     summary: 'Estatísticas e Histórico de Folha',
     description:
@@ -94,6 +123,7 @@ export class PayrollController {
    * RESOLUÇÃO: Parâmetros Query opcionais com tratamento de defaults para evitar erros 400.
    */
   @Get('diagnostics/:companyId')
+  @LegacyApiAlias('/fiscal/tax/monthly-preview/:companyId')
   @ApiOperation({
     summary: 'Diagnóstico de Inteligência: Fator R',
     description:

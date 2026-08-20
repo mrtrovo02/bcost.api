@@ -3,6 +3,7 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service.js';
 import { CreatePayrollDto } from './dto/create-payroll.dto.js';
+import { SyncPayrollDto } from './dto/sync-payroll.dto.js';
 import { Prisma, InvoiceStatus } from '@prisma/client';
 
 export interface FactorRResult {
@@ -95,6 +96,40 @@ export class PayrollService {
         'Falha ao persistir folha no banco. Verifique os dados.',
       );
     }
+  }
+
+  async syncExternalPayrollRecord(companyId: string, data: SyncPayrollDto) {
+    const totalAmount =
+      data.amount ??
+      data.totalAmount ??
+      Number(data.salariesAmount ?? 0) + Number(data.proLaboreAmount ?? 0);
+
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      throw new BadRequestException(
+        'Valor total da folha é obrigatório para sincronização.',
+      );
+    }
+
+    const payroll = await this.createPayrollRecord(companyId, {
+      month: data.month,
+      year: data.year,
+      amount: Number(totalAmount.toFixed(2)),
+      salariesAmount: data.salariesAmount,
+      proLaboreAmount: data.proLaboreAmount,
+    });
+
+    return {
+      status: 'synced',
+      source: data.source ?? 'EXTERNAL',
+      externalReference: data.externalReference ?? null,
+      companyId,
+      period: {
+        month: data.month,
+        year: data.year,
+      },
+      payroll,
+      syncedAt: new Date().toISOString(),
+    };
   }
 
   /**

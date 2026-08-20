@@ -1,60 +1,60 @@
-# --- ESTÁGIO 1: Build ---
+# --- ESTÁGIO 1: Builder ---
 FROM node:20-alpine AS builder
 
-# Instala dependências nativas (libc6-compat) e openssl (crítico para o Prisma no Alpine)
+# Instala dependências nativas necessárias para compilação e suporte ao Prisma Engine no Alpine (musl)
 RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /app
 
-# Copia arquivos de pacotes e definição do Prisma
+# Copia manifestos de dependências e esquema do Prisma para cache eficiente de camadas
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Instala dependências com legacy-peer-deps para resolver conflitos NestJS
-RUN npm install --legacy-peer-deps
+# Instala todas as dependências de build
+RUN npm ci --legacy-peer-deps
 
-# Com o openssl instalado no SO, o Prisma detecta a arquitetura (musl) automaticamente
+# Gera os artefatos e engines do Prisma Client
 RUN npx prisma generate
 
-# Copia o código e realiza o build
+# Copia o código-fonte e compila a aplicação NestJS
 COPY . .
 RUN npm run build
+
+# Remove dependências de desenvolvimento para manter apenas o necessário em node_modules
+RUN npm prune --production --legacy-peer-deps && npm cache clean --force
+
 
 # --- ESTÁGIO 2: Runner (Produção) ---
 FROM node:20-alpine AS runner
 
-ENV NODE_ENV=production
-ENV PORT=5000
+ENV NODE_ENV=production \
+    PORT=5000
 
 WORKDIR /app
 
-# O openssl também é necessário no ambiente de execução para a engine conectar ao banco
+# Biblioteca OpenSSL exigida pela Query Engine do Prisma no Alpine em tempo de execução
 RUN apk add --no-cache openssl
 
-# Segurança: usuário não-root
-RUN addgroup --system --gid 1001 nodejs &&     adduser --system --uid 1001 nestjs
+# Princípio do menor privilégio: cria usuário e grupo não-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nestjs
 
-# Copia apenas o estritamente necessário do builder
+# Copia apenas os artefatos compilados e dependências tratadas do estágio builder
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
-# Remove pacotes de desenvolvimento e limpa o cache
-RUN npm prune --production --legacy-peer-deps && npm cache clean --force
-
-# Recopia os binários gerados do Prisma para o ambiente final
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-
-# Permissões de diretório
+# Atribui a propriedade dos arquivos ao usuário não-root
 RUN chown -R nestjs:nodejs /app
+
 USER nestjs
 
-# Healthcheck robusto (aguarda 40s para o Bootstrap do Fastify completar)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3   CMD node -e "require('http').get('http://localhost:5000/health', (r) => {r.statusCode < 400 ? process.exit(0) : process.exit(1)})" || exit 1
-
-# Inicialização com controle rigoroso de memória
-CMD ["sh", "-c", "if [ -f dist/src/main.js ]; then node --max-old-space-size=450 dist/src/main.js; elif [ -f dist/main.js ]; then node --max-old-space-size=450 dist/main.js; else echo 'Erro: main.js não encontrado'; exit 1; fi"]
-
 EXPOSE 5000
+
+# Healthcheck nativo sem dependência de curl/wget, direcionado para a rota /health
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:5000/health', (r) => { r.statusCode < 400 ? process.exit(0) : process.exit(1); }).on('error', () => process.exit(1))"
+
+# Inicialização resiliente via exec (propagação direta de sinais de SO ao V8)
+CMD ["sh", "-c", "if [ -f dist/src/main.js ]; then exec node --max-old-space-size=450 dist/src/main.js; elif [ -f dist/main.js ]; then exec node --max-old-space-size=450 dist/main.js; else echo 'Erro: main.js não encontrado em dist/'; exit 1; fi"]

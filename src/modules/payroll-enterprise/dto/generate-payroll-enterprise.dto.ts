@@ -1,13 +1,7 @@
 'use strict';
 
 import { Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class GeneratePayrollEnterpriseDto {
   @Type(() => Number)

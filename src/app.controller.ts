@@ -115,8 +115,9 @@ export class AppController {
 
     const dbStartedAt = Date.now();
 
-    const dbHealth = await this.prisma
-      .$queryRaw<DbHealth[]>`SELECT 1 as "health"`
+    const dbHealth = await this.prisma.$queryRaw<
+      DbHealth[]
+    >`SELECT 1 as "health"`
       .then((result) => result?.[0]?.health === 1)
       .catch(() => false);
 

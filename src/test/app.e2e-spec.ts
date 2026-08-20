@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import { RequestMethod, VersioningType } from '@nestjs/common';
 import { AppModule } from '../src/app.module.js';
 import { PrismaModule } from '../src/database/prisma.module.js';
@@ -16,7 +19,7 @@ describe('bCost API - Production Ready E2E Suite (Fastify)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter()
+      new FastifyAdapter(),
     );
 
     // Configurações idênticas ao ambiente produtivo do main.ts
@@ -59,7 +62,9 @@ describe('bCost API - Production Ready E2E Suite (Fastify)', () => {
   });
 
   it('🧪 [E2E-002] GET /health - Deve interceptar e retornar 503 quando o banco falhar', async () => {
-    jest.spyOn(prismaService, 'isHealthy').mockRejectedValue(new Error('Prisma Connection Timeout'));
+    jest
+      .spyOn(prismaService, 'isHealthy')
+      .mockRejectedValue(new Error('Prisma Connection Timeout'));
 
     const response = await app.inject({
       method: 'GET',

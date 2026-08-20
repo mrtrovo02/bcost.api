@@ -23,6 +23,31 @@ export type ServiceConditionCode =
 
 export type ServiceConditionSeverity = 'INFO' | 'WARNING' | 'BLOCKER';
 
+export type ServiceExecutionEngine =
+  | 'SOFTWARE_WORKFLOW'
+  | 'OFFICIAL_API'
+  | 'GOVERNMENT_PORTAL_RPA'
+  | 'MUNICIPAL_RPA'
+  | 'CERTIFICATE_AUTH'
+  | 'BANKING_AS_A_SERVICE'
+  | 'OPEN_FINANCE'
+  | 'HUMAN_CRC_REVIEW'
+  | 'MANUAL_PROTOCOL';
+
+export type ServiceAutomationLevel =
+  | 'FULL_AUTOMATION_CANDIDATE'
+  | 'ASSISTED_AUTOMATION'
+  | 'HUMAN_VALIDATED'
+  | 'HUMAN_LED';
+
+export type ServiceProductionReadiness =
+  | 'READY_FOR_INTERNAL_WORKFLOW'
+  | 'INTEGRATION_REQUIRED'
+  | 'BACKOFFICE_REQUIRED'
+  | 'PLANNED';
+
+export type ServiceOperationalRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export type ServiceCondition = {
   code: ServiceConditionCode;
   severity: ServiceConditionSeverity;
@@ -48,6 +73,18 @@ export type MicroServiceDefinition = {
   activeCustomersOnly?: boolean;
 };
 
+export type ServiceExecutionProfile = {
+  automationLevel: ServiceAutomationLevel;
+  productionReadiness: ServiceProductionReadiness;
+  operationalRisk: ServiceOperationalRisk;
+  executionEngines: ServiceExecutionEngine[];
+  integrationTargets: string[];
+  evidenceArtifacts: string[];
+  requiresCrcValidation: boolean;
+  requiresOfficialCredential: boolean;
+  requiresCustomerAction: boolean;
+};
+
 export type MacroServiceDefinition = {
   id: number;
   name: string;
@@ -70,6 +107,7 @@ export type ServiceEvaluationInput = {
 export type EvaluatedMicroService = MicroServiceDefinition & {
   macroServiceId: number;
   macroServiceName: string;
+  executionProfile: ServiceExecutionProfile;
 };
 
 export type ServiceEvaluationResult = {
@@ -83,6 +121,9 @@ export type ServiceEvaluationResult = {
     warnings: number;
     infos: number;
     requiresHumanReview: boolean;
+    crcValidationServices: number;
+    customerActionServices: number;
+    officialCredentialServices: number;
   };
   generatedAt: string;
 };

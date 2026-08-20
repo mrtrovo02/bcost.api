@@ -38,6 +38,7 @@ export interface TaxDataResponse {
   ibsRate: number;
   transitionalTaxActive: boolean;
   effectiveDate: string;
+  collectionDispensedIn2026: boolean;
 }
 
 export class TaxDataQueryDto {
@@ -82,17 +83,17 @@ export class RevenueCompatibilityController {
   }
 
   @Get('revenue/compatibility/tax-data')
-  async getTaxData(
-    @Query() query: TaxDataQueryDto,
-  ): Promise<TaxDataResponse> {
-    const activeCompanyId: string | undefined = query.company_id || query.companyId;
+  async getTaxData(@Query() query: TaxDataQueryDto): Promise<TaxDataResponse> {
+    const activeCompanyId: string | undefined =
+      query.company_id || query.companyId;
     return {
       success: true,
       companyId: activeCompanyId,
       cbsRate: 0.009,
       ibsRate: 0.001,
       transitionalTaxActive: true,
-      effectiveDate: '2026-08-01',
+      effectiveDate: '2026-01-01',
+      collectionDispensedIn2026: true,
     };
   }
 }

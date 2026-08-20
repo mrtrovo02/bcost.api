@@ -6,18 +6,17 @@
     "target": "ES2023",
     "lib": ["ES2023"],
     "baseUrl": "./",
-    "ignoreDeprecations": "5.0",
     "rootDir": "src",
     "outDir": "./dist",
+    "types": ["jest", "node"],
 
     /* 2. Suporte a DTOs e Classes */
-    "strict": true, 
+    "strict": true,
     "strictPropertyInitialization": false,
     "strictNullChecks": true,
     "noImplicitAny": false,
 
     /* 3. Arquitetura de Caminhos (Aliases) */
-    /* Removido o wildcard '#' que pode conflitar com subpath imports nativos se não configurado no loader */
     "paths": {
       "#common/*": ["./src/common/*"],
       "#database/*": ["./src/database/*"],
@@ -38,7 +37,6 @@
     "sourceMap": true,
     "incremental": true,
     "isolatedModules": true,
-    /* Essencial para que o TS entenda o campo 'exports' das bibliotecas modernas */
     "resolvePackageJsonExports": true,
 
     /* 6. Robustez de Código */
@@ -51,8 +49,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "allowJs": true,
-    /* Garante que o build não falhe por imports de tipos em ESM */
-    "verbatimModuleSyntax": false 
+    "verbatimModuleSyntax": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]

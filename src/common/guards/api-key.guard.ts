@@ -32,7 +32,10 @@ export class ApiKeyGuard implements CanActivate {
       );
     }
 
-    if (typeof apiKeyHeader === 'string' && this.safeCompare(apiKeyHeader, validApiKey)) {
+    if (
+      typeof apiKeyHeader === 'string' &&
+      this.safeCompare(apiKeyHeader, validApiKey)
+    ) {
       return true;
     }
 

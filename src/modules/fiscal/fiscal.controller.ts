@@ -12,21 +12,27 @@ import {
   UseInterceptors,
   UploadedFiles,
   BadRequestException,
+  ForbiddenException,
   HttpCode,
   HttpStatus,
   Logger,
   Body,
+  Res,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
   ApiBearerAuth,
   ApiExtraModels,
   ApiConsumes,
+  ApiExcludeEndpoint,
 } from '@nestjs/swagger';
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
 import { FiscalService } from './fiscal.service.js';
 import { ComplianceService } from './compliance/compliance.service.js';
 import { DfeService } from './dfe/dfe.service.js';
@@ -93,13 +99,23 @@ export class FiscalController {
     private readonly taxService: TaxCalculationService,
     private readonly reportService: ReportService,
     private readonly invoiceService: InvoiceService,
+    private readonly configService: ConfigService,
   ) {}
+
+  private assertNonProductionSeedAllowed() {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      throw new ForbiddenException(
+        'Geração de dados de teste bloqueada em produção.',
+      );
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // 0. ROTAS DE COMPATIBILIDADE FRONTEND / FISCAL INTELLIGENCE
   // ---------------------------------------------------------------------------
 
   @Get('diagnostics/:companyId')
+  @LegacyApiAlias('/compliance/enterprise/run/:companyId')
   @ApiOperation({
     summary:
       'FISCAL INTELLIGENCE: Diagnóstico consolidado para telas comerciais do frontend',
@@ -311,13 +327,15 @@ export class FiscalController {
 
   @Post('seed-demo/:companyId')
   @HttpCode(HttpStatus.CREATED)
+  @ApiExcludeEndpoint()
   @ApiOperation({
     summary:
-      'MODO DEMO: Alias compatível para gerar massa de dados fiscais de demonstração',
+      'AMBIENTE NÃO PRODUTIVO: Alias compatível para gerar dados fiscais de teste',
   })
   async seedDemoCompat(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ) {
+    this.assertNonProductionSeedAllowed();
     return await this.fiscalService.seedDemoData(companyId);
   }
 
@@ -337,6 +355,31 @@ export class FiscalController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ) {
     return await this.fiscalService.getCompanyInvoices(companyId);
+  }
+
+  @Get('export/:companyId')
+  @ApiOperation({
+    summary:
+      'INTEGRAÇÃO: Exportação fiscal CSV compatível para conciliação com ERPs contábeis',
+  })
+  async exportFiscalData(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Query('format') format = 'DOMINIO',
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const file = await this.fiscalService.exportCompanyInvoices(
+      companyId,
+      format,
+    );
+
+    response.setHeader('Content-Type', file.mimeType);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${file.filename}"`,
+    );
+    response.setHeader('X-bCost-Export-Records', String(file.records));
+
+    return file.content;
   }
 
   @Delete('invoices/:id')
@@ -389,6 +432,45 @@ export class FiscalController {
     );
   }
 
+  @Get('tax/monthly-preview/:companyId')
+  @ApiOperation({
+    summary: 'CORE: Prévia produtiva da apuração mensal antes do fechamento',
+  })
+  async previewMonthlyTaxClosure(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @GetUser('id') userId: string,
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+    @Query('hasDigitalCertificate') hasDigitalCertificate?: string,
+    @Query('hasCrcReview') hasCrcReview?: string,
+    @Query('hasOfficialPortalAccess') hasOfficialPortalAccess?: string,
+    @Query('hasRevenueReconciliation') hasRevenueReconciliation?: string,
+  ) {
+    const targetMonth = parseOptionalPositiveInt(
+      month,
+      currentMonth(),
+      'month',
+    );
+    const targetYear = parseOptionalPositiveInt(year, currentYear(), 'year');
+
+    return await this.taxService.previewMonthlyClosure(
+      companyId,
+      targetMonth,
+      targetYear,
+      userId,
+      {
+        hasDigitalCertificate: this.parseBooleanQuery(hasDigitalCertificate),
+        hasCrcReview: this.parseBooleanQuery(hasCrcReview),
+        hasOfficialPortalAccess: this.parseBooleanQuery(
+          hasOfficialPortalAccess,
+        ),
+        hasRevenueReconciliation: this.parseBooleanQuery(
+          hasRevenueReconciliation,
+        ),
+      },
+    );
+  }
+
   @Post('tax/close-month/:companyId')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -399,6 +481,10 @@ export class FiscalController {
     @GetUser('id') userId: string,
     @Body('month') month: unknown,
     @Body('year') year: unknown,
+    @Body('hasDigitalCertificate') hasDigitalCertificate?: unknown,
+    @Body('hasCrcReview') hasCrcReview?: unknown,
+    @Body('hasOfficialPortalAccess') hasOfficialPortalAccess?: unknown,
+    @Body('hasRevenueReconciliation') hasRevenueReconciliation?: unknown,
   ) {
     const targetMonth = parseOptionalPositiveInt(month, 0, 'month');
     const targetYear = parseOptionalPositiveInt(year, 0, 'year');
@@ -408,6 +494,14 @@ export class FiscalController {
       targetMonth,
       targetYear,
       userId,
+      {
+        hasDigitalCertificate: this.parseBooleanLike(hasDigitalCertificate),
+        hasCrcReview: this.parseBooleanLike(hasCrcReview),
+        hasOfficialPortalAccess: this.parseBooleanLike(hasOfficialPortalAccess),
+        hasRevenueReconciliation: this.parseBooleanLike(
+          hasRevenueReconciliation,
+        ),
+      },
     );
 
     const snapshot = await this.fiscalService.generateFinancialSnapshot(
@@ -422,6 +516,18 @@ export class FiscalController {
       snapshotId: snapshot.id,
       integrityHash: snapshot.integrityHash,
     };
+  }
+
+  private parseBooleanQuery(value?: string): boolean | undefined {
+    if (value === undefined) return undefined;
+    return ['1', 'true', 'yes', 'sim'].includes(value.toLowerCase());
+  }
+
+  private parseBooleanLike(value: unknown): boolean | undefined {
+    if (value === undefined || value === null) return undefined;
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return this.parseBooleanQuery(value);
+    return undefined;
   }
 
   // ---------------------------------------------------------------------------
@@ -461,6 +567,7 @@ export class FiscalController {
   }
 
   @Post('upload-xml/:companyId')
+  @LegacyApiAlias('/fiscal/upload/:companyId')
   @HttpCode(HttpStatus.ACCEPTED)
   @UseInterceptors(FilesInterceptor('files', 50))
   @ApiConsumes('multipart/form-data')
@@ -509,10 +616,12 @@ export class FiscalController {
 
   @Post('demo/seed/:companyId')
   @HttpCode(HttpStatus.CREATED)
+  @ApiExcludeEndpoint()
   @ApiOperation({
-    summary: 'MODO DEMO: Gerar massa de dados para testes de stress',
+    summary: 'AMBIENTE NÃO PRODUTIVO: Gerar dados fiscais para testes',
   })
   async seedDemo(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    this.assertNonProductionSeedAllowed();
     return await this.fiscalService.seedDemoData(companyId);
   }
 }

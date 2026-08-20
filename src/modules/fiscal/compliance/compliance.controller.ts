@@ -19,6 +19,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
+import { LegacyApiAlias } from '../../../common/decorators/legacy-api-alias.decorator.js';
 import { ComplianceService, ComplianceReport } from './compliance.service.js';
 
 /**
@@ -37,6 +38,7 @@ export class ComplianceController {
    * Auditoria de Saúde 360° (Cross-Check).
    */
   @Get('health-check/:companyId')
+  @LegacyApiAlias('/compliance/enterprise/run/:companyId')
   @ApiOperation({
     summary: 'Auditoria de Saúde 360°',
     description:
@@ -58,6 +60,7 @@ export class ComplianceController {
    * Recálculo rápido de Fator R.
    */
   @Post('recalculate-fator-r/:companyId')
+  @LegacyApiAlias('/fiscal/tax/monthly-preview/:companyId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Recalcular Fator R Manualmente',
@@ -77,6 +80,7 @@ export class ComplianceController {
    * Útil para o contador validar se o upload de um novo certificado resolveu pendências.
    */
   @Post('audit-certificates')
+  @LegacyApiAlias('/digital-certificates/enterprise')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Auditar Certificados (Manual Trigger)',

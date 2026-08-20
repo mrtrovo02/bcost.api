@@ -218,7 +218,9 @@ export class AutomationService implements OnModuleInit {
 
     for (const company of companies) {
       try {
-        const results = await this.anomalyService.processCompanyAnomalies(company.id);
+        const results = await this.anomalyService.processCompanyAnomalies(
+          company.id,
+        );
         if (results.length > 0) {
           this.logger.warn(
             `⚠️ ${results.length} potenciais anomalias identificadas para ${company.name}.`,

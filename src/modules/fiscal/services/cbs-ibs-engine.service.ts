@@ -27,6 +27,7 @@ export interface CbsIbsSimulationResult {
   cbsValue: number;
   ibsValue: number;
   totalTransitionalTax: number;
+  collectionDispensedIn2026: boolean;
   netRevenue: number;
   splitPaymentEstimate: {
     retentionAtSource: number;
@@ -384,16 +385,17 @@ export class CbsIbsEngineService {
     const cbsValue = calculation.totals.cbsValue;
     const ibsValue = calculation.totals.ibsValue;
     const totalTransitionalTax = calculation.totals.grossTax;
-    const netRevenue = money(monthlyRevenue - totalTransitionalTax);
+    const netRevenue = money(monthlyRevenue);
 
     return {
       revenue: monthlyRevenue,
       cbsValue,
       ibsValue,
       totalTransitionalTax,
+      collectionDispensedIn2026: true,
       netRevenue,
       splitPaymentEstimate: {
-        retentionAtSource: totalTransitionalTax,
+        retentionAtSource: 0,
         effectiveNetCashflow: netRevenue,
       },
     };

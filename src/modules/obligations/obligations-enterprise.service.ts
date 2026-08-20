@@ -1,5 +1,6 @@
 'use strict';
 
+import { createHash } from 'node:crypto';
 import {
   BadRequestException,
   ForbiddenException,
@@ -17,6 +18,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { CreateFiscalObligationDto } from './dto/create-fiscal-obligation.dto.js';
 import { CreateTaxObligationDto } from './dto/create-tax-obligation.dto.js';
 import { QueryObligationsDto } from './dto/query-obligations.dto.js';
+import { RegisterTaxEvidenceDto } from './dto/register-tax-evidence.dto.js';
 import { SubmitFiscalObligationDto } from './dto/submit-fiscal-obligation.dto.js';
 import { UpdateFiscalObligationDto } from './dto/update-fiscal-obligation.dto.js';
 import { UpdateTaxObligationDto } from './dto/update-tax-obligation.dto.js';
@@ -55,7 +57,9 @@ export class ObligationsEnterpriseService {
     const model = (this.prisma as any).taxObligation;
 
     if (!model) {
-      throw new NotFoundException('Modelo Prisma taxObligation não encontrado.');
+      throw new NotFoundException(
+        'Modelo Prisma taxObligation não encontrado.',
+      );
     }
 
     return model;
@@ -212,7 +216,10 @@ export class ObligationsEnterpriseService {
       ...item,
       dueDate: dueDate.toISOString(),
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
-      amount: item.amount instanceof Prisma.Decimal ? item.amount.toNumber() : item.amount,
+      amount:
+        item.amount instanceof Prisma.Decimal
+          ? item.amount.toNumber()
+          : item.amount,
       operationalStatus,
       daysToDue,
       overdue: operationalStatus === 'OVERDUE',
@@ -577,7 +584,11 @@ export class ObligationsEnterpriseService {
     return summary;
   }
 
-  async listTax(companyId: string, query: QueryObligationsDto, user?: AuthUser) {
+  async listTax(
+    companyId: string,
+    query: QueryObligationsDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -837,6 +848,89 @@ export class ObligationsEnterpriseService {
     };
   }
 
+  async registerTaxEvidence(
+    companyId: string,
+    obligationId: string,
+    dto: RegisterTaxEvidenceDto,
+    user?: AuthUser,
+  ) {
+    this.validateCompanyAccess(companyId, user);
+    this.validateWritePermission(user);
+
+    const current = await this.taxModel.findFirst({
+      where: {
+        id: obligationId,
+        companyId,
+      },
+    });
+
+    if (!current) {
+      throw new NotFoundException(
+        `Obrigação tributária não encontrada: ${obligationId}`,
+      );
+    }
+
+    const evidence = {
+      obligationId,
+      companyId,
+      fileUrl: dto.fileUrl.trim(),
+      receiptCode: dto.receiptCode.trim(),
+      notes: dto.notes?.trim() || null,
+      source: 'GOVERNMENT_PORTAL',
+      recordedBy: this.getUserId(user),
+      recordedAt: new Date().toISOString(),
+    };
+
+    const evidenceHash = createHash('sha256')
+      .update(JSON.stringify(evidence))
+      .digest('hex');
+
+    const updated = await this.taxModel.update({
+      where: {
+        id: obligationId,
+      },
+      data: {
+        fileUrl: evidence.fileUrl,
+        version: {
+          increment: 1,
+        },
+      },
+    });
+
+    const enriched = this.enrichTax(updated);
+
+    const audit = await this.safeAuditLog({
+      companyId,
+      user,
+      module: 'tax-obligations',
+      action: 'TAX_OBLIGATION_OFFICIAL_EVIDENCE_REGISTERED',
+      entity: 'TaxObligation',
+      entityId: obligationId,
+      payload: {
+        before: this.normalize(this.enrichTax(current)),
+        after: this.normalize(enriched),
+        evidence: {
+          ...evidence,
+          integrityHash: evidenceHash,
+        },
+      },
+      statusCode: 200,
+    });
+
+    return {
+      status: 'OK',
+      message: 'Evidência oficial registrada para a obrigação tributária.',
+      companyId,
+      item: this.normalize(enriched),
+      evidence: {
+        ...evidence,
+        integrityHash: evidenceHash,
+      },
+      audit,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   async cancelTax(companyId: string, obligationId: string, user?: AuthUser) {
     this.validateCompanyAccess(companyId, user);
     this.validateWritePermission(user);
@@ -940,7 +1034,11 @@ export class ObligationsEnterpriseService {
     };
   }
 
-  async listFiscal(companyId: string, query: QueryObligationsDto, user?: AuthUser) {
+  async listFiscal(
+    companyId: string,
+    query: QueryObligationsDto,
+    user?: AuthUser,
+  ) {
     this.validateCompanyAccess(companyId, user);
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
@@ -1161,14 +1259,16 @@ export class ObligationsEnterpriseService {
     const data: Record<string, unknown> = {};
 
     if (dto.type !== undefined) data.type = dto.type;
-    if (dto.referenceMonth !== undefined) data.referenceMonth = dto.referenceMonth;
+    if (dto.referenceMonth !== undefined)
+      data.referenceMonth = dto.referenceMonth;
     if (dto.referenceYear !== undefined) data.referenceYear = dto.referenceYear;
     if (dto.dueDate !== undefined) {
       data.dueDate = this.parseDate(dto.dueDate, 'dueDate');
     }
     if (dto.status !== undefined) data.status = dto.status;
     if (dto.fileUrl !== undefined) data.fileUrl = dto.fileUrl?.trim() || null;
-    if (dto.fileHash !== undefined) data.fileHash = dto.fileHash?.trim() || null;
+    if (dto.fileHash !== undefined)
+      data.fileHash = dto.fileHash?.trim() || null;
     if (dto.submittedAt !== undefined) {
       data.submittedAt = dto.submittedAt
         ? this.parseDate(dto.submittedAt, 'submittedAt')
@@ -1242,9 +1342,9 @@ export class ObligationsEnterpriseService {
         submittedAt: dto.submittedAt
           ? this.parseDate(dto.submittedAt, 'submittedAt')
           : new Date(),
-        fileUrl: dto.fileUrl?.trim() || current.fileUrl || null,
-        fileHash: dto.fileHash?.trim() || current.fileHash || null,
-        receiptCode: dto.receiptCode?.trim() || current.receiptCode || null,
+        receiptCode: dto.receiptCode?.trim() || current.receiptCode,
+        fileUrl: dto.fileUrl?.trim() || current.fileUrl,
+        fileHash: dto.fileHash?.trim() || current.fileHash,
       },
     });
 

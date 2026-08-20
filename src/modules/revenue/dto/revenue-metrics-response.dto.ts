@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RevenueMetricsResponseDto {
-  @ApiProperty({ example: 55000.50 })
+  @ApiProperty({ example: 55000.5 })
   totalRevenue: number;
 
-  @ApiProperty({ example: 12500.00 })
+  @ApiProperty({ example: 12500.0 })
   pendingInvoices: number;
 
   @ApiProperty({ example: 0.28 })

@@ -598,10 +598,7 @@ export class DashboardService {
   }
 
   private sumMoney(values: unknown[]): number {
-    return values.reduce<number>(
-      (sum, value) => sum + this.toNumber(value),
-      0,
-    );
+    return values.reduce<number>((sum, value) => sum + this.toNumber(value), 0);
   }
 
   private money(value: number): number {

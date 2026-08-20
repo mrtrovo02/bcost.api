@@ -18,12 +18,25 @@ export class QueryAccountingDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['ATIVO', 'PASSIVO', 'PATRIMONIO_LIQUIDO', 'RECEITA', 'DESPESA', 'CUSTO'])
+  @IsIn([
+    'ATIVO',
+    'PASSIVO',
+    'PATRIMONIO_LIQUIDO',
+    'RECEITA',
+    'DESPESA',
+    'CUSTO',
+  ])
   type?: string;
 
   @IsOptional()
   @IsString()
-  @IsIn(['MANUAL', 'INVOICE_AUTO', 'PAYROLL_AUTO', 'BANK_IMPORT', 'TAX_PAYMENT'])
+  @IsIn([
+    'MANUAL',
+    'INVOICE_AUTO',
+    'PAYROLL_AUTO',
+    'BANK_IMPORT',
+    'TAX_PAYMENT',
+  ])
   origin?: string;
 
   @IsOptional()

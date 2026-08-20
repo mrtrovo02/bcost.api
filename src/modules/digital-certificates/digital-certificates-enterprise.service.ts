@@ -7,10 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  CertificateStatus,
-  Prisma,
-} from '@prisma/client';
+import { CertificateStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateDigitalCertificateDto } from './dto/create-digital-certificate.dto.js';
 import { QueryDigitalCertificatesDto } from './dto/query-digital-certificates.dto.js';
@@ -127,9 +124,7 @@ export class DigitalCertificatesEnterpriseService {
 
   private validatePeriod(validFrom: Date, validTo: Date) {
     if (validTo <= validFrom) {
-      throw new BadRequestException(
-        'validTo deve ser maior que validFrom.',
-      );
+      throw new BadRequestException('validTo deve ser maior que validFrom.');
     }
   }
 
@@ -165,9 +160,7 @@ export class DigitalCertificatesEnterpriseService {
       ...cert,
       validFrom: validFrom.toISOString(),
       validTo: validTo.toISOString(),
-      createdAt: cert.createdAt
-        ? new Date(cert.createdAt).toISOString()
-        : null,
+      createdAt: cert.createdAt ? new Date(cert.createdAt).toISOString() : null,
       operationalStatus,
       daysToExpire: Number.isNaN(validTo.getTime())
         ? null
@@ -408,9 +401,9 @@ export class DigitalCertificatesEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) =>
-      this.enrichCertificate(item),
-    );
+    const items = rows
+      .slice(0, limit)
+      .map((item: any) => this.enrichCertificate(item));
 
     return {
       status: 'OK',

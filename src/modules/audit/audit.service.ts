@@ -1,10 +1,6 @@
 'use strict';
 
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto.js';
@@ -137,7 +133,9 @@ export class AuditService {
         ? dto.metadata.module
         : undefined;
 
-    return String(dto.module || metadataModule || dto.source || dto.entity || 'SYSTEM');
+    return String(
+      dto.module || metadataModule || dto.source || dto.entity || 'SYSTEM',
+    );
   }
 
   private buildPayload(dto: CreateAuditLogDto) {
@@ -181,7 +179,10 @@ export class AuditService {
       return false;
     }
 
-    if (query.entityId && String(item.entityId ?? '') !== String(query.entityId)) {
+    if (
+      query.entityId &&
+      String(item.entityId ?? '') !== String(query.entityId)
+    ) {
       return false;
     }
 
@@ -189,7 +190,10 @@ export class AuditService {
       return false;
     }
 
-    if (query.severity && !this.equalsIgnoreCase(item.severity, query.severity)) {
+    if (
+      query.severity &&
+      !this.equalsIgnoreCase(item.severity, query.severity)
+    ) {
       return false;
     }
 
@@ -347,7 +351,6 @@ export class AuditService {
     } as AuditListResult & { fallback?: boolean };
   }
 
-
   async summary(companyId: string) {
     const result = await this.list(companyId, { limit: 500, offset: 0 });
     const items = result.items as any[];
@@ -494,7 +497,9 @@ export class AuditService {
       }
     }
 
-    this.logger.error(`[Audit] Todas as tentativas de create falharam: ${errors.join(' | ')}`);
+    this.logger.error(
+      `[Audit] Todas as tentativas de create falharam: ${errors.join(' | ')}`,
+    );
 
     throw new BadRequestException(
       `Não foi possível registrar auditoria após múltiplas estratégias. Último erro: ${
@@ -598,10 +603,7 @@ export class AuditService {
      * Para findMany normalmente companyId funciona se o campo escalar existe.
      */
     andConditions.push({
-      OR: [
-        { companyId },
-        { company: { id: companyId } },
-      ],
+      OR: [{ companyId }, { company: { id: companyId } }],
     });
 
     if (query.module) andConditions.push({ module: query.module });
@@ -612,10 +614,7 @@ export class AuditService {
     if (query.source) andConditions.push({ source: query.source });
     if (query.userId) {
       andConditions.push({
-        OR: [
-          { userId: query.userId },
-          { user: { id: query.userId } },
-        ],
+        OR: [{ userId: query.userId }, { user: { id: query.userId } }],
       });
     }
 
@@ -642,9 +641,7 @@ export class AuditService {
       });
     }
 
-    const where = andConditions.length
-      ? { AND: andConditions }
-      : {};
+    const where = andConditions.length ? { AND: andConditions } : {};
 
     let rows: any[] = [];
     let usedFallback = false;
@@ -661,8 +658,7 @@ export class AuditService {
       });
     } catch (error) {
       usedFallback = true;
-      fallbackReason =
-        error instanceof Error ? error.message : String(error);
+      fallbackReason = error instanceof Error ? error.message : String(error);
 
       rows = await auditLog.findMany({
         take: limit + 1,
@@ -708,5 +704,4 @@ export class AuditService {
       generatedAt: new Date().toISOString(),
     };
   }
-
 }

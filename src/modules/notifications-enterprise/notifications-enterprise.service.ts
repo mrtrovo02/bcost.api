@@ -22,7 +22,10 @@ import { DispatchWebhookEventDto } from './dto/dispatch-webhook-event.dto.js';
 import { NotificationsEnterpriseQueryDto } from './dto/notifications-enterprise-query.dto.js';
 import { UpdateNotificationEnterpriseDto } from './dto/update-notification-enterprise.dto.js';
 import { UpdateWebhookEnterpriseDto } from './dto/update-webhook-enterprise.dto.js';
-import { redactDeep, redactSensitiveHeaders } from '../../common/security/redact-headers.util.js';
+import {
+  redactDeep,
+  redactSensitiveHeaders,
+} from '../../common/security/redact-headers.util.js';
 
 type AuthUser = {
   id?: string;
@@ -53,7 +56,9 @@ export class NotificationsEnterpriseService {
   private get notificationLogModel() {
     const model = (this.prisma as any).notificationLog;
     if (!model) {
-      throw new NotFoundException('Modelo Prisma notificationLog não encontrado.');
+      throw new NotFoundException(
+        'Modelo Prisma notificationLog não encontrado.',
+      );
     }
     return model;
   }
@@ -61,7 +66,9 @@ export class NotificationsEnterpriseService {
   private get webhookConfigModel() {
     const model = (this.prisma as any).webhookConfig;
     if (!model) {
-      throw new NotFoundException('Modelo Prisma webhookConfig não encontrado.');
+      throw new NotFoundException(
+        'Modelo Prisma webhookConfig não encontrado.',
+      );
     }
     return model;
   }
@@ -195,7 +202,8 @@ export class NotificationsEnterpriseService {
     const and: Record<string, unknown>[] = [{ companyId }];
 
     if (query.type) and.push({ type: query.type as NotificationType });
-    if (query.channel) and.push({ channel: query.channel as NotificationChannel });
+    if (query.channel)
+      and.push({ channel: query.channel as NotificationChannel });
     if (query.status) and.push({ status: query.status as NotificationStatus });
     if (query.severity) {
       and.push({ severity: query.severity as NotificationSeverity });
@@ -503,12 +511,16 @@ export class NotificationsEnterpriseService {
       data: {
         companyId,
         userId: dto.userId ?? null,
-        type: (dto.type || NotificationType.COMPLIANCE_ISSUE) as NotificationType,
+        type: (dto.type ||
+          NotificationType.COMPLIANCE_ISSUE) as NotificationType,
         title: dto.title.trim(),
         message: dto.message.trim(),
-        channel: (dto.channel || NotificationChannel.WEBSOCKET) as NotificationChannel,
-        status: (dto.status || NotificationStatus.PENDING) as NotificationStatus,
-        severity: (dto.severity || NotificationSeverity.INFO) as NotificationSeverity,
+        channel: (dto.channel ||
+          NotificationChannel.WEBSOCKET) as NotificationChannel,
+        status: (dto.status ||
+          NotificationStatus.PENDING) as NotificationStatus,
+        severity: (dto.severity ||
+          NotificationSeverity.INFO) as NotificationSeverity,
         read: false,
         acknowledged: false,
         metadata: {
@@ -560,14 +572,17 @@ export class NotificationsEnterpriseService {
     });
 
     if (!current) {
-      throw new NotFoundException(`Notificação não encontrada: ${notificationId}`);
+      throw new NotFoundException(
+        `Notificação não encontrada: ${notificationId}`,
+      );
     }
 
     const data: Record<string, unknown> = {};
 
     if (dto.title !== undefined) data.title = dto.title.trim();
     if (dto.message !== undefined) data.message = dto.message.trim();
-    if (dto.status !== undefined) data.status = dto.status as NotificationStatus;
+    if (dto.status !== undefined)
+      data.status = dto.status as NotificationStatus;
     if (dto.severity !== undefined) {
       data.severity = dto.severity as NotificationSeverity;
     }
@@ -606,7 +621,10 @@ export class NotificationsEnterpriseService {
       entity: 'NotificationLog',
       entityId: notificationId,
       payload: {
-        before: this.normalize(this.enrichNotification(current)) as Record<string, unknown>,
+        before: this.normalize(this.enrichNotification(current)) as Record<
+          string,
+          unknown
+        >,
         after: this.normalize(item) as Record<string, unknown>,
       },
     });
@@ -626,7 +644,12 @@ export class NotificationsEnterpriseService {
     notificationId: string,
     user?: AuthUser,
   ) {
-    return this.updateNotification(companyId, notificationId, { read: true }, user);
+    return this.updateNotification(
+      companyId,
+      notificationId,
+      { read: true },
+      user,
+    );
   }
 
   async markNotificationUnread(
@@ -781,7 +804,9 @@ export class NotificationsEnterpriseService {
       );
 
       if (events.length === 0) {
-        throw new BadRequestException('Informe pelo menos um evento de webhook.');
+        throw new BadRequestException(
+          'Informe pelo menos um evento de webhook.',
+        );
       }
 
       data.events = events;
@@ -805,7 +830,10 @@ export class NotificationsEnterpriseService {
       entity: 'WebhookConfig',
       entityId: webhookId,
       payload: {
-        before: this.normalize(this.enrichWebhook(current)) as Record<string, unknown>,
+        before: this.normalize(this.enrichWebhook(current)) as Record<
+          string,
+          unknown
+        >,
         after: this.normalize(item) as Record<string, unknown>,
       },
     });
@@ -960,7 +988,8 @@ export class NotificationsEnterpriseService {
     await this.findCompany(companyId);
 
     const event = dto.event.trim();
-    const severity = (dto.severity || NotificationSeverity.INFO) as NotificationSeverity;
+    const severity = (dto.severity ||
+      NotificationSeverity.INFO) as NotificationSeverity;
     const title = dto.title || `Evento bCost: ${event}`;
     const message = dto.message || `Evento ${event} disparado pelo bCost.`;
 
@@ -1064,7 +1093,9 @@ export class NotificationsEnterpriseService {
       companyId,
       event: 'webhook.test',
       result,
-      severity: result.ok ? NotificationSeverity.INFO : NotificationSeverity.WARNING,
+      severity: result.ok
+        ? NotificationSeverity.INFO
+        : NotificationSeverity.WARNING,
       user,
     });
 
