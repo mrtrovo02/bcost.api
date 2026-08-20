@@ -97,6 +97,16 @@ async function bootstrap(): Promise<void> {
       trustProxy: true,
       requestIdHeader: 'x-bcost-trace-id',
       genReqId: () => randomUUID(),
+      // Compatibilidade com proxies (Nginx/ALB) que removem o prefixo `/api`
+      // antes de encaminhar para a aplicação. Sem isso, todas as rotas
+      // versionadas respondem 404 em produção.
+      rewriteUrl: (req) => {
+        const url = req.url ?? '/';
+        if (/^\/v\d+(\/|$)/.test(url)) {
+          return `/api${url}`;
+        }
+        return url;
+      },
       logger: {
         level: process.env.LOG_LEVEL || 'info',
         redact: {
