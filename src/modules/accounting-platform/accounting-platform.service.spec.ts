@@ -200,6 +200,15 @@ describe('AccountingPlatformService', () => {
           ]),
         }),
         expect.objectContaining({
+          capabilityId: 'TAX_SCENARIO_SIMULATOR',
+          canonicalOwner: 'tax-scenarios',
+          canonicalApiBase: '/tax-scenarios',
+          duplicateRisk: 'LOW',
+          forbiddenDuplicates: expect.arrayContaining([
+            expect.stringContaining('Não copiar layout'),
+          ]),
+        }),
+        expect.objectContaining({
           capabilityId: 'NOTIFICATIONS_WEBHOOKS',
           canonicalOwner: 'notifications-enterprise',
           canonicalApiBase: '/notifications/enterprise',

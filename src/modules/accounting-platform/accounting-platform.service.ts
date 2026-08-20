@@ -495,6 +495,39 @@ export class AccountingPlatformService {
         ],
       },
       {
+        capabilityId: 'TAX_SCENARIO_SIMULATOR',
+        name: 'Simulador tributário PF x PJ e Reforma Tributária',
+        layer: 'CUSTOMER_EXPERIENCE',
+        canonicalOwner: 'tax-scenarios',
+        canonicalApiBase: '/tax-scenarios',
+        frontendRoutes: ['/dashboard/modules/tax-scenarios'],
+        relatedModules: [
+          'tax-regime-calculations',
+          'consulting-services',
+          'company-formation',
+          'service-catalog',
+        ],
+        status: 'CANONICAL',
+        duplicateRisk: 'LOW',
+        consolidationRule:
+          'Simulações comerciais e triagem PF x PJ pertencem ao tax-scenarios; apuração oficial, guias e obrigações continuam no fiscal e obligations-enterprise.',
+        publicContract:
+          'Compara cenários PF, MEI, Simples Nacional e Lucro Presumido com Fator R e destaque informativo CBS/IBS 2026, sempre como diagnóstico assistido.',
+        integrationPoints: [
+          'TaxCalculation',
+          'AccountingSetupReadiness',
+          'ServiceCatalog',
+          'LC 214/2025',
+          'EC 132/2023',
+        ],
+        forbiddenDuplicates: [
+          'Não copiar layout, texto, marca ou promessa comercial de simuladores concorrentes.',
+          'Não tratar simulação como parecer, enquadramento definitivo ou apuração oficial sem CRC e evidências.',
+          'Não recalcular guias dentro de tax-scenarios; delegar fechamento oficial ao fiscal.',
+        ],
+        legacyAliases: [],
+      },
+      {
         capabilityId: 'DIGITAL_CERTIFICATE_VAULT',
         name: 'Cofre e governança de certificados digitais',
         layer: 'GOVERNANCE',

@@ -66,6 +66,7 @@ import { AuditIntelligenceEnterpriseModule } from './modules/audit-intelligence-
 import { FinanceOperationsEnterpriseModule } from './modules/finance-operations-enterprise/finance-operations-enterprise.module.js';
 import { OperationalWorkflowsModule } from './modules/operational-workflows/operational-workflows.module.js';
 import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module.js';
+import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module.js';
 
 @Module({
   imports: [
@@ -203,6 +204,7 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
     ComplianceEnterpriseModule,
     ServiceCatalogModule,
     OperationalWorkflowsModule,
+    TaxScenariosModule,
   ],
 
   controllers: [AppController],
