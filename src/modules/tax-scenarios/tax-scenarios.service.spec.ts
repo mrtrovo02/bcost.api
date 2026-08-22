@@ -29,7 +29,9 @@ describe('TaxScenariosService', () => {
     ]);
     expect(result.factorR.percentage).toBe(10);
     expect(result.recommendation.decision).toBe('SIMPLES_WITH_FACTOR_R_REVIEW');
-    expect(result.guardrails.join(' ')).toContain('Não prometer economia tributária');
+    expect(result.guardrails.join(' ')).toContain(
+      'Não prometer economia tributária',
+    );
     expect(result.reformImpact.estimatedCbs).toBe(3240);
     expect(result.reformImpact.estimatedIbs).toBe(360);
   });
@@ -46,7 +48,9 @@ describe('TaxScenariosService', () => {
     const mei = result.comparisons.find((item) => item.model === 'MEI');
 
     expect(mei?.estimatedTax).toBe(-1);
-    expect(mei?.warnings.join(' ')).toContain('supera o limite anual usual do MEI');
+    expect(mei?.warnings.join(' ')).toContain(
+      'supera o limite anual usual do MEI',
+    );
   });
 
   it('gera scenarioId estável para o mesmo input', () => {

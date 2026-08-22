@@ -16,8 +16,12 @@ describe('TaxCalculationService', () => {
       invoice: {
         aggregate: jest
           .fn()
-          .mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(120000) } })
-          .mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal(10000) } }),
+          .mockResolvedValueOnce({
+            _sum: { amount: new Prisma.Decimal(120000) },
+          })
+          .mockResolvedValueOnce({
+            _sum: { amount: new Prisma.Decimal(10000) },
+          }),
       },
       payroll: {
         aggregate: jest.fn().mockResolvedValue({
@@ -42,16 +46,28 @@ describe('TaxCalculationService', () => {
   it('bloqueia fechamento oficial quando faltam certificado, portal e revisão CRC', async () => {
     const { service } = buildService();
 
-    const preview = await service.previewMonthlyClosure('company-1', 7, 2026, 'user-1', {
-      hasRevenueReconciliation: true,
-    });
+    const preview = await service.previewMonthlyClosure(
+      'company-1',
+      7,
+      2026,
+      'user-1',
+      {
+        hasRevenueReconciliation: true,
+      },
+    );
 
     expect(preview.status).toBe('BLOCKED');
     expect(preview.canClose).toBe(false);
     expect(preview.gates).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'DIGITAL_CERTIFICATE', status: 'FAIL' }),
-        expect.objectContaining({ code: 'OFFICIAL_PORTAL_ACCESS', status: 'FAIL' }),
+        expect.objectContaining({
+          code: 'DIGITAL_CERTIFICATE',
+          status: 'FAIL',
+        }),
+        expect.objectContaining({
+          code: 'OFFICIAL_PORTAL_ACCESS',
+          status: 'FAIL',
+        }),
         expect.objectContaining({ code: 'CRC_REVIEW', status: 'FAIL' }),
       ]),
     );
@@ -78,12 +94,18 @@ describe('TaxCalculationService', () => {
   it('libera fechamento quando gates oficiais estão atendidos', async () => {
     const { service } = buildService();
 
-    const preview = await service.previewMonthlyClosure('company-1', 7, 2026, 'user-1', {
-      hasDigitalCertificate: true,
-      hasCrcReview: true,
-      hasOfficialPortalAccess: true,
-      hasRevenueReconciliation: true,
-    });
+    const preview = await service.previewMonthlyClosure(
+      'company-1',
+      7,
+      2026,
+      'user-1',
+      {
+        hasDigitalCertificate: true,
+        hasCrcReview: true,
+        hasOfficialPortalAccess: true,
+        hasRevenueReconciliation: true,
+      },
+    );
 
     expect(preview.status).toBe('READY_TO_CLOSE');
     expect(preview.canClose).toBe(true);

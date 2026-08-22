@@ -16,10 +16,19 @@ export const ACCOUNTING_OFFERINGS: Omit<
   {
     id: 'bcost-start',
     name: 'bCost Start',
-    headline: 'Entrada assistida para abrir, migrar ou regularizar a operação contábil.',
-    targetCustomers: ['ME', 'EPP', 'Prestadores de serviços', 'Profissionais liberais'],
+    headline:
+      'Entrada assistida para abrir, migrar ou regularizar a operação contábil.',
+    targetCustomers: [
+      'ME',
+      'EPP',
+      'Prestadores de serviços',
+      'Profissionais liberais',
+    ],
     blocks: ['ONBOARDING_LEGALIZATION'],
-    coverageItemIds: ['company-formation-engine', 'migration-traditional-accounting'],
+    coverageItemIds: [
+      'company-formation-engine',
+      'migration-traditional-accounting',
+    ],
     includedServices: [
       'Checklist de abertura ou migração',
       'Coleta de documentos',
@@ -35,8 +44,14 @@ export const ACCOUNTING_OFFERINGS: Omit<
   {
     id: 'bcost-core',
     name: 'bCost Core',
-    headline: 'Rotina recorrente fiscal, contábil e financeira para empresas de serviço.',
-    targetCustomers: ['ME', 'EPP', 'Simples Nacional', 'Lucro Presumido em integração'],
+    headline:
+      'Rotina recorrente fiscal, contábil e financeira para empresas de serviço.',
+    targetCustomers: [
+      'ME',
+      'EPP',
+      'Simples Nacional',
+      'Lucro Presumido em integração',
+    ],
     blocks: ['RECURRING_ACCOUNTING_TAX', 'SERVICE_ARCHITECTURE'],
     coverageItemIds: [
       'simples-tax-engine',
@@ -60,7 +75,11 @@ export const ACCOUNTING_OFFERINGS: Omit<
     id: 'bcost-people',
     name: 'bCost People',
     headline: 'Pró-labore, folha básica e encargos com governança trabalhista.',
-    targetCustomers: ['Sócios administradores', 'Empresas com folha básica', 'Prestadores com pró-labore'],
+    targetCustomers: [
+      'Sócios administradores',
+      'Empresas com folha básica',
+      'Prestadores com pró-labore',
+    ],
     blocks: ['RECURRING_ACCOUNTING_TAX'],
     coverageItemIds: ['payroll-prolabore-engine'],
     includedServices: [
@@ -78,8 +97,13 @@ export const ACCOUNTING_OFFERINGS: Omit<
   {
     id: 'bcost-issue',
     name: 'bCost Issue',
-    headline: 'Emissão fiscal e documentos eletrônicos com cobertura municipal/SEFAZ.',
-    targetCustomers: ['Prestadores de serviços', 'Comércio em integração', 'Empresas com NFS-e recorrente'],
+    headline:
+      'Emissão fiscal e documentos eletrônicos com cobertura municipal/SEFAZ.',
+    targetCustomers: [
+      'Prestadores de serviços',
+      'Comércio em integração',
+      'Empresas com NFS-e recorrente',
+    ],
     blocks: ['FINTECH_VALUE_ADDED'],
     coverageItemIds: ['universal-nfse-issuer'],
     includedServices: [
@@ -97,8 +121,13 @@ export const ACCOUNTING_OFFERINGS: Omit<
   {
     id: 'bcost-fintech',
     name: 'bCost Fintech',
-    headline: 'Conta PJ, Open Finance e conciliação como extensão da contabilidade.',
-    targetCustomers: ['Empresas com alto volume bancário', 'Prestadores recorrentes', 'Operações multi-conta'],
+    headline:
+      'Conta PJ, Open Finance e conciliação como extensão da contabilidade.',
+    targetCustomers: [
+      'Empresas com alto volume bancário',
+      'Prestadores recorrentes',
+      'Operações multi-conta',
+    ],
     blocks: ['FINTECH_VALUE_ADDED'],
     coverageItemIds: ['embedded-pj-account'],
     includedServices: [
@@ -116,8 +145,13 @@ export const ACCOUNTING_OFFERINGS: Omit<
   {
     id: 'bcost-office',
     name: 'bCost Office',
-    headline: 'Endereço fiscal e escritório virtual com elegibilidade municipal.',
-    targetCustomers: ['Prestadores de serviços', 'Empresas remotas', 'Profissionais liberais'],
+    headline:
+      'Endereço fiscal e escritório virtual com elegibilidade municipal.',
+    targetCustomers: [
+      'Prestadores de serviços',
+      'Empresas remotas',
+      'Profissionais liberais',
+    ],
     blocks: ['FINTECH_VALUE_ADDED', 'ONBOARDING_LEGALIZATION'],
     coverageItemIds: ['virtual-office-fiscal-address'],
     includedServices: [

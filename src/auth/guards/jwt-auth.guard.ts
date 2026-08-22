@@ -36,9 +36,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const authorizationValue = Array.isArray(authHeader)
       ? authHeader[0]
       : authHeader;
-    const normalizedAuthToken = typeof authorizationValue === 'string'
-      ? authorizationValue.trim()
-      : '';
+    const normalizedAuthToken =
+      typeof authorizationValue === 'string' ? authorizationValue.trim() : '';
     const demoTokenCandidates = [
       normalizedAuthToken,
       normalizedAuthToken.replace(/^Bearer\s+/i, ''),
@@ -49,11 +48,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       ? demoHeader[0]
       : demoHeader;
     const isLocalDemoRequest =
-      (process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEMO_SESSION === 'true') &&
-      (demoTokenCandidates.some((candidate) =>
-        typeof candidate === 'string' &&
-        candidate.toLowerCase().includes('demo') &&
-        candidate.toLowerCase().includes('local')) ||
+      (process.env.NODE_ENV !== 'production' ||
+        process.env.ALLOW_DEMO_SESSION === 'true') &&
+      (demoTokenCandidates.some(
+        (candidate) =>
+          typeof candidate === 'string' &&
+          candidate.toLowerCase().includes('demo') &&
+          candidate.toLowerCase().includes('local'),
+      ) ||
         demoSessionHeader === 'true' ||
         demoSessionHeader === '1');
 

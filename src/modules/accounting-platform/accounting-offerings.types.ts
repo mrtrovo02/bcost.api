@@ -9,12 +9,21 @@ export type AccountingOfferingMarketStatus =
   | 'WAITLIST_ONLY'
   | 'INTERNAL_ROADMAP';
 
-export type AccountingOfferingActivationStatus = 'READY' | 'REQUIRES_SETUP' | 'BLOCKED';
+export type AccountingOfferingActivationStatus =
+  | 'READY'
+  | 'REQUIRES_SETUP'
+  | 'BLOCKED';
 
 export type AccountingOfferingActivationRequirement = {
   code: OperationalCapability;
   label: string;
-  owner: 'PRODUCT' | 'BACKOFFICE' | 'CRC' | 'GOVERNMENT_INTEGRATIONS' | 'FINTECH_PARTNERS' | 'GOVERNANCE';
+  owner:
+    | 'PRODUCT'
+    | 'BACKOFFICE'
+    | 'CRC'
+    | 'GOVERNMENT_INTEGRATIONS'
+    | 'FINTECH_PARTNERS'
+    | 'GOVERNANCE';
   status: AccountingOfferingActivationStatus;
   evidenceRequired: string[];
 };

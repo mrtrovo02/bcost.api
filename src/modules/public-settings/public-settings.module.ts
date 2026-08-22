@@ -8,7 +8,10 @@ import {
 import { PublicSettingsService } from './public-settings.service.js';
 
 @Module({
-  controllers: [PublicSettingsController, PublicSettingsCompatibilityController],
+  controllers: [
+    PublicSettingsController,
+    PublicSettingsCompatibilityController,
+  ],
   providers: [PublicSettingsService],
 })
 export class PublicSettingsModule {}

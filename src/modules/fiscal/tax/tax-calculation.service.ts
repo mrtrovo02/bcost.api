@@ -35,7 +35,10 @@ export interface TaxCalculationResult {
 
 export type MonthlyTaxPreviewGateStatus = 'PASS' | 'WARN' | 'FAIL';
 
-export type MonthlyTaxPreviewStatus = 'READY_TO_CLOSE' | 'REQUIRES_ACTION' | 'BLOCKED';
+export type MonthlyTaxPreviewStatus =
+  | 'READY_TO_CLOSE'
+  | 'REQUIRES_ACTION'
+  | 'BLOCKED';
 
 export type MonthlyTaxEvidenceStatus = 'READY' | 'PENDING' | 'MISSING';
 

@@ -1,6 +1,12 @@
 'use strict';
 
-import { IsOptional, IsString, IsUrl, MaxLength, MinLength } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsUrl,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class RegisterTaxEvidenceDto {
   @IsString()

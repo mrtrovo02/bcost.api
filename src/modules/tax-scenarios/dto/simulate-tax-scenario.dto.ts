@@ -16,7 +16,15 @@ export class SimulateTaxScenarioDto {
   @IsString()
   companyId?: string;
 
-  @IsIn(['SERVICE_PROVIDER', 'HEALTHCARE', 'LEGAL', 'TECHNOLOGY', 'CREATOR', 'CONSULTING', 'OTHER'])
+  @IsIn([
+    'SERVICE_PROVIDER',
+    'HEALTHCARE',
+    'LEGAL',
+    'TECHNOLOGY',
+    'CREATOR',
+    'CONSULTING',
+    'OTHER',
+  ])
   activity:
     | 'SERVICE_PROVIDER'
     | 'HEALTHCARE'

@@ -22,15 +22,24 @@ export class TaxScenariosService {
     const annualExpenses = this.money(input.monthlyDeductibleExpenses * 12);
     const annualPayroll = this.money(input.monthlyPayroll * 12);
     const factorRPercentage =
-      annualRevenue > 0 ? this.round((annualPayroll / annualRevenue) * 100, 2) : 0;
+      annualRevenue > 0
+        ? this.round((annualPayroll / annualRevenue) * 100, 2)
+        : 0;
 
     const comparisons = [
       this.calculatePf(input, annualRevenue, annualExpenses),
       this.calculateMei(annualRevenue),
-      this.calculateSimples(input, annualRevenue, annualPayroll, factorRPercentage),
+      this.calculateSimples(
+        input,
+        annualRevenue,
+        annualPayroll,
+        factorRPercentage,
+      ),
       this.calculateLucroPresumido(input, annualRevenue),
     ];
-    const viableComparisons = comparisons.filter((item) => item.estimatedTax >= 0);
+    const viableComparisons = comparisons.filter(
+      (item) => item.estimatedTax >= 0,
+    );
     const best = [...viableComparisons].sort(
       (a, b) => b.netAnnualResult - a.netAnnualResult,
     )[0];
@@ -53,13 +62,21 @@ export class TaxScenariosService {
           code: 'SIMULATION_NOT_OFFICIAL_TAX_ASSESSMENT',
           description:
             'Resultado estimativo para triagem comercial e planejamento assistido; não substitui escrituração, apuração oficial ou parecer técnico.',
-          sourceBasis: ['EC 132/2023', 'LC 214/2025', 'RIR/2018', 'Lei Complementar 123/2006'],
+          sourceBasis: [
+            'EC 132/2023',
+            'LC 214/2025',
+            'RIR/2018',
+            'Lei Complementar 123/2006',
+          ],
         },
         {
           code: 'CBS_IBS_2026_CALIBRATION',
           description:
             'CBS/IBS em 2026 tratados como destaque informativo e calibração operacional, sem premissa de recolhimento definitivo.',
-          sourceBasis: ['LC 214/2025', 'Notas Técnicas NF-e/NFC-e RTC 2025/2026'],
+          sourceBasis: [
+            'LC 214/2025',
+            'Notas Técnicas NF-e/NFC-e RTC 2025/2026',
+          ],
         },
       ],
       comparisons,
@@ -75,8 +92,7 @@ export class TaxScenariosService {
         ibsInformativeRate: IBS_INFORMATIVE_2026,
         estimatedCbs: this.money(reformBase * CBS_INFORMATIVE_2026),
         estimatedIbs: this.money(reformBase * IBS_INFORMATIVE_2026),
-        note:
-          'Valores de CBS/IBS são informativos para 2026 e devem ser revisados conforme ato técnico, município, atividade e documento fiscal.',
+        note: 'Valores de CBS/IBS são informativos para 2026 e devem ser revisados conforme ato técnico, município, atividade e documento fiscal.',
       },
       recommendation,
       guardrails: [
@@ -101,7 +117,10 @@ export class TaxScenariosService {
     annualExpenses: number,
   ): TaxScenarioCalculation {
     const dependentDeduction = input.dependents * 2_275.08;
-    const taxableBase = Math.max(0, annualRevenue - annualExpenses - dependentDeduction);
+    const taxableBase = Math.max(
+      0,
+      annualRevenue - annualExpenses - dependentDeduction,
+    );
     const estimatedTax = this.money(this.progressiveIrpf(taxableBase));
 
     return this.buildCalculation({
@@ -113,7 +132,9 @@ export class TaxScenariosService {
       estimatedTax,
       warnings:
         annualRevenue > 120_000
-          ? ['Receita anual elevada para PF: avaliar retenções, livro caixa e estrutura PJ.']
+          ? [
+              'Receita anual elevada para PF: avaliar retenções, livro caixa e estrutura PJ.',
+            ]
           : [],
       components: [
         {
@@ -138,14 +159,17 @@ export class TaxScenariosService {
       taxableBase: annualRevenue,
       estimatedTax,
       warnings: overLimit
-        ? ['Faturamento informado supera o limite anual usual do MEI; exige avaliação de desenquadramento.']
+        ? [
+            'Faturamento informado supera o limite anual usual do MEI; exige avaliação de desenquadramento.',
+          ]
         : ['MEI depende de atividade permitida e demais limites legais.'],
       components: [
         {
           code: 'MEI_FIXED_MONTHLY_DAS_ESTIMATE',
           label: 'DAS mensal fixo estimado',
           amount: Math.max(0, estimatedTax),
-          basis: 'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
+          basis:
+            'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
         },
       ],
     });
@@ -157,9 +181,12 @@ export class TaxScenariosService {
     annualPayroll: number,
     factorRPercentage: number,
   ): TaxScenarioCalculation {
-    const serviceActivity = ['LEGAL', 'TECHNOLOGY', 'CONSULTING', 'SERVICE_PROVIDER'].includes(
-      input.activity,
-    );
+    const serviceActivity = [
+      'LEGAL',
+      'TECHNOLOGY',
+      'CONSULTING',
+      'SERVICE_PROVIDER',
+    ].includes(input.activity);
     const nominalRate = serviceActivity
       ? factorRPercentage >= FACTOR_R_THRESHOLD
         ? 0.06
@@ -177,12 +204,17 @@ export class TaxScenariosService {
       warnings: [
         'Alíquota efetiva do Simples depende de RBT12, anexo, parcela a deduzir, CNAE e segregação de receitas.',
         ...(serviceActivity && factorRPercentage < FACTOR_R_THRESHOLD
-          ? ['Fator R abaixo de 28% pode deslocar serviços para carga maior; revisar pró-labore/folha.']
+          ? [
+              'Fator R abaixo de 28% pode deslocar serviços para carga maior; revisar pró-labore/folha.',
+            ]
           : []),
       ],
       components: [
         {
-          code: factorRPercentage >= FACTOR_R_THRESHOLD ? 'SIMPLES_FACTOR_R_REVIEW' : 'SIMPLES_SERVICE_ESTIMATE',
+          code:
+            factorRPercentage >= FACTOR_R_THRESHOLD
+              ? 'SIMPLES_FACTOR_R_REVIEW'
+              : 'SIMPLES_SERVICE_ESTIMATE',
           label:
             factorRPercentage >= FACTOR_R_THRESHOLD
               ? 'Simples estimado com revisão de Fator R'
@@ -263,8 +295,16 @@ export class TaxScenariosService {
           `Fator R estimado em ${factorRPercentage}%, abaixo do limiar de 28%.`,
           'A composição entre receita, folha e pró-labore pode alterar o anexo aplicável.',
         ],
-        requiredEvidence: ['Folha dos últimos 12 meses', 'Pró-labore dos sócios', 'Receita bruta RBT12'],
-        nextActions: ['Validar CNAE', 'Simular pró-labore assistido', 'Submeter revisão CRC'],
+        requiredEvidence: [
+          'Folha dos últimos 12 meses',
+          'Pró-labore dos sócios',
+          'Receita bruta RBT12',
+        ],
+        nextActions: [
+          'Validar CNAE',
+          'Simular pró-labore assistido',
+          'Submeter revisão CRC',
+        ],
       };
     }
 
@@ -278,8 +318,16 @@ export class TaxScenariosService {
             ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
             : 'A comparação indica necessidade de detalhamento antes de decisão.',
         ],
-        requiredEvidence: ['CNAE pretendido', 'Município de prestação', 'Notas/recibos recentes'],
-        nextActions: ['Rodar onboarding de abertura/migração', 'Validar regime tributário', 'Gerar proposta assistida'],
+        requiredEvidence: [
+          'CNAE pretendido',
+          'Município de prestação',
+          'Notas/recibos recentes',
+        ],
+        nextActions: [
+          'Rodar onboarding de abertura/migração',
+          'Validar regime tributário',
+          'Gerar proposta assistida',
+        ],
       };
     }
 
@@ -290,13 +338,24 @@ export class TaxScenariosService {
         'O cenário não deve ser convertido automaticamente em decisão operacional.',
         'A estrutura ideal depende de atividade, município, deduções, retenções e obrigações acessórias.',
       ],
-      requiredEvidence: ['Receitas por fonte', 'Despesas dedutíveis', 'Dependentes e retenções'],
-      nextActions: ['Solicitar documentos', 'Validar base legal', 'Emitir parecer contábil'],
+      requiredEvidence: [
+        'Receitas por fonte',
+        'Despesas dedutíveis',
+        'Dependentes e retenções',
+      ],
+      nextActions: [
+        'Solicitar documentos',
+        'Validar base legal',
+        'Emitir parecer contábil',
+      ],
     };
   }
 
   private buildCalculation(
-    input: Omit<TaxScenarioCalculation, 'estimatedEffectiveRate' | 'netAnnualResult' | 'monthlyNetResult'>,
+    input: Omit<
+      TaxScenarioCalculation,
+      'estimatedEffectiveRate' | 'netAnnualResult' | 'monthlyNetResult'
+    >,
   ): TaxScenarioCalculation {
     const estimatedEffectiveRate =
       input.annualRevenue > 0 && input.estimatedTax >= 0
@@ -304,7 +363,11 @@ export class TaxScenariosService {
         : 0;
     const netAnnualResult =
       input.estimatedTax >= 0
-        ? this.money(input.annualRevenue - input.annualDeductibleExpenses - input.estimatedTax)
+        ? this.money(
+            input.annualRevenue -
+              input.annualDeductibleExpenses -
+              input.estimatedTax,
+          )
         : 0;
 
     return {

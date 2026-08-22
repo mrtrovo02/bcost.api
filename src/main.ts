@@ -380,43 +380,60 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     }
 
     // Rotas Nativas do Fastify para Health/Liveness/Readiness/Metrics
-    fastifyInstance.get(
-      '/health',
-      async (_request: FastifyRequest, reply: FastifyReply) => {
-        const dbStatus = await prismaService.isHealthy().catch(() => false);
+    const buildHealthPayload = async () => {
+      const dbStatus = await prismaService.isHealthy().catch(() => false);
+      return {
+        status: dbStatus ? 'UP' : 'DOWN',
+        timestamp: new Date().toISOString(),
+      };
+    };
 
-        return reply.status(dbStatus ? 200 : 503).send({
-          status: dbStatus ? 'UP' : 'DOWN',
-          timestamp: new Date().toISOString(),
-        });
-      },
-    );
+    const healthRouteHandler = async (
+      _request: FastifyRequest,
+      reply: FastifyReply,
+    ) => {
+      const payload = await buildHealthPayload();
+      const dbStatus = payload.status === 'UP';
+      return reply.status(dbStatus ? 200 : 503).send(payload);
+    };
 
-    fastifyInstance.get(
-      '/live',
-      async (_request: FastifyRequest, reply: FastifyReply) =>
-        reply.status(200).send({
-          status: 'alive',
-          service: 'bcost-api',
-          uptimeSeconds: Math.floor(process.uptime()),
-          timestamp: new Date().toISOString(),
-        }),
-    );
+    const liveRouteHandler = async (
+      _request: FastifyRequest,
+      reply: FastifyReply,
+    ) =>
+      reply.status(200).send({
+        status: 'alive',
+        service: 'bcost-api',
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+      });
 
-    fastifyInstance.get(
-      '/ready',
-      async (_request: FastifyRequest, reply: FastifyReply) => {
-        const readiness = await healthService.getReadiness().catch((error) => ({
-          status: 'not_ready' as const,
-          error: error instanceof Error ? error.message : String(error),
-          timestamp: new Date().toISOString(),
-        }));
+    const readyRouteHandler = async (
+      _request: FastifyRequest,
+      reply: FastifyReply,
+    ) => {
+      const readiness = await healthService.getReadiness().catch((error) => ({
+        status: 'not_ready' as const,
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString(),
+      }));
 
-        return reply
-          .status(readiness.status === 'ready' ? 200 : 503)
-          .send(readiness);
-      },
-    );
+      return reply
+        .status(readiness.status === 'ready' ? 200 : 503)
+        .send(readiness);
+    };
+
+    fastifyInstance.get('/health', healthRouteHandler);
+    fastifyInstance.get('/api/health', healthRouteHandler);
+    fastifyInstance.get('/api/v1/health', healthRouteHandler);
+
+    fastifyInstance.get('/live', liveRouteHandler);
+    fastifyInstance.get('/api/live', liveRouteHandler);
+    fastifyInstance.get('/api/v1/live', liveRouteHandler);
+
+    fastifyInstance.get('/ready', readyRouteHandler);
+    fastifyInstance.get('/api/ready', readyRouteHandler);
+    fastifyInstance.get('/api/v1/ready', readyRouteHandler);
 
     fastifyInstance.get(
       '/metrics',

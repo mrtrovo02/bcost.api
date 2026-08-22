@@ -48,7 +48,11 @@ export type OperationalCapabilityCategory =
   | 'FINTECH'
   | 'AUDIT';
 
-export type OperationalCapabilityCriticality = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type OperationalCapabilityCriticality =
+  | 'LOW'
+  | 'MEDIUM'
+  | 'HIGH'
+  | 'CRITICAL';
 
 export type OperationalCapabilityDefinition = {
   code: OperationalCapability;

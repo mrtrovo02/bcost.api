@@ -2,7 +2,11 @@
 
 import { SimulateTaxScenarioDto } from './dto/simulate-tax-scenario.dto.js';
 
-export type TaxScenarioModel = 'PF' | 'MEI' | 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO';
+export type TaxScenarioModel =
+  | 'PF'
+  | 'MEI'
+  | 'SIMPLES_NACIONAL'
+  | 'LUCRO_PRESUMIDO';
 
 export type TaxScenarioCalculation = {
   model: TaxScenarioModel;
