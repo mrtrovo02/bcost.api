@@ -31,6 +31,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     const request = context.switchToHttp().getRequest<{
       headers?: Record<string, string | string[] | undefined>;
+      user?: {
+        id: string;
+        email: string;
+        companyId?: string | null;
+        activeCompanyId?: string | null;
+        role?: string | null;
+      };
     }>();
     const authHeader = request?.headers?.authorization;
     const authorizationValue = Array.isArray(authHeader)
