@@ -35,7 +35,7 @@ export class EnterpriseModulesController {
   summary(
     @Param('slug') slug: string,
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Query() query: EnterpriseModuleQueryDto,
+    @Query() query?: EnterpriseModuleQueryDto,
   ) {
     return this.service.summary(slug, companyId, query);
   }
@@ -58,7 +58,7 @@ export class EnterpriseModulesController {
   list(
     @Param('slug') slug: string,
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Query() query: EnterpriseModuleQueryDto,
+    @Query() query?: EnterpriseModuleQueryDto,
   ) {
     return this.service.list(slug, companyId, query);
   }
