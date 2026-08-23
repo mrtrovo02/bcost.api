@@ -11,6 +11,22 @@ import { Observable, tap } from 'rxjs';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { contextStorage } from '../context/context.storage.js';
+import { AuditEventPayload, AuditJsonObject } from '../audit/audit.types.js';
+
+type LoggedUser = {
+  id?: string;
+  sub?: string;
+  companyId?: string | null;
+  activeCompanyId?: string | null;
+  role?: string | null;
+};
+
+type HttpErrorLike = {
+  status?: number;
+  statusCode?: number;
+  message?: string;
+  stack?: string;
+};
 
 function redactSensitiveHeaders(headers: Record<string, unknown> = {}) {
   const sensitive = new Set([
@@ -36,12 +52,12 @@ export class LoggingInterceptor implements NestInterceptor {
 
   constructor(private readonly eventEmitter: EventEmitter2) {}
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const startedAt = Date.now();
 
     const http = context.switchToHttp();
     const request = http.getRequest<
-      FastifyRequest & { user?: any; companyId?: string }
+      FastifyRequest & { user?: LoggedUser; companyId?: string }
     >();
     const reply = http.getResponse<FastifyReply>();
 
@@ -101,7 +117,7 @@ export class LoggingInterceptor implements NestInterceptor {
           }
         },
 
-        error: (error) => {
+        error: (error: HttpErrorLike) => {
           const responseTime = Date.now() - startedAt;
           const statusCode = error?.status || error?.statusCode || 500;
 
@@ -129,7 +145,7 @@ export class LoggingInterceptor implements NestInterceptor {
     );
   }
 
-  private emitAudit(payload: Record<string, any>): void {
+  private emitAudit(payload: AuditEventPayload): void {
     try {
       this.eventEmitter.emit('audit.log', payload);
     } catch (error: unknown) {
@@ -146,16 +162,37 @@ export class LoggingInterceptor implements NestInterceptor {
     return (parts.find((part) => !ignored.has(part)) || 'system').toUpperCase();
   }
 
-  private sanitizeHeaders(headers: Record<string, any>): Record<string, any> {
+  private sanitizeHeaders(headers: Record<string, unknown>): AuditJsonObject {
     const blocked = ['authorization', 'cookie', 'set-cookie'];
-    const sanitized: Record<string, any> = {};
+    const sanitized: AuditJsonObject = {};
 
     for (const key in headers) {
       sanitized[key] = blocked.includes(key.toLowerCase())
         ? '[REDACTED]'
-        : headers[key];
+        : this.toAuditJsonValue(headers[key]);
     }
 
     return sanitized;
+  }
+
+  private toAuditJsonValue(value: unknown): AuditJsonObject[string] {
+    if (
+      value === null ||
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toAuditJsonValue(item));
+    }
+
+    if (typeof value === 'object') {
+      return '[OBJECT]';
+    }
+
+    return String(value);
   }
 }

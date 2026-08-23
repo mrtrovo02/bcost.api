@@ -8,11 +8,25 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 
+type HttpExceptionResponseBody = {
+  message?: string | string[] | object;
+  error?: string;
+};
+
+type ApiErrorResponseBody = {
+  statusCode: number;
+  timestamp: string;
+  path: string;
+  error: string;
+  message?: string | string[] | object;
+  stack?: string;
+};
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(HttpExceptionFilter.name);
 
-  catch(exception: unknown, host: ArgumentsHost) {
+  catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
@@ -29,8 +43,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = exceptionResponse;
         error = exceptionResponse;
       } else {
-        message = (exceptionResponse as any).message || exceptionResponse;
-        error = (exceptionResponse as any).error || 'HttpException';
+        const typedExceptionResponse =
+          exceptionResponse as HttpExceptionResponseBody;
+        message = typedExceptionResponse.message || typedExceptionResponse;
+        error = typedExceptionResponse.error || 'HttpException';
       }
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
@@ -46,7 +62,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     // Em produção, não envie detalhes sensíveis
     const isProduction = process.env.NODE_ENV === 'production';
-    const responseBody: any = {
+    const responseBody: ApiErrorResponseBody = {
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,

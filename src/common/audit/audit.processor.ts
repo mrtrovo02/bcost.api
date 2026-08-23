@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AUDIT_QUEUE } from './audit.constants.js';
+import { AuditEventPayload } from './audit.types.js';
 
 @Processor(AUDIT_QUEUE)
 export class AuditProcessor extends WorkerHost {
@@ -12,7 +13,9 @@ export class AuditProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(
+    job: Job<AuditEventPayload, void, string>,
+  ): Promise<void> {
     try {
       const { data } = job;
 

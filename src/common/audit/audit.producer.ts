@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { AUDIT_QUEUE, AUDIT_JOB_PERSIST } from './audit.constants.js';
+import { AuditEventPayload } from './audit.types.js';
 
 @Injectable()
 export class AuditProducer {
@@ -9,7 +10,7 @@ export class AuditProducer {
 
   constructor(@InjectQueue(AUDIT_QUEUE) private readonly auditQueue: Queue) {}
 
-  async dispatch(data: any) {
+  async dispatch(data: AuditEventPayload): Promise<void> {
     try {
       // Adiciona ao Redis em milissegundos, liberando o controller
       await this.auditQueue.add(AUDIT_JOB_PERSIST, data, {

@@ -4,11 +4,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma.service.js';
 import { contextStorage } from '../context/context.storage.js';
+import { AuditJsonObject } from '../audit/audit.types.js';
 
 interface AuditPayload {
   action?: string;
   module?: string;
-  payload?: any;
+  payload?: AuditJsonObject;
   statusCode?: number;
   ipAddress?: string;
   userAgent?: string;
@@ -66,7 +67,7 @@ export class AuditLogListener {
   /**
    * 🔐 Evita crash com JSON inválido ou circular
    */
-  private safeJson(payload: any): any {
+  private safeJson(payload: AuditJsonObject | undefined): AuditJsonObject {
     try {
       if (!payload) return {};
 
@@ -78,7 +79,7 @@ export class AuditLogListener {
         return { truncated: true };
       }
 
-      return JSON.parse(stringified);
+      return JSON.parse(stringified) as AuditJsonObject;
     } catch {
       return { invalid: true };
     }

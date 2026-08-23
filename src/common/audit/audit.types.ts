@@ -1,9 +1,19 @@
+export type AuditJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | AuditJsonValue[]
+  | { [key: string]: AuditJsonValue };
+
+export type AuditJsonObject = { [key: string]: AuditJsonValue };
+
 export interface AuditEventPayload {
   action: string;
   module: string;
   entity?: string | null;
   entityId?: string | null;
-  payload?: Record<string, any>;
+  payload?: AuditJsonObject;
   statusCode?: number | null;
   responseTime?: number | null;
   ipAddress?: string | null;
