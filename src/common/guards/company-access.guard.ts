@@ -103,6 +103,7 @@ export class CompanyAccessGuard implements CanActivate {
       this.toCompanyId(request.query?.company_id),
       this.toCompanyId(request.query?.companyId),
       this.toCompanyId(request.body?.companyId),
+      this.toCompanyId(request.body?.company_id),
       this.toCompanyId(this.getHeader(redactedHeaders, 'x-company-id')),
     ].filter((value): value is string => Boolean(value));
   }

@@ -117,11 +117,49 @@ describe('CompanyAccessGuard', () => {
     expect(user.role).toBe('ACCOUNTANT');
   });
 
+  it('aceita company_id no body quando pertence ao usuario', () => {
+    const user = {
+      companyId: 'company-active',
+      companyIds: ['company-active', 'company-body'],
+      rolesByCompany: {
+        'company-body': 'ACCOUNTANT',
+      },
+      role: 'OWNER',
+    };
+
+    const context = createContext({
+      body: {
+        company_id: 'company-body',
+      },
+      user,
+    });
+
+    expect(guard.canActivate(context)).toBe(true);
+    expect(user.companyId).toBe('company-body');
+    expect(user.role).toBe('ACCOUNTANT');
+  });
+
   it('bloqueia companyId conflitante entre rota e body', () => {
     const context = createContext({
       companyId: 'company-active',
       body: {
         companyId: 'company-other',
+      },
+      user: {
+        companyId: 'company-active',
+        companyIds: ['company-active', 'company-other'],
+        role: 'OWNER',
+      },
+    });
+
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+  });
+
+  it('bloqueia companyId conflitante entre body camelCase e snake_case', () => {
+    const context = createContext({
+      body: {
+        companyId: 'company-active',
+        company_id: 'company-other',
       },
       user: {
         companyId: 'company-active',
