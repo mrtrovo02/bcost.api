@@ -14,6 +14,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateFiscalObligationDto } from './dto/create-fiscal-obligation.dto.js';
 import { CreateTaxObligationDto } from './dto/create-tax-obligation.dto.js';
 import { QueryObligationsDto } from './dto/query-obligations.dto.js';
@@ -23,7 +25,7 @@ import { UpdateFiscalObligationDto } from './dto/update-fiscal-obligation.dto.js
 import { UpdateTaxObligationDto } from './dto/update-tax-obligation.dto.js';
 import { ObligationsEnterpriseService } from './obligations-enterprise.service.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('obligations/enterprise')
 export class ObligationsEnterpriseController {
   constructor(private readonly service: ObligationsEnterpriseService) {}

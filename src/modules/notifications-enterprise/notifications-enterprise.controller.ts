@@ -13,6 +13,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateNotificationEnterpriseDto } from './dto/create-notification-enterprise.dto.js';
 import { CreateWebhookEnterpriseDto } from './dto/create-webhook-enterprise.dto.js';
 import { DispatchWebhookEventDto } from './dto/dispatch-webhook-event.dto.js';
@@ -21,7 +23,7 @@ import { UpdateNotificationEnterpriseDto } from './dto/update-notification-enter
 import { UpdateWebhookEnterpriseDto } from './dto/update-webhook-enterprise.dto.js';
 import { NotificationsEnterpriseService } from './notifications-enterprise.service.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller()
 export class NotificationsEnterpriseController {
   constructor(private readonly service: NotificationsEnterpriseService) {}

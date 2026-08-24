@@ -10,10 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AuditIntelligenceQueryDto } from './dto/audit-intelligence-query.dto.js';
 import { AuditIntelligenceEnterpriseService } from './audit-intelligence-enterprise.service.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('audit/intelligence')
 export class AuditIntelligenceEnterpriseController {
   constructor(private readonly service: AuditIntelligenceEnterpriseService) {}

@@ -12,12 +12,14 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AutomationJobsEnterpriseService } from './automation-jobs-enterprise.service.js';
 import { AutomationJobsQueryDto } from './dto/automation-jobs-query.dto.js';
 
 @ApiTags('Automation Jobs Enterprise')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('automation/jobs')
 export class AutomationJobsEnterpriseController {
   constructor(private readonly service: AutomationJobsEnterpriseService) {}

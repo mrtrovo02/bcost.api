@@ -12,10 +12,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { BillingEntitlementsService } from './billing-entitlements.service.js';
 import { UpdateCompanyPlanDto } from './dto/update-company-plan.dto.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('billing')
 export class BillingEntitlementsController {
   constructor(

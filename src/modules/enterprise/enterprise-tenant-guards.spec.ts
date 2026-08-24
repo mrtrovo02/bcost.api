@@ -3,8 +3,16 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AccountingEnterpriseController } from '../accounting/accounting-enterprise.controller.js';
+import { AuditIntelligenceEnterpriseController } from '../audit-intelligence-enterprise/audit-intelligence-enterprise.controller.js';
+import { AutomationJobsEnterpriseController } from '../automation/automation-jobs-enterprise.controller.js';
 import { BankingEnterpriseController } from '../banking-enterprise/banking-enterprise.controller.js';
+import { BillingEntitlementsController } from '../billing/billing-entitlements.controller.js';
+import { CommandCenterEnterpriseController } from '../command-center-enterprise/command-center-enterprise.controller.js';
 import { ComplianceEnterpriseController } from '../compliance-enterprise/compliance-enterprise.controller.js';
+import { DigitalCertificatesEnterpriseController } from '../digital-certificates/digital-certificates-enterprise.controller.js';
+import { FinanceOperationsEnterpriseController } from '../finance-operations-enterprise/finance-operations-enterprise.controller.js';
+import { NotificationsEnterpriseController } from '../notifications-enterprise/notifications-enterprise.controller.js';
+import { ObligationsEnterpriseController } from '../obligations/obligations-enterprise.controller.js';
 import { PayrollEnterpriseController } from '../payroll-enterprise/payroll-enterprise.controller.js';
 
 const TENANT_GUARD_CHAIN = [
@@ -15,8 +23,16 @@ const TENANT_GUARD_CHAIN = [
 
 const COMPANY_SCOPED_ENTERPRISE_CONTROLLERS = [
   AccountingEnterpriseController,
+  AuditIntelligenceEnterpriseController,
+  AutomationJobsEnterpriseController,
   BankingEnterpriseController,
+  BillingEntitlementsController,
+  CommandCenterEnterpriseController,
   ComplianceEnterpriseController,
+  DigitalCertificatesEnterpriseController,
+  FinanceOperationsEnterpriseController,
+  NotificationsEnterpriseController,
+  ObligationsEnterpriseController,
   PayrollEnterpriseController,
 ];
 

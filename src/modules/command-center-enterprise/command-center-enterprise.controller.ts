@@ -10,10 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CommandCenterQueryDto } from './dto/command-center-query.dto.js';
 import { CommandCenterEnterpriseService } from './command-center-enterprise.service.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('operations/command-center')
 export class CommandCenterEnterpriseController {
   constructor(private readonly service: CommandCenterEnterpriseService) {}

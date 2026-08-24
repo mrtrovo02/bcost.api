@@ -14,6 +14,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateDigitalCertificateDto } from './dto/create-digital-certificate.dto.js';
 import { QueryDigitalCertificatesDto } from './dto/query-digital-certificates.dto.js';
 import { UpdateDigitalCertificateDto } from './dto/update-digital-certificate.dto.js';
@@ -32,7 +34,7 @@ import { DigitalCertificatesEnterpriseService } from './digital-certificates-ent
  * Assim preservamos rotas antigas e adicionamos o fluxo enterprise
  * sem conflito no Fastify.
  */
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('digital-certificates/enterprise')
 export class DigitalCertificatesEnterpriseController {
   constructor(private readonly service: DigitalCertificatesEnterpriseService) {}

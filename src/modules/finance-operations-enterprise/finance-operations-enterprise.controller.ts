@@ -10,10 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { FinanceOperationsQueryDto } from './dto/finance-operations-query.dto.js';
 import { FinanceOperationsEnterpriseService } from './finance-operations-enterprise.service.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('finance/operations')
 export class FinanceOperationsEnterpriseController {
   constructor(private readonly service: FinanceOperationsEnterpriseService) {}
