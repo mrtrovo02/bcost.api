@@ -25,6 +25,8 @@ import { ImportService } from './import.service.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 
 /**
  * 🏦 BankingController - API de Operações Bancárias bCost
@@ -47,7 +49,7 @@ import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorat
  * - Preparar o bCost para Open Finance, OFX/CSV, conciliação automática e alertas.
  */
 @Controller('banking')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 export class BankingController {
   private readonly logger = new Logger(BankingController.name);
 

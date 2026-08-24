@@ -33,6 +33,8 @@ import {
 
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { FiscalService } from './fiscal.service.js';
 import { ComplianceService } from './compliance/compliance.service.js';
 import { DfeService } from './dfe/dfe.service.js';
@@ -86,7 +88,7 @@ function nextMonthLabel(): string {
 @ApiTags('Fiscal - Inteligência e Automação')
 @ApiBearerAuth('JWT')
 @ApiExtraModels(UploadXmlDto, CreateInvoiceDto)
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('fiscal')
 export class FiscalController {
   private readonly logger = new Logger(FiscalController.name);

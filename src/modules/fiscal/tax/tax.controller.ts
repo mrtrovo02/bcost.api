@@ -38,6 +38,8 @@ import {
 import { Type } from 'class-transformer';
 import { TaxService } from './tax.service.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.js';
 import { CbsIbsEngineService } from '../services/cbs-ibs-engine.service.js';
 import type {
   NFeIssuePurpose,
@@ -354,7 +356,7 @@ export class TaxReformResolvedSimulationDto extends TaxReformSimulationDto {
 @ApiTags('Fiscal - Tax Engine')
 @ApiBearerAuth()
 @Controller('tax')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @UsePipes(
   new ValidationPipe({
     transform: true,

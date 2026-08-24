@@ -13,6 +13,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AuditService } from './audit.service.js';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto.js';
 import { QueryAuditLogDto } from './dto/query-audit-log.dto.js';
@@ -20,7 +22,7 @@ import { AuditQueryDto } from './dto/audit-query.dto.js';
 
 @ApiTags('Audit - Auditoria Enterprise')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('audit')
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
