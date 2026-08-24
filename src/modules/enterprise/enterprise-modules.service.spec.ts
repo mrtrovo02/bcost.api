@@ -33,6 +33,33 @@ describe('EnterpriseModulesService', () => {
     });
   });
 
+  it('keeps banking products aligned with the enterprise banking canonical route', async () => {
+    const service = new EnterpriseModulesService({} as any);
+
+    const result = await service.list(
+      'banking-products',
+      '00000000-0000-0000-0000-000000000001',
+      { limit: 25 },
+    );
+
+    expect(result).toMatchObject({
+      slug: 'banking-products',
+      model: 'BankingProduct',
+      label: 'Banking e Fintech',
+      status: 'OK_ROADMAP',
+      summary: {
+        roadmap: true,
+        endpoint: '/banking/enterprise/products',
+        canonicalOwner: 'banking-enterprise',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('parceiro BaaS homologado'),
+          expect.stringContaining('empresa/tenant'),
+        ]),
+      },
+    });
+  });
+
   it('includes roadmap modules in the enterprise catalog', () => {
     const service = new EnterpriseModulesService({} as any);
 

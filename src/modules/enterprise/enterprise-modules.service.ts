@@ -583,7 +583,13 @@ export class EnterpriseModulesService {
       label: 'Banking e Fintech',
       area: 'Banking',
       priority: 'CRITICAL',
-      endpoint: '/banking/products',
+      endpoint: '/banking/enterprise/products',
+      canonicalOwner: 'banking-enterprise',
+      automationBoundary: 'ASSISTED_AUTOMATION',
+      operationalGuardrails: [
+        'Não ativar Conta PJ, PIX, boleto ou cartão sem parceiro BaaS homologado, contrato comercial e trilha de consentimento.',
+        'Toda conciliação real deve usar extrato autorizado, evidência auditável e vínculo com empresa/tenant antes de gerar lançamento contábil.',
+      ],
     },
     'consulting-services': {
       slug: 'consulting-services',
