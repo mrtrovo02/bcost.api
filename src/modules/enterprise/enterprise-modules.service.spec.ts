@@ -138,13 +138,38 @@ describe('EnterpriseModulesService', () => {
           slug: 'company-formation',
           model: 'CompanyFormation',
           persistence: 'ROADMAP',
+          endpoint: '/accounting-platform/setup/readiness',
+          canonicalOwner: 'accounting-platform',
+          automationBoundary: 'CRC_VALIDATED',
         }),
         expect.objectContaining({
           slug: 'companies',
           model: 'Company',
           persistence: 'PRISMA',
+          endpoint: '/enterprise/modules/companies/:companyId',
+          canonicalOwner: 'enterprise-modules',
+          automationBoundary: 'SOFTWARE_ONLY',
         }),
       ]),
     );
+  });
+
+  it('enriches the enterprise catalog with roadmap governance metadata', () => {
+    const service = new EnterpriseModulesService({} as any);
+    const catalog = service.listCatalog();
+    const roadmapItems = catalog.filter((item) => item.persistence === 'ROADMAP');
+
+    expect(roadmapItems.length).toBeGreaterThan(0);
+
+    for (const item of roadmapItems) {
+      expect(item.endpoint).toMatch(/^\/.+/);
+      expect(item.area).toEqual(expect.any(String));
+      expect(item.priority).toMatch(/^(CRITICAL|HIGH|MEDIUM|LOW)$/);
+      expect(item.canonicalOwner).toEqual(expect.any(String));
+      expect(item.automationBoundary).toMatch(
+        /^(SOFTWARE_ONLY|ASSISTED_AUTOMATION|CRC_VALIDATED|HUMAN_LED)$/,
+      );
+      expect(item.operationalGuardrails?.length).toBeGreaterThan(0);
+    }
   });
 });

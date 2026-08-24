@@ -41,6 +41,21 @@ type RoadmapAutomationBoundary = NonNullable<
   RoadmapModuleConfig['automationBoundary']
 >;
 
+type EnterpriseCatalogPersistence = 'PRISMA' | 'ROADMAP';
+
+type EnterpriseCatalogItem = {
+  slug: string;
+  model: string;
+  label: string;
+  persistence: EnterpriseCatalogPersistence;
+  endpoint: string;
+  area?: string;
+  priority?: RoadmapModuleConfig['priority'];
+  canonicalOwner?: string;
+  automationBoundary?: RoadmapAutomationBoundary;
+  operationalGuardrails?: string[];
+};
+
 @Injectable()
 export class EnterpriseModulesService {
   private readonly logger = new Logger(EnterpriseModulesService.name);
@@ -605,24 +620,56 @@ export class EnterpriseModulesService {
     },
   };
 
-  listCatalog() {
-    const persisted = Object.values(this.catalog).map((item) => ({
-      slug: item.slug,
-      model: item.model,
-      label: item.label,
-      persistence: 'PRISMA',
-    }));
+  listCatalog(): EnterpriseCatalogItem[] {
+    const persisted = Object.values(this.catalog).map((item) =>
+      this.buildPersistedCatalogItem(item),
+    );
 
-    const roadmap = Object.values(this.roadmapCatalog).map((item) => ({
-      slug: item.slug,
-      model: item.model,
-      label: item.label,
-      persistence: 'ROADMAP',
-    }));
+    const roadmap = Object.values(this.roadmapCatalog).map((item) =>
+      this.buildRoadmapCatalogItem(item),
+    );
 
     return [...persisted, ...roadmap].sort((a, b) =>
       a.slug.localeCompare(b.slug),
     );
+  }
+
+  private buildPersistedCatalogItem(config: ModuleConfig): EnterpriseCatalogItem {
+    return {
+      slug: config.slug,
+      model: config.model,
+      label: config.label,
+      persistence: 'PRISMA',
+      endpoint: `/enterprise/modules/${config.slug}/:companyId`,
+      canonicalOwner: 'enterprise-modules',
+      automationBoundary: 'SOFTWARE_ONLY',
+      operationalGuardrails: [
+        'Endpoint persistido exige autenticação JWT, empresa válida e filtros por companyId antes de expor dados.',
+      ],
+    };
+  }
+
+  private buildRoadmapCatalogItem(
+    config: RoadmapModuleConfig,
+  ): EnterpriseCatalogItem {
+    const automationBoundary =
+      config.automationBoundary ?? this.resolveRoadmapAutomationBoundary(config);
+
+    return {
+      slug: config.slug,
+      model: config.model,
+      label: config.label,
+      persistence: 'ROADMAP',
+      endpoint: config.endpoint,
+      area: config.area,
+      priority: config.priority,
+      canonicalOwner:
+        config.canonicalOwner ?? this.resolveRoadmapCanonicalOwner(config),
+      automationBoundary,
+      operationalGuardrails:
+        config.operationalGuardrails ??
+        this.resolveRoadmapOperationalGuardrails(config, automationBoundary),
+    };
   }
 
   private getConfig(slug: string): ModuleConfig {
