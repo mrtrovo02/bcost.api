@@ -7,6 +7,9 @@ describe('CompanyAccessGuard', () => {
 
   function createContext(input: {
     companyId?: string;
+    headers?: Record<string, unknown>;
+    query?: Record<string, unknown>;
+    body?: Record<string, unknown>;
     user?: {
       companyId?: string | null;
       activeCompanyId?: string | null;
@@ -18,10 +21,10 @@ describe('CompanyAccessGuard', () => {
     return {
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue({
-          headers: {},
+          headers: input.headers ?? {},
           params: input.companyId ? { companyId: input.companyId } : {},
-          query: {},
-          body: {},
+          query: input.query ?? {},
+          body: input.body ?? {},
           user: input.user,
         }),
       }),
@@ -72,5 +75,61 @@ describe('CompanyAccessGuard', () => {
     });
 
     expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it('aceita companyId por header de forma case-insensitive', () => {
+    const user = {
+      companyId: 'company-active',
+      companyIds: ['company-active'],
+      role: 'OWNER',
+    };
+
+    const context = createContext({
+      headers: {
+        'X-Company-Id': 'company-active',
+      },
+      user,
+    });
+
+    expect(guard.canActivate(context)).toBe(true);
+    expect(user.activeCompanyId).toBe('company-active');
+  });
+
+  it('aceita companyId por query company_id quando pertence ao usuario', () => {
+    const user = {
+      companyId: 'company-active',
+      companyIds: ['company-active', 'company-query'],
+      rolesByCompany: {
+        'company-query': 'ACCOUNTANT',
+      },
+      role: 'OWNER',
+    };
+
+    const context = createContext({
+      query: {
+        company_id: 'company-query',
+      },
+      user,
+    });
+
+    expect(guard.canActivate(context)).toBe(true);
+    expect(user.companyId).toBe('company-query');
+    expect(user.role).toBe('ACCOUNTANT');
+  });
+
+  it('bloqueia companyId conflitante entre rota e body', () => {
+    const context = createContext({
+      companyId: 'company-active',
+      body: {
+        companyId: 'company-other',
+      },
+      user: {
+        companyId: 'company-active',
+        companyIds: ['company-active', 'company-other'],
+        role: 'OWNER',
+      },
+    });
+
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
 });
