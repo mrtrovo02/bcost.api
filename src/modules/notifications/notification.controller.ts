@@ -22,6 +22,8 @@ import { NotificationService } from './notification.service.js';
 import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
 import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 
 /**
  * NotificationController: Camada de Orquestração de Alertas bCost.
@@ -30,7 +32,7 @@ import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorat
 @ApiTags('Notification')
 @ApiBearerAuth()
 @Controller('notifications')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 export class NotificationController {
   private readonly logger = new Logger(NotificationController.name);
 

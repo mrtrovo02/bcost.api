@@ -21,10 +21,12 @@ import { BusinessRulesService } from './business-rules.service.js';
 import { CreateBusinessRuleDto } from './dto/create-business-rule.dto.js';
 import { UpdateBusinessRuleDto } from './dto/update-business-rule.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 
 @ApiTags('Business Rules')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('business-rules')
 export class BusinessRulesController {
   constructor(private readonly businessRulesService: BusinessRulesService) {}

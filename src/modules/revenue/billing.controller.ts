@@ -12,11 +12,13 @@ import {
 import { ContractService } from '../contracts/contract.service.js';
 import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 
 @ApiTags('Billing')
 @ApiBearerAuth()
 @Controller('billing')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 export class BillingController {
   constructor(private readonly contractService: ContractService) {}
 

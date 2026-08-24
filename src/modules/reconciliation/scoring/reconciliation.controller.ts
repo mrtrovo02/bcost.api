@@ -33,10 +33,12 @@ import { ReconciliationQueryDto } from '../dto/reconciliation-query.dto.js';
 import { GetUser } from '../../auth/decorators/get-user.decorator.js';
 import { JwtAuthGuard } from '../../../auth/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../../common/decorators/legacy-api-alias.decorator.js';
+import { CompanyAccessGuard } from '../../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.js';
 
 @ApiTags('Reconciliation')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('reconciliation')
 export class ReconciliationController {
   constructor(

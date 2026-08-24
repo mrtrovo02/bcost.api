@@ -28,10 +28,12 @@ import { CreatePayrollDto } from './dto/create-payroll.dto.js';
 import { SyncPayrollDto } from './dto/sync-payroll.dto.js';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../../common/decorators/legacy-api-alias.decorator.js';
+import { CompanyAccessGuard } from '../../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.js';
 
 @ApiTags('Fiscal - Gestão de Folha & Fator R')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('fiscal/payroll')
 export class PayrollController {
   constructor(private readonly payrollService: PayrollService) {}

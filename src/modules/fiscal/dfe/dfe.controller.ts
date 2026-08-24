@@ -19,12 +19,14 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.js';
 import { DfeService } from './dfe.service.js';
 import { PrismaService } from '../../../database/prisma.service.js';
 
 @ApiTags('Fiscal - Inteligência e Automação DFe')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('fiscal/dfe')
 export class DfeController {
   constructor(

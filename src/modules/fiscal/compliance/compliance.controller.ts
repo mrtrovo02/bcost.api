@@ -20,6 +20,8 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../auth/guards/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../../common/decorators/legacy-api-alias.decorator.js';
+import { CompanyAccessGuard } from '../../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.js';
 import { ComplianceService, ComplianceReport } from './compliance.service.js';
 
 /**
@@ -27,7 +29,7 @@ import { ComplianceService, ComplianceReport } from './compliance.service.js';
  */
 @ApiTags('Fiscal - Auditoria & Compliance')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('fiscal/compliance')
 export class ComplianceController {
   private readonly logger = new Logger(ComplianceController.name);

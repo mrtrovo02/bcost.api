@@ -18,11 +18,13 @@ import { TaxService } from '../tax/tax.service.js';
 import { PayrollService } from '../payroll/payroll.service.js';
 import { PrismaService } from '../../../database/prisma.service.js';
 import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.js';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
 @Controller('fiscal-dashboard')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 export class DashboardController {
   constructor(
     private readonly taxService: TaxService,
