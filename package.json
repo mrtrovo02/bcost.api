@@ -31,7 +31,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "overrides": {
-    "@fastify/middie": "^9.3.3",
+    "@fastify/middie": "^8.3.3",
     "cross-spawn": "^7.0.5",
     "tar": "^7.5.22",
     "lodash": "^4.17.21",
