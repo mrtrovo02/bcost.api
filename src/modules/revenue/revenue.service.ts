@@ -611,19 +611,24 @@ export class RevenueService {
       };
     }
 
+    const payload = {
+      ...(params.payload ?? {}),
+      severity: params.severity ?? 'INFO',
+      source: params.source ?? params.module,
+      auditSchemaVersion: 'auditlog-v1-schema-first',
+      recordedAt: new Date().toISOString(),
+    };
+
     const baseData = {
       module: params.module,
       action: params.action,
       entity: params.entity,
       entityId: params.entityId ?? null,
-      severity: params.severity ?? 'INFO',
-      source: params.source ?? params.module,
       statusCode: params.statusCode ?? null,
       responseTime: null,
       ipAddress: null,
       userAgent: null,
-      metadata: params.payload ?? {},
-      payload: params.payload ?? {},
+      payload,
     };
 
     const candidates: Record<string, unknown>[] = [
@@ -649,7 +654,7 @@ export class RevenueService {
         action: params.action,
         entity: params.entity,
         entityId: params.entityId ?? null,
-        payload: params.payload ?? {},
+        payload,
       },
     ];
 

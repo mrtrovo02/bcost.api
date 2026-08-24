@@ -56,6 +56,11 @@ export class AuditService {
   }
 
   private normalize(row: any) {
+    const payload: Record<string, unknown> =
+      row.payload && typeof row.payload === 'object' ? row.payload : {};
+    const metadata: Record<string, unknown> =
+      row.metadata && typeof row.metadata === 'object' ? row.metadata : payload;
+
     return {
       id: row.id,
       companyId: row.companyId ?? row.company?.id ?? null,
@@ -64,13 +69,13 @@ export class AuditService {
       action: row.action ?? row.event ?? row.type ?? 'UNKNOWN_ACTION',
       entity: row.entity ?? row.resource ?? row.model ?? 'UNKNOWN_ENTITY',
       entityId: row.entityId ?? row.resourceId ?? null,
-      severity: row.severity ?? row.level ?? 'INFO',
-      source: row.source ?? row.module ?? 'SYSTEM',
+      severity: row.severity ?? payload.severity ?? row.level ?? 'INFO',
+      source: row.source ?? payload.source ?? row.module ?? 'SYSTEM',
       statusCode: row.statusCode ?? null,
       responseTime: row.responseTime ?? null,
       ipAddress: row.ipAddress ?? row.ip ?? null,
       userAgent: row.userAgent ?? null,
-      metadata: row.metadata ?? row.payload ?? row.details ?? {},
+      metadata,
       payload: row.payload ?? row.metadata ?? row.details ?? {},
       createdAt: row.createdAt ?? row.timestamp ?? null,
       updatedAt: row.updatedAt ?? null,
@@ -102,14 +107,6 @@ export class AuditService {
 
     if (query.userId) {
       where.userId = query.userId;
-    }
-
-    if (query.severity) {
-      where.severity = query.severity;
-    }
-
-    if (query.source) {
-      where.source = query.source;
     }
 
     const from = this.toDate(query.from, 'from');
@@ -470,9 +467,7 @@ export class AuditService {
         entity: dto.entity,
         entityId: dto.entityId ?? null,
         userId: dto.userId ?? null,
-        metadata: payload,
-        severity: dto.severity ?? 'INFO',
-        source: dto.source ?? moduleName,
+        payload,
         ipAddress: dto.ipAddress ?? null,
         userAgent: dto.userAgent ?? null,
       },
@@ -610,8 +605,6 @@ export class AuditService {
     if (query.action) andConditions.push({ action: query.action });
     if (query.entity) andConditions.push({ entity: query.entity });
     if (query.entityId) andConditions.push({ entityId: query.entityId });
-    if (query.severity) andConditions.push({ severity: query.severity });
-    if (query.source) andConditions.push({ source: query.source });
     if (query.userId) {
       andConditions.push({
         OR: [{ userId: query.userId }, { user: { id: query.userId } }],
@@ -624,7 +617,6 @@ export class AuditService {
           { action: { contains: query.search, mode: 'insensitive' } },
           { module: { contains: query.search, mode: 'insensitive' } },
           { entity: { contains: query.search, mode: 'insensitive' } },
-          { source: { contains: query.search, mode: 'insensitive' } },
         ],
       });
     }
@@ -669,7 +661,20 @@ export class AuditService {
       });
     }
 
-    const sliced = rows.slice(0, limit);
+    const normalizedRows = (this.normalizeAuditValue(rows) as unknown[]).filter(
+      (item) => {
+        if (!item || typeof item !== 'object') return false;
+
+        return this.matchesAuditQuery(
+          this.normalize(item),
+          query as QueryAuditLogDto,
+        );
+      },
+    );
+
+    const sliced = normalizedRows.slice(0, limit).map((item) =>
+      this.normalize(item),
+    );
 
     const summaryByModule: Record<string, number> = {};
     const summaryByAction: Record<string, number> = {};
@@ -685,7 +690,7 @@ export class AuditService {
     return {
       companyId,
       status: usedFallback ? 'OK_WITH_FALLBACK' : 'OK',
-      items: this.normalizeAuditValue(sliced),
+      items: sliced,
       total: offset + sliced.length,
       limit,
       offset,

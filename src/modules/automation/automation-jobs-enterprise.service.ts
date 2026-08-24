@@ -245,19 +245,24 @@ export class AutomationJobsEnterpriseService {
       };
     }
 
+    const auditPayload = {
+      ...(params.metadata || {}),
+      ...(params.payload || {}),
+      severity: params.severity || 'INFO',
+      source: params.source || 'automation-jobs-enterprise',
+      metadata: params.metadata || {},
+    };
+
     const baseData = {
       module: 'automation',
       action: params.action,
       entity: 'AutomationJob',
       entityId: params.entityId,
-      severity: params.severity || 'INFO',
-      source: params.source || 'automation-jobs-enterprise',
       statusCode: 200,
       responseTime: null,
       ipAddress: null,
       userAgent: null,
-      metadata: params.metadata || {},
-      payload: params.payload || params.metadata || {},
+      payload: auditPayload,
     };
 
     const candidates: Array<{
@@ -315,7 +320,7 @@ export class AutomationJobsEnterpriseService {
           module: 'automation',
           entity: 'AutomationJob',
           entityId: params.entityId,
-          payload: params.payload || params.metadata || {},
+          payload: auditPayload,
         },
       },
     ];
