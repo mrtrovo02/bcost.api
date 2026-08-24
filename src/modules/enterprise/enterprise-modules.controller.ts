@@ -10,12 +10,14 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { EnterpriseModuleQueryDto } from './dto/enterprise-module-query.dto.js';
 import { EnterpriseModulesService } from './enterprise-modules.service.js';
 
 @ApiTags('Enterprise Modules')
 @ApiBearerAuth('JWT')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('enterprise/modules')
 export class EnterpriseModulesController {
   constructor(private readonly service: EnterpriseModulesService) {}
