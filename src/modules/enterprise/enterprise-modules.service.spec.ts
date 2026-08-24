@@ -1,10 +1,14 @@
 'use strict';
 
 import { EnterpriseModulesService } from './enterprise-modules.service.js';
+import { PrismaService } from '../../database/prisma.service.js';
+
+const createService = (): EnterpriseModulesService =>
+  new EnterpriseModulesService({} as PrismaService);
 
 describe('EnterpriseModulesService', () => {
   it('returns roadmap payload for mapped modules without Prisma persistence yet', async () => {
-    const service = new EnterpriseModulesService({} as any);
+    const service = createService();
 
     const result = await service.list(
       'company-formation',
@@ -34,7 +38,7 @@ describe('EnterpriseModulesService', () => {
   });
 
   it('keeps banking products aligned with the enterprise banking canonical route', async () => {
-    const service = new EnterpriseModulesService({} as any);
+    const service = createService();
 
     const result = await service.list(
       'banking-products',
@@ -61,7 +65,7 @@ describe('EnterpriseModulesService', () => {
   });
 
   it('adds regulated accounting, fiscal and payroll guardrails to roadmap modules', async () => {
-    const service = new EnterpriseModulesService({} as any);
+    const service = createService();
 
     const [balanceSheet, spedFiscal, payrollLifecycle] = await Promise.all([
       service.list('balance-sheet', '00000000-0000-0000-0000-000000000001', {}),
@@ -102,12 +106,18 @@ describe('EnterpriseModulesService', () => {
   });
 
   it('keeps automation and consulting roadmap boundaries explicit', async () => {
-    const service = new EnterpriseModulesService({} as any);
+    const service = createService();
 
-    const [auditIntelligence, consulting] = await Promise.all([
-      service.list('audit-intelligence', '00000000-0000-0000-0000-000000000001', {}),
-      service.list('consulting-services', '00000000-0000-0000-0000-000000000001', {}),
-    ]);
+    const [auditIntelligence, operationalWorkflows, consulting] =
+      await Promise.all([
+        service.list('audit-intelligence', '00000000-0000-0000-0000-000000000001', {}),
+        service.list(
+          'operational-workflows',
+          '00000000-0000-0000-0000-000000000001',
+          {},
+        ),
+        service.list('consulting-services', '00000000-0000-0000-0000-000000000001', {}),
+      ]);
 
     expect(auditIntelligence).toMatchObject({
       summary: {
@@ -115,6 +125,19 @@ describe('EnterpriseModulesService', () => {
         automationBoundary: 'SOFTWARE_ONLY',
         operationalGuardrails: expect.arrayContaining([
           expect.stringContaining('não substitui aprovação humana'),
+        ]),
+      },
+    });
+    expect(operationalWorkflows).toMatchObject({
+      slug: 'operational-workflows',
+      status: 'OK_ROADMAP',
+      summary: {
+        endpoint: '/operations/workflows',
+        canonicalOwner: 'operational-workflows',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('dossiê operacional'),
+          expect.stringContaining('portal público'),
         ]),
       },
     });
@@ -129,8 +152,35 @@ describe('EnterpriseModulesService', () => {
     });
   });
 
+  it('maps tax scenarios to the universal enterprise roadmap instead of returning 404', async () => {
+    const service = createService();
+
+    const result = await service.list(
+      'tax-scenarios',
+      '00000000-0000-0000-0000-000000000001',
+      {},
+    );
+
+    expect(result).toMatchObject({
+      slug: 'tax-scenarios',
+      model: 'TaxScenarioSimulation',
+      label: 'Simulador Tributário',
+      status: 'OK_ROADMAP',
+      summary: {
+        roadmap: true,
+        endpoint: '/tax-scenarios/simulate',
+        canonicalOwner: 'tax-scenarios',
+        automationBoundary: 'ASSISTED_AUTOMATION',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('estimativas gerenciais'),
+          expect.stringContaining('Fator R'),
+        ]),
+      },
+    });
+  });
+
   it('includes roadmap modules in the enterprise catalog', () => {
-    const service = new EnterpriseModulesService({} as any);
+    const service = createService();
 
     expect(service.listCatalog()).toEqual(
       expect.arrayContaining([
@@ -155,7 +205,7 @@ describe('EnterpriseModulesService', () => {
   });
 
   it('enriches the enterprise catalog with roadmap governance metadata', () => {
-    const service = new EnterpriseModulesService({} as any);
+    const service = createService();
     const catalog = service.listCatalog();
     const roadmapItems = catalog.filter((item) => item.persistence === 'ROADMAP');
 
