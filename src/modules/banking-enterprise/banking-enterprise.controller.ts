@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AutoReconciliationEnterpriseDto } from './dto/auto-reconciliation-enterprise.dto.js';
 import { BankingEnterpriseQueryDto } from './dto/banking-enterprise-query.dto.js';
@@ -32,7 +33,7 @@ export class BankingEnterpriseController {
   @Get('summary/:companyId')
   summary(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summary(companyId, req.user);
   }
@@ -41,7 +42,7 @@ export class BankingEnterpriseController {
   listAccounts(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: BankingEnterpriseQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listAccounts(companyId, query, req.user);
   }
@@ -50,7 +51,7 @@ export class BankingEnterpriseController {
   createAccount(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateBankAccountEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createAccount(companyId, body, req.user);
   }
@@ -60,7 +61,7 @@ export class BankingEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('bankAccountId', new ParseUUIDPipe()) bankAccountId: string,
     @Body() body: UpdateBankAccountEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateAccount(companyId, bankAccountId, body, req.user);
   }
@@ -69,7 +70,7 @@ export class BankingEnterpriseController {
   deactivateAccount(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('bankAccountId', new ParseUUIDPipe()) bankAccountId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.deactivateAccount(companyId, bankAccountId, req.user);
   }
@@ -78,7 +79,7 @@ export class BankingEnterpriseController {
   listTransactions(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: BankingEnterpriseQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listTransactions(companyId, query, req.user);
   }
@@ -87,7 +88,7 @@ export class BankingEnterpriseController {
   createTransaction(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateBankTransactionEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createTransaction(companyId, body, req.user);
   }
@@ -96,7 +97,7 @@ export class BankingEnterpriseController {
   detailTransaction(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.detailTransaction(companyId, transactionId, req.user);
   }
@@ -106,7 +107,7 @@ export class BankingEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
     @Body() body: UpdateBankTransactionEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateTransaction(
       companyId,
@@ -121,7 +122,7 @@ export class BankingEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
     @Query() query: AutoReconciliationEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.candidatesForTransaction(
       companyId,
@@ -135,7 +136,7 @@ export class BankingEnterpriseController {
   manualReconcile(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: ManualReconciliationEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.manualReconcile(companyId, body, req.user);
   }
@@ -144,7 +145,7 @@ export class BankingEnterpriseController {
   autoReconcile(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: AutoReconciliationEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.autoReconcile(companyId, body, req.user);
   }
@@ -153,7 +154,7 @@ export class BankingEnterpriseController {
   undoReconciliation(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.undoReconciliation(companyId, transactionId, req.user);
   }
