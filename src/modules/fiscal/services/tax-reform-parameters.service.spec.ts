@@ -40,6 +40,16 @@ describe('TaxReformParametersService', () => {
 
     expect(result.fallbackApplied).toBe(true);
     expect(result.rates).toEqual({ CBS: 0.009, IBS: 0.001, IS: 0 });
+    expect(result.governance).toMatchObject({
+      officialRatesLoaded: false,
+      requiresOfficialTableReview: true,
+    });
+    expect(result.governance.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Alíquotas transitórias 2026 aplicadas por fallback'),
+        expect.stringContaining('Destino fiscal informado sem regra de destino vigente'),
+      ]),
+    );
   });
 
   it('prioriza alíquota específica da empresa sobre parametrização global', async () => {
@@ -73,6 +83,7 @@ describe('TaxReformParametersService', () => {
     });
 
     expect(result.rates.CBS).toBe(0.007);
+    expect(result.governance.officialRatesLoaded).toBe(true);
   });
 
   it('aplica regra de destino que desativa IBS e IS', async () => {
@@ -140,6 +151,42 @@ describe('TaxReformParametersService', () => {
     });
 
     expect(result.parameters.classification?.isZeroRate).toBe(true);
+    expect(result.parameters.governance.classificationLoaded).toBe(true);
+    expect(result.parameters.governance.requiresOfficialTableReview).toBe(true);
     expect(result.calculation.totals.grossTax).toBe(0);
+  });
+
+  it('marca revisão oficial quando CST/cClassTrib não possuem classificação vigente', async () => {
+    const { service } = createService({
+      rates: [
+        {
+          companyId: null,
+          taxType: TaxReformTaxType.CBS,
+          scope: TaxJurisdictionScope.FEDERAL,
+          jurisdictionCode: null,
+          rate: 0.009,
+          validFrom: new Date('2026-01-01T00:00:00.000Z'),
+          validTo: null,
+        },
+      ],
+    });
+
+    const result = await service.resolveParameters({
+      cstCode: '000',
+      cClassTribCode: '000001',
+      operationDate: new Date('2026-06-01T00:00:00.000Z'),
+    });
+
+    expect(result.fallbackApplied).toBe(false);
+    expect(result.governance).toMatchObject({
+      officialRatesLoaded: true,
+      classificationLoaded: false,
+      requiresOfficialTableReview: true,
+    });
+    expect(result.governance.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('CST/cClassTrib informado sem classificação oficial vigente'),
+      ]),
+    );
   });
 });

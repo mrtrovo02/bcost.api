@@ -4,7 +4,6 @@ import {
   IsOptional,
   IsString,
   Length,
-  Matches,
   IsInt,
   Min,
   Max,
@@ -12,7 +11,10 @@ import {
 import { ApiProperty } from '@nestjs/swagger';
 import { TaxRegime } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsCnpj } from '../../../common/validators/cnpj.util.js';
+import {
+  IsCnpj,
+  normalizeCnpjRegistration,
+} from '../../../common/validators/cnpj.util.js';
 
 export class CreateCompanyDto {
   @ApiProperty({
@@ -24,16 +26,14 @@ export class CreateCompanyDto {
   name: string;
 
   @ApiProperty({
-    description: 'CNPJ da empresa (apenas números, 14 dígitos)',
-    example: '12345678000190',
+    description:
+      'CNPJ da empresa com 14 posições. Aceita formato numérico atual e alfanumérico oficial.',
+    example: '12ABC34501DE35',
   })
   @IsString()
   @IsNotEmpty({ message: 'O CNPJ é obrigatório.' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.replace(/\D/g, '') : value,
-  )
-  @Length(14, 14, { message: 'O CNPJ deve ter exatamente 14 dígitos.' })
-  @Matches(/^\d+$/, { message: 'O CNPJ deve conter apenas números.' })
+  @Transform(({ value }) => normalizeCnpjRegistration(value))
+  @Length(14, 14, { message: 'O CNPJ deve ter exatamente 14 posições.' })
   @IsCnpj({ message: 'Informe um CNPJ válido.' })
   cnpj: string;
 

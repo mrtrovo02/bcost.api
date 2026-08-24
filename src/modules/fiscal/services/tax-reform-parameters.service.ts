@@ -51,6 +51,13 @@ export interface TaxReformResolvedParameters {
     IS: number;
   };
   fallbackApplied: boolean;
+  governance: {
+    officialRatesLoaded: boolean;
+    classificationLoaded: boolean;
+    destinationRuleLoaded: boolean;
+    requiresOfficialTableReview: boolean;
+    warnings: string[];
+  };
 }
 
 export interface CalculateWithResolvedParametersInput extends ResolveTaxReformParametersInput {
@@ -134,6 +141,13 @@ export class TaxReformParametersService {
     const classificationReduction = classification
       ? toNumber(classification.reductionRate)
       : 0;
+    const fallbackApplied = rateRows.length === 0;
+    const warnings = this.buildGovernanceWarnings({
+      fallbackApplied,
+      hasClassification: Boolean(classification),
+      hasDestinationRule: Boolean(destinationRule),
+      input,
+    });
 
     return {
       sourceVersion:
@@ -165,8 +179,49 @@ export class TaxReformParametersService {
           }
         : undefined,
       rates,
-      fallbackApplied: rateRows.length === 0,
+      fallbackApplied,
+      governance: {
+        officialRatesLoaded: !fallbackApplied,
+        classificationLoaded: Boolean(classification),
+        destinationRuleLoaded: Boolean(destinationRule),
+        requiresOfficialTableReview:
+          fallbackApplied || (Boolean(input.cstCode) && !classification),
+        warnings,
+      },
     };
+  }
+
+  private buildGovernanceWarnings(input: {
+    fallbackApplied: boolean;
+    hasClassification: boolean;
+    hasDestinationRule: boolean;
+    input: ResolveTaxReformParametersInput;
+  }): string[] {
+    const warnings: string[] = [];
+
+    if (input.fallbackApplied) {
+      warnings.push(
+        'Alíquotas transitórias 2026 aplicadas por fallback; carregue e versione a tabela oficial antes de emissão/apuração produtiva.',
+      );
+    }
+
+    if (
+      input.input.cstCode &&
+      input.input.cClassTribCode &&
+      !input.hasClassification
+    ) {
+      warnings.push(
+        'CST/cClassTrib informado sem classificação oficial vigente localizada.',
+      );
+    }
+
+    if (input.input.destinationStateIbge && !input.hasDestinationRule) {
+      warnings.push(
+        'Destino fiscal informado sem regra de destino vigente; valide UF/município antes de transmitir documento fiscal.',
+      );
+    }
+
+    return warnings;
   }
 
   async calculateWithResolvedParameters(
