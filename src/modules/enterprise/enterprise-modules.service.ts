@@ -37,6 +37,10 @@ type RoadmapModuleConfig = {
   operationalGuardrails?: string[];
 };
 
+type RoadmapAutomationBoundary = NonNullable<
+  RoadmapModuleConfig['automationBoundary']
+>;
+
 @Injectable()
 export class EnterpriseModulesService {
   private readonly logger = new Logger(EnterpriseModulesService.name);
@@ -648,6 +652,13 @@ export class EnterpriseModulesService {
 
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
     const offset = Math.max(Number(query.offset || 0), 0);
+    const canonicalOwner =
+      config.canonicalOwner ?? this.resolveRoadmapCanonicalOwner(config);
+    const automationBoundary =
+      config.automationBoundary ?? this.resolveRoadmapAutomationBoundary(config);
+    const operationalGuardrails =
+      config.operationalGuardrails ??
+      this.resolveRoadmapOperationalGuardrails(config, automationBoundary);
 
     return {
       slug,
@@ -668,14 +679,126 @@ export class EnterpriseModulesService {
         area: config.area,
         priority: config.priority,
         endpoint: config.endpoint,
-        canonicalOwner: config.canonicalOwner ?? 'enterprise-roadmap',
-        automationBoundary: config.automationBoundary ?? 'ASSISTED_AUTOMATION',
-        operationalGuardrails: config.operationalGuardrails ?? [],
+        canonicalOwner,
+        automationBoundary,
+        operationalGuardrails,
         nextStep:
           'Criar modelo persistente, endpoints CRUD, auditoria e regras de permissão para este módulo.',
       },
       generatedAt: new Date().toISOString(),
     };
+  }
+
+  private resolveRoadmapCanonicalOwner(config: RoadmapModuleConfig): string {
+    if (config.slug === 'finance-operations') {
+      return 'finance-operations-enterprise';
+    }
+
+    if (config.slug === 'command-center') {
+      return 'command-center-enterprise';
+    }
+
+    if (config.slug === 'audit-intelligence') {
+      return 'audit-intelligence-enterprise';
+    }
+
+    if (config.area === 'Contábil' || config.area === 'Patrimônio') {
+      return 'accounting-enterprise';
+    }
+
+    if (config.area === 'Fiscal') {
+      return 'fiscal-obligations-enterprise';
+    }
+
+    if (config.area === 'Folha') {
+      return 'payroll-enterprise';
+    }
+
+    if (config.area === 'Escritório') {
+      return config.slug === 'document-management'
+        ? 'document-management'
+        : 'accounting-platform';
+    }
+
+    if (config.area === 'Consultoria') {
+      return 'accounting-platform';
+    }
+
+    return 'enterprise-roadmap';
+  }
+
+  private resolveRoadmapAutomationBoundary(
+    config: RoadmapModuleConfig,
+  ): RoadmapAutomationBoundary {
+    if (config.slug === 'command-center' || config.slug === 'audit-intelligence') {
+      return 'SOFTWARE_ONLY';
+    }
+
+    if (
+      config.area === 'Contábil' ||
+      config.area === 'Fiscal' ||
+      config.area === 'Folha' ||
+      config.area === 'Patrimônio'
+    ) {
+      return 'CRC_VALIDATED';
+    }
+
+    if (config.area === 'Consultoria') {
+      return 'HUMAN_LED';
+    }
+
+    return 'ASSISTED_AUTOMATION';
+  }
+
+  private resolveRoadmapOperationalGuardrails(
+    config: RoadmapModuleConfig,
+    automationBoundary: RoadmapAutomationBoundary,
+  ): string[] {
+    if (config.area === 'Contábil' || config.area === 'Patrimônio') {
+      return [
+        'Não emitir demonstração contábil oficial sem escrituração fechada, evidências conciliadas e validação de contador responsável.',
+        'Toda geração de livro, balanço, DRE, razão ou ativo deve manter trilha de auditoria, competência e vínculo com a empresa/tenant.',
+      ];
+    }
+
+    if (config.area === 'Fiscal') {
+      return [
+        'Não declarar guia, SPED ou obrigação acessória como transmitida sem protocolo oficial, certificado válido e evidência arquivada.',
+        'Apurações fiscais em roadmap devem permanecer como prévia assistida até integração com portal oficial, RPA governado ou API homologada.',
+      ];
+    }
+
+    if (config.area === 'Folha') {
+      return [
+        'Não transmitir eSocial, FGTS Digital, DCTFWeb ou eventos trabalhistas sem conferência de folha, certificado válido e protocolo oficial.',
+        'Pró-labore, INSS, FGTS e eventos de SST exigem evidência por competência e aprovação operacional antes de comunicação ao cliente.',
+      ];
+    }
+
+    if (config.area === 'Automação') {
+      return [
+        'Automação pode classificar, priorizar e orquestrar ações, mas não substitui aprovação humana em atos oficiais regulados.',
+        'Toda recomendação executada deve registrar auditoria, origem do sinal, empresa/tenant e resultado verificável.',
+      ];
+    }
+
+    if (config.area === 'Escritório') {
+      return [
+        'Operações de escritório e documentos devem controlar responsável, SLA, evidência e aceite antes de qualquer comunicação como concluída.',
+        'Arquivos societários, fiscais e trabalhistas precisam de classificação, retenção e vínculo com empresa/tenant.',
+      ];
+    }
+
+    if (config.area === 'Consultoria') {
+      return [
+        'Consultoria e BPO são serviços liderados por especialistas; software organiza escopo, evidências, SLA e aprovação do cliente.',
+        'Não gerar recomendação tributária final sem revisão técnica e registro das premissas usadas na análise.',
+      ];
+    }
+
+    return [
+      `Módulo em ${automationBoundary}; manter contrato técnico, auditoria e escopo explícito antes de venda em produção.`,
+    ];
   }
 
   private getModel(config: ModuleConfig) {

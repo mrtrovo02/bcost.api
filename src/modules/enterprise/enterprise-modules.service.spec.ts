@@ -60,6 +60,75 @@ describe('EnterpriseModulesService', () => {
     });
   });
 
+  it('adds regulated accounting, fiscal and payroll guardrails to roadmap modules', async () => {
+    const service = new EnterpriseModulesService({} as any);
+
+    const [balanceSheet, spedFiscal, payrollLifecycle] = await Promise.all([
+      service.list('balance-sheet', '00000000-0000-0000-0000-000000000001', {}),
+      service.list('sped-fiscal', '00000000-0000-0000-0000-000000000001', {}),
+      service.list('payroll-lifecycle', '00000000-0000-0000-0000-000000000001', {}),
+    ]);
+
+    expect(balanceSheet).toMatchObject({
+      summary: {
+        canonicalOwner: 'accounting-enterprise',
+        automationBoundary: 'CRC_VALIDATED',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('demonstração contábil oficial'),
+          expect.stringContaining('trilha de auditoria'),
+        ]),
+      },
+    });
+    expect(spedFiscal).toMatchObject({
+      summary: {
+        canonicalOwner: 'fiscal-obligations-enterprise',
+        automationBoundary: 'CRC_VALIDATED',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('protocolo oficial'),
+          expect.stringContaining('portal oficial'),
+        ]),
+      },
+    });
+    expect(payrollLifecycle).toMatchObject({
+      summary: {
+        canonicalOwner: 'payroll-enterprise',
+        automationBoundary: 'CRC_VALIDATED',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('eSocial'),
+          expect.stringContaining('Pró-labore'),
+        ]),
+      },
+    });
+  });
+
+  it('keeps automation and consulting roadmap boundaries explicit', async () => {
+    const service = new EnterpriseModulesService({} as any);
+
+    const [auditIntelligence, consulting] = await Promise.all([
+      service.list('audit-intelligence', '00000000-0000-0000-0000-000000000001', {}),
+      service.list('consulting-services', '00000000-0000-0000-0000-000000000001', {}),
+    ]);
+
+    expect(auditIntelligence).toMatchObject({
+      summary: {
+        canonicalOwner: 'audit-intelligence-enterprise',
+        automationBoundary: 'SOFTWARE_ONLY',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('não substitui aprovação humana'),
+        ]),
+      },
+    });
+    expect(consulting).toMatchObject({
+      summary: {
+        canonicalOwner: 'accounting-platform',
+        automationBoundary: 'HUMAN_LED',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('serviços liderados por especialistas'),
+        ]),
+      },
+    });
+  });
+
   it('includes roadmap modules in the enterprise catalog', () => {
     const service = new EnterpriseModulesService({} as any);
 
