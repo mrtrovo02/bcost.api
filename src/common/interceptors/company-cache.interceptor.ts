@@ -1,13 +1,22 @@
 'use strict';
 
-import {
-  Injectable,
-  ExecutionContext,
-  Logger,
-  CallHandler,
-} from '@nestjs/common';
+import { Injectable, ExecutionContext, Logger } from '@nestjs/common';
 import { CacheInterceptor } from '@nestjs/cache-manager';
-import { Observable } from 'rxjs';
+
+interface CacheableCompanyRequestUser {
+  companyId?: string | null;
+  activeCompanyId?: string | null;
+}
+
+interface CacheableCompanyRequest {
+  method?: string;
+  url?: string;
+  user?: CacheableCompanyRequestUser;
+  params?: Record<string, unknown>;
+  query?: Record<string, unknown>;
+  headers?: Record<string, unknown>;
+  companyId?: string | null;
+}
 
 /**
  * CompanyCacheInterceptor
@@ -25,7 +34,7 @@ export class CompanyCacheInterceptor extends CacheInterceptor {
    * Sobrescreve a lógica de geração de chave para incluir a Identidade da Empresa.
    */
   trackBy(context: ExecutionContext): string | undefined {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<CacheableCompanyRequest>();
     const { method, url, user, params, query } = request;
 
     // 1. Regra de Negócio: Apenas requisições de leitura (GET) são cacheadas.
@@ -35,7 +44,14 @@ export class CompanyCacheInterceptor extends CacheInterceptor {
 
     // 2. Lógica Multi-tenant (O coração do bCost):
     // Tenta obter o ID da empresa de 3 fontes diferentes para máxima flexibilidade.
-    const companyId = params.companyId || user?.companyId || query?.companyId;
+    const companyId =
+      this.toCompanyId(request.companyId) ||
+      this.toCompanyId(params?.companyId) ||
+      this.toCompanyId(query?.company_id) ||
+      this.toCompanyId(query?.companyId) ||
+      this.toCompanyId(this.getHeader(request.headers, 'x-company-id')) ||
+      this.toCompanyId(user?.activeCompanyId) ||
+      this.toCompanyId(user?.companyId);
 
     if (!companyId) {
       this.logger.warn(
@@ -51,5 +67,28 @@ export class CompanyCacheInterceptor extends CacheInterceptor {
     this.logger.debug(`🎯 Cache Hit Check: ${cacheKey}`);
 
     return cacheKey;
+  }
+
+  private getHeader(
+    headers: Record<string, unknown> | undefined,
+    name: string,
+  ): unknown {
+    if (!headers) return null;
+
+    const normalizedName = name.toLowerCase();
+    const entry = Object.entries(headers).find(
+      ([key]) => key.toLowerCase() === normalizedName,
+    );
+
+    return entry?.[1];
+  }
+
+  private toCompanyId(value: unknown): string | null {
+    const resolved = Array.isArray(value) ? value[0] : value;
+
+    if (typeof resolved !== 'string') return null;
+
+    const normalized = resolved.trim();
+    return normalized.length ? normalized : null;
   }
 }
