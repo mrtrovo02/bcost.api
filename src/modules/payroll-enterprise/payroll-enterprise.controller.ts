@@ -13,6 +13,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateEmployeeEnterpriseDto } from './dto/create-employee-enterprise.dto.js';
 import { CreatePayrollEnterpriseDto } from './dto/create-payroll-enterprise.dto.js';
 import { CreatePayrollEntryEnterpriseDto } from './dto/create-payroll-entry-enterprise.dto.js';
@@ -22,7 +24,7 @@ import { UpdateEmployeeEnterpriseDto } from './dto/update-employee-enterprise.dt
 import { UpdatePayrollEntryEnterpriseDto } from './dto/update-payroll-entry-enterprise.dto.js';
 import { PayrollEnterpriseService } from './payroll-enterprise.service.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('payroll/enterprise')
 export class PayrollEnterpriseController {
   constructor(private readonly service: PayrollEnterpriseService) {}

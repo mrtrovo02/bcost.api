@@ -13,6 +13,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { ComplianceEnterpriseService } from './compliance-enterprise.service.js';
 import { ComplianceEnterpriseQueryDto } from './dto/compliance-enterprise-query.dto.js';
 import { CreateBusinessRuleEnterpriseDto } from './dto/create-business-rule-enterprise.dto.js';
@@ -21,7 +23,7 @@ import { RunComplianceEngineDto } from './dto/run-compliance-engine.dto.js';
 import { UpdateBusinessRuleEnterpriseDto } from './dto/update-business-rule-enterprise.dto.js';
 import { UpdateComplianceCheckEnterpriseDto } from './dto/update-compliance-check-enterprise.dto.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('compliance/enterprise')
 export class ComplianceEnterpriseController {
   constructor(private readonly service: ComplianceEnterpriseService) {}

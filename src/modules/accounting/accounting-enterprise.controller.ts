@@ -15,6 +15,8 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AccountingEnterpriseService } from './accounting-enterprise.service.js';
 import { CreateAccountPlanDto } from './dto/create-account-plan.dto.js';
 import { CreateAccountingEntryDto } from './dto/create-accounting-entry.dto.js';
@@ -23,7 +25,7 @@ import { QueryAccountingDto } from './dto/query-accounting.dto.js';
 import { UpdateAccountPlanDto } from './dto/update-account-plan.dto.js';
 import { UpdateAccountingEntryDto } from './dto/update-accounting-entry.dto.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('accounting/enterprise')
 export class AccountingEnterpriseController {
   constructor(private readonly service: AccountingEnterpriseService) {}
