@@ -16,6 +16,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AccountingEnterpriseService } from './accounting-enterprise.service.js';
 import { CreateAccountPlanDto } from './dto/create-account-plan.dto.js';
@@ -34,7 +35,7 @@ export class AccountingEnterpriseController {
   listAccountPlan(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: QueryAccountingDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listAccountPlan(companyId, query, req.user);
   }
@@ -43,7 +44,7 @@ export class AccountingEnterpriseController {
   createAccountPlan(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateAccountPlanDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createAccountPlan(companyId, body, req.user);
   }
@@ -51,7 +52,7 @@ export class AccountingEnterpriseController {
   @Post('account-plan/:companyId/seed-default')
   seedDefaultAccountPlan(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.seedDefaultAccountPlan(companyId, req.user);
   }
@@ -61,7 +62,7 @@ export class AccountingEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('accountId', new ParseUUIDPipe()) accountId: string,
     @Body() body: UpdateAccountPlanDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateAccountPlan(companyId, accountId, body, req.user);
   }
@@ -70,7 +71,7 @@ export class AccountingEnterpriseController {
   deactivateAccountPlan(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('accountId', new ParseUUIDPipe()) accountId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.deactivateAccountPlan(companyId, accountId, req.user);
   }
@@ -79,7 +80,7 @@ export class AccountingEnterpriseController {
   listEntries(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: QueryAccountingDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listEntries(companyId, query, req.user);
   }
@@ -88,7 +89,7 @@ export class AccountingEnterpriseController {
   createEntry(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateAccountingEntryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createEntry(companyId, body, req.user);
   }
@@ -97,7 +98,7 @@ export class AccountingEnterpriseController {
   detailEntry(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('entryId', new ParseUUIDPipe()) entryId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.detailEntry(companyId, entryId, req.user);
   }
@@ -107,7 +108,7 @@ export class AccountingEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('entryId', new ParseUUIDPipe()) entryId: string,
     @Body() body: UpdateAccountingEntryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateEntry(companyId, entryId, body, req.user);
   }
@@ -116,7 +117,7 @@ export class AccountingEnterpriseController {
   deleteEntry(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('entryId', new ParseUUIDPipe()) entryId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.deleteEntry(companyId, entryId, req.user);
   }
@@ -124,7 +125,7 @@ export class AccountingEnterpriseController {
   @Get('locks/:companyId')
   listLocks(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listLocks(companyId, req.user);
   }
@@ -133,7 +134,7 @@ export class AccountingEnterpriseController {
   lockPeriod(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: LockPeriodDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.lockPeriod(companyId, body, req.user);
   }
@@ -143,7 +144,7 @@ export class AccountingEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('month', ParseIntPipe) month: number,
     @Param('year', ParseIntPipe) year: number,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.unlockPeriod(companyId, month, year, req.user);
   }

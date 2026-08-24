@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { BillingEntitlementsService } from './billing-entitlements.service.js';
 import { UpdateCompanyPlanDto } from './dto/update-company-plan.dto.js';
@@ -32,7 +33,7 @@ export class BillingEntitlementsController {
   @Get('entitlements/:companyId')
   getEntitlements(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.billingEntitlementsService.getEntitlements(companyId, req.user);
   }
@@ -41,7 +42,7 @@ export class BillingEntitlementsController {
   checkFeature(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query('feature') feature: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.billingEntitlementsService.checkFeature(
       companyId,
@@ -54,7 +55,7 @@ export class BillingEntitlementsController {
   updatePlan(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: UpdateCompanyPlanDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.billingEntitlementsService.updatePlan(
       companyId,
