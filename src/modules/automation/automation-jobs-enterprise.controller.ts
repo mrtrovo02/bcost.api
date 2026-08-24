@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { AutomationJobsEnterpriseService } from './automation-jobs-enterprise.service.js';
 import { AutomationJobsQueryDto } from './dto/automation-jobs-query.dto.js';
 
@@ -31,7 +32,7 @@ export class AutomationJobsEnterpriseController {
   list(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: AutomationJobsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.list(companyId, query, req.user);
   }
@@ -43,7 +44,7 @@ export class AutomationJobsEnterpriseController {
   detail(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('jobId') jobId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.detail(companyId, jobId, req.user);
   }
@@ -52,7 +53,7 @@ export class AutomationJobsEnterpriseController {
   @ApiOperation({
     summary: 'ENTERPRISE: Solicita retry de um job de automação',
   })
-  retry(@Param('jobId') jobId: string, @Req() req: any) {
+  retry(@Param('jobId') jobId: string, @Req() req: AuthenticatedRequest) {
     return this.service.retry(jobId, req.user);
   }
 
@@ -60,7 +61,7 @@ export class AutomationJobsEnterpriseController {
   @ApiOperation({
     summary: 'ENTERPRISE: Solicita cancelamento de um job de automação',
   })
-  cancel(@Param('jobId') jobId: string, @Req() req: any) {
+  cancel(@Param('jobId') jobId: string, @Req() req: AuthenticatedRequest) {
     return this.service.cancel(jobId, req.user);
   }
 
@@ -68,7 +69,7 @@ export class AutomationJobsEnterpriseController {
   @ApiOperation({
     summary: 'ENTERPRISE: Reconhece um job com falha sem alterar seu status',
   })
-  acknowledge(@Param('jobId') jobId: string, @Req() req: any) {
+  acknowledge(@Param('jobId') jobId: string, @Req() req: AuthenticatedRequest) {
     return this.service.acknowledge(jobId, req.user);
   }
 }

@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { CommandCenterQueryDto } from './dto/command-center-query.dto.js';
 import { CommandCenterEnterpriseService } from './command-center-enterprise.service.js';
 
@@ -24,7 +25,7 @@ export class CommandCenterEnterpriseController {
   summary(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: CommandCenterQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summary(companyId, query, req.user);
   }
@@ -33,7 +34,7 @@ export class CommandCenterEnterpriseController {
   risks(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: CommandCenterQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.risks(companyId, query, req.user);
   }
@@ -42,7 +43,7 @@ export class CommandCenterEnterpriseController {
   modules(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: CommandCenterQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.modules(companyId, query, req.user);
   }
@@ -51,7 +52,7 @@ export class CommandCenterEnterpriseController {
   activity(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: CommandCenterQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.activity(companyId, query, req.user);
   }

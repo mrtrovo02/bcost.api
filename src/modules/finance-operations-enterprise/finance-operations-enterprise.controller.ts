@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { FinanceOperationsQueryDto } from './dto/finance-operations-query.dto.js';
 import { FinanceOperationsEnterpriseService } from './finance-operations-enterprise.service.js';
 
@@ -24,7 +25,7 @@ export class FinanceOperationsEnterpriseController {
   summary(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: FinanceOperationsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summary(companyId, query, req.user);
   }
@@ -33,7 +34,7 @@ export class FinanceOperationsEnterpriseController {
   receivables(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: FinanceOperationsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.receivables(companyId, query, req.user);
   }
@@ -42,7 +43,7 @@ export class FinanceOperationsEnterpriseController {
   payables(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: FinanceOperationsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.payables(companyId, query, req.user);
   }
@@ -51,7 +52,7 @@ export class FinanceOperationsEnterpriseController {
   cashflow(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: FinanceOperationsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.cashflow(companyId, query, req.user);
   }
@@ -60,7 +61,7 @@ export class FinanceOperationsEnterpriseController {
   aging(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: FinanceOperationsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.aging(companyId, query, req.user);
   }
@@ -69,7 +70,7 @@ export class FinanceOperationsEnterpriseController {
   timeline(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: FinanceOperationsQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.timeline(companyId, query, req.user);
   }
