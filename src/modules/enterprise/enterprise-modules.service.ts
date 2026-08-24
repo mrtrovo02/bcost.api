@@ -28,6 +28,13 @@ type RoadmapModuleConfig = {
   area: string;
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   endpoint: string;
+  canonicalOwner?: string;
+  automationBoundary?:
+    | 'SOFTWARE_ONLY'
+    | 'ASSISTED_AUTOMATION'
+    | 'CRC_VALIDATED'
+    | 'HUMAN_LED';
+  operationalGuardrails?: string[];
 };
 
 @Injectable()
@@ -562,7 +569,13 @@ export class EnterpriseModulesService {
       label: 'Abertura de Empresa',
       area: 'Societário',
       priority: 'HIGH',
-      endpoint: '/corporate/company-formation',
+      endpoint: '/accounting-platform/setup/readiness',
+      canonicalOwner: 'accounting-platform',
+      automationBoundary: 'CRC_VALIDATED',
+      operationalGuardrails: [
+        'Não prometer abertura 100% automática sem consulta de viabilidade, CRC responsável e evidências do órgão oficial.',
+        'Toda execução real deve abrir dossiê auditável e workflow operacional por empresa antes de protocolo em Redesim, Junta ou Prefeitura.',
+      ],
     },
     'banking-products': {
       slug: 'banking-products',
@@ -649,6 +662,9 @@ export class EnterpriseModulesService {
         area: config.area,
         priority: config.priority,
         endpoint: config.endpoint,
+        canonicalOwner: config.canonicalOwner ?? 'enterprise-roadmap',
+        automationBoundary: config.automationBoundary ?? 'ASSISTED_AUTOMATION',
+        operationalGuardrails: config.operationalGuardrails ?? [],
         nextStep:
           'Criar modelo persistente, endpoints CRUD, auditoria e regras de permissão para este módulo.',
       },

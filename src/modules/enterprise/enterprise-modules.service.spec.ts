@@ -22,7 +22,13 @@ describe('EnterpriseModulesService', () => {
       hasMore: false,
       summary: {
         roadmap: true,
-        endpoint: '/corporate/company-formation',
+        endpoint: '/accounting-platform/setup/readiness',
+        canonicalOwner: 'accounting-platform',
+        automationBoundary: 'CRC_VALIDATED',
+        operationalGuardrails: expect.arrayContaining([
+          expect.stringContaining('Não prometer abertura 100% automática'),
+          expect.stringContaining('dossiê auditável'),
+        ]),
       },
     });
   });
