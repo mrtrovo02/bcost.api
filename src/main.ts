@@ -260,6 +260,24 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
 
     const fastifyInstance = app.getHttpAdapter().getInstance();
 
+    const rootRouteHandler = (
+      _request: FastifyRequest,
+      reply: FastifyReply,
+    ) =>
+      reply.status(200).send({
+        service: 'bcost-api',
+        status: 'operational',
+        version: 'v1',
+        endpoints: {
+          api: '/api/v1',
+          health: '/api/v1/health',
+          live: '/api/v1/live',
+          ready: '/api/v1/ready',
+          diagnostics: '/api/v1/diagnostics',
+        },
+        timestamp: new Date().toISOString(),
+      });
+
     // Hook de contexto assíncrono para Trace ID e Isolação de Tenant (Multi-Tenancy)
     fastifyInstance.addHook(
       'onRequest',
@@ -422,6 +440,9 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
         .status(readiness.status === 'ready' ? 200 : 503)
         .send(readiness);
     };
+
+    fastifyInstance.get('/', rootRouteHandler);
+    fastifyInstance.get('/api', rootRouteHandler);
 
     fastifyInstance.get('/health', healthRouteHandler);
     fastifyInstance.get('/api/health', healthRouteHandler);

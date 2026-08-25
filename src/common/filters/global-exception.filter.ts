@@ -23,6 +23,11 @@ type HttpRequestLike = {
 };
 
 const SCANNER_404_PATTERNS = [
+  /(?:^|\/)\.env(?:[./_-][\w.-]+)?(?:$|\?)/i,
+  /(?:^|\/)\.git(?:\/|$|\?)/i,
+  /(?:^|\/)\.(?:aws|npmrc|htaccess|htpasswd)(?:$|\?)/i,
+  /(?:^|\/)(?:config|configuration|settings)\.(?:json|ya?ml|ini|bak|old)(?:$|\?)/i,
+  /(?:^|\/)(?:composer|package|yarn|pnpm)-lock\.json(?:$|\?)/i,
   /\.php(?:$|\?)/i,
   /(?:^|\/)wp-/i,
   /(?:^|\/)xmlrpc\.php(?:$|\?)/i,
