@@ -7,6 +7,54 @@ import { PrismaService } from '../../../database/prisma.service.js';
 import { InvoiceStatus, InvoiceType, Prisma } from '@prisma/client';
 import { XMLParser } from 'fast-xml-parser';
 
+type DfeProcessorJobData = {
+  companyId: string;
+  fileBuffer: string;
+  type: 'NFE' | 'NFSE' | 'PRODUCT' | 'SERVICE';
+};
+
+type DfeProcessorResult = {
+  id: string;
+};
+
+type DfeExtractedData = {
+  issuedAt: Date;
+  amount: Prisma.Decimal;
+};
+
+function readNestedRecord(
+  value: unknown,
+  path: readonly string[],
+): Record<string, unknown> | null {
+  let current: unknown = value;
+
+  for (const segment of path) {
+    if (!current || typeof current !== 'object' || !(segment in current)) {
+      return null;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current && typeof current === 'object'
+    ? (current as Record<string, unknown>)
+    : null;
+}
+
+function readNestedValue(value: unknown, path: readonly string[]): unknown {
+  let current: unknown = value;
+
+  for (const segment of path) {
+    if (!current || typeof current !== 'object' || !(segment in current)) {
+      return undefined;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current;
+}
+
 @Processor('xml-extraction')
 export class DfeProcessor extends WorkerHost {
   private readonly logger = new Logger(DfeProcessor.name);
@@ -19,7 +67,9 @@ export class DfeProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(
+    job: Job<DfeProcessorJobData, DfeProcessorResult, string>,
+  ): Promise<DfeProcessorResult> {
     const { companyId, fileBuffer, type } = job.data;
 
     try {
@@ -54,12 +104,18 @@ export class DfeProcessor extends WorkerHost {
     }
   }
 
-  private mapXmlData(jsonObj: any) {
-    const infNFe = jsonObj?.nfeProc?.NFe?.infNFe || jsonObj?.NFe?.infNFe;
+  private mapXmlData(jsonObj: unknown): DfeExtractedData {
+    const infNFe =
+      readNestedRecord(jsonObj, ['nfeProc', 'NFe', 'infNFe']) ||
+      readNestedRecord(jsonObj, ['NFe', 'infNFe']);
+    const dhEmi = readNestedValue(infNFe, ['ide', 'dhEmi']);
+    const amount = readNestedValue(infNFe, ['total', 'ICMSTot', 'vNF']);
 
     return {
-      issuedAt: infNFe?.ide?.dhEmi ? new Date(infNFe.ide.dhEmi) : new Date(),
-      amount: new Prisma.Decimal(infNFe?.total?.ICMSTot?.vNF || 0),
+      issuedAt: typeof dhEmi === 'string' ? new Date(dhEmi) : new Date(),
+      amount: new Prisma.Decimal(
+        typeof amount === 'number' || typeof amount === 'string' ? amount : 0,
+      ),
     };
   }
 

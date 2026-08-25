@@ -18,6 +18,15 @@ interface XmlJobData {
   originalName: string;
 }
 
+interface XmlProcessorResult {
+  success: true;
+  invoiceId: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 @Processor('xml-extraction')
 export class XmlProcessor extends WorkerHost {
   private readonly logger = new Logger(XmlProcessor.name);
@@ -33,7 +42,9 @@ export class XmlProcessor extends WorkerHost {
    * Processamento assíncrono do job de extração de XML.
    * CORREÇÃO: Uso de Enums do Prisma (InvoiceStatus) para evitar erro de atribuição.
    */
-  async process(job: Job<XmlJobData, any, string>): Promise<any> {
+  async process(
+    job: Job<XmlJobData, XmlProcessorResult, string>,
+  ): Promise<XmlProcessorResult> {
     const { xmlContent, companyId, originalName } = job.data;
 
     this.logger.log(
@@ -87,10 +98,11 @@ export class XmlProcessor extends WorkerHost {
         success: true,
         invoiceId: invoice.id,
       };
-    } catch (error: any) {
-      this.logger.error(`[Job ${job.id}] ❌ Falha Crítica: ${error.message}`);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      this.logger.error(`[Job ${job.id}] ❌ Falha Crítica: ${message}`);
       throw new Error(
-        `Falha no processamento do XML ${originalName}: ${error.message}`,
+        `Falha no processamento do XML ${originalName}: ${message}`,
       );
     }
   }

@@ -13,6 +13,60 @@ import {
 } from '@prisma/client';
 import { XMLParser } from 'fast-xml-parser';
 
+type XmlExtractionJobData = {
+  companyId: string;
+  xmlContent?: string;
+  fileBuffer?: string;
+  accessKey?: string;
+  type: 'NFSE' | 'NFE' | 'PRODUCT' | 'SERVICE';
+};
+
+type XmlExtractionResult = {
+  id: string;
+  accessKey: string;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function readNestedRecord(
+  value: unknown,
+  path: readonly string[],
+): Record<string, unknown> | null {
+  let current: unknown = value;
+
+  for (const segment of path) {
+    if (!current || typeof current !== 'object' || !(segment in current)) {
+      return null;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current && typeof current === 'object'
+    ? (current as Record<string, unknown>)
+    : null;
+}
+
+function readNestedValue(value: unknown, path: readonly string[]): unknown {
+  let current: unknown = value;
+
+  for (const segment of path) {
+    if (!current || typeof current !== 'object' || !(segment in current)) {
+      return undefined;
+    }
+
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current;
+}
+
+function coerceDecimalInput(value: unknown): Prisma.Decimal.Value {
+  return typeof value === 'number' || typeof value === 'string' ? value : 0;
+}
+
 @Processor('xml-extraction')
 export class XmlExtractionProcessor extends WorkerHost {
   private readonly logger = new Logger(XmlExtractionProcessor.name);
@@ -25,7 +79,9 @@ export class XmlExtractionProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(
+    job: Job<XmlExtractionJobData, XmlExtractionResult, string>,
+  ): Promise<XmlExtractionResult> {
     const { companyId, xmlContent, fileBuffer, accessKey, type } = job.data;
 
     try {
@@ -33,34 +89,63 @@ export class XmlExtractionProcessor extends WorkerHost {
         ? Buffer.from(fileBuffer, 'base64').toString('utf-8')
         : xmlContent;
 
+      if (!rawXml) {
+        throw new Error('Conteúdo XML ausente no job de extração.');
+      }
+
       const jsonObj = this.parser.parse(rawXml);
 
       // Navegação no Schema NFe (Layout 4.00)
-      const nfe = jsonObj?.nfeProc?.NFe || jsonObj?.NFe;
-      const infNFe = nfe?.infNFe;
+      const nfe =
+        readNestedRecord(jsonObj, ['nfeProc', 'NFe']) ||
+        readNestedRecord(jsonObj, ['NFe']);
+      const infNFe = readNestedRecord(nfe, ['infNFe']);
 
       if (!infNFe && !accessKey) {
         throw new Error('XML não contém estrutura infNFe válida.');
       }
 
-      const totalVNF = infNFe?.total?.ICMSTot?.vNF || 0;
-      const chave = accessKey || infNFe?.['@_Id']?.replace('NFe', '');
+      const totalVNF = coerceDecimalInput(
+        readNestedValue(infNFe, ['total', 'ICMSTot', 'vNF']),
+      );
+      const rawAccessKey = readNestedValue(infNFe, ['@_Id']);
+      const chave =
+        accessKey ||
+        (typeof rawAccessKey === 'string'
+          ? rawAccessKey.replace('NFe', '')
+          : undefined);
+
+      if (!chave) {
+        throw new Error('XML não possui chave de acesso identificável.');
+      }
 
       // 1. Localizar ou Criar Cliente (Customer) com base no XML
       // No bCost, se a nota é emitida PELA empresa, o destinatário é o Customer.
-      const dest = infNFe?.dest;
+      const dest = readNestedRecord(infNFe, ['dest']);
+      const customerDocumentValue =
+        readNestedValue(dest, ['CNPJ']) || readNestedValue(dest, ['CPF']);
+      const customerDocument =
+        typeof customerDocumentValue === 'string' &&
+        customerDocumentValue.trim()
+          ? customerDocumentValue.trim()
+          : '00000000000';
+      const customerNameValue = readNestedValue(dest, ['xNome']);
+      const customerName =
+        typeof customerNameValue === 'string' && customerNameValue.trim()
+          ? customerNameValue.trim()
+          : 'Cliente Identificado via XML';
       const customer = await this.prisma.customer.upsert({
         where: {
           companyId_document: {
             companyId,
-            document: dest?.CNPJ || dest?.CPF || '00000000000',
+            document: customerDocument,
           },
         },
-        update: { name: dest?.xNome || 'Cliente Identificado via XML' },
+        update: { name: customerName },
         create: {
           companyId,
-          document: dest?.CNPJ || dest?.CPF || '00000000000',
-          name: dest?.xNome || 'Cliente Importado',
+          document: customerDocument,
+          name: customerName,
           active: true,
         },
       });
@@ -78,10 +163,11 @@ export class XmlExtractionProcessor extends WorkerHost {
           type: type === 'NFSE' ? InvoiceType.SERVICE : InvoiceType.PRODUCT,
           status: InvoiceStatus.NORMAL,
           amount: new Prisma.Decimal(totalVNF),
-          taxAmount: new Prisma.Decimal(totalVNF * 0.06), // Alíquota padrão bCost
-          issuedAt: infNFe?.ide?.dhEmi
-            ? new Date(infNFe.ide.dhEmi)
-            : new Date(),
+          taxAmount: new Prisma.Decimal(totalVNF).mul(0.06), // Alíquota padrão bCost
+          issuedAt:
+            typeof readNestedValue(infNFe, ['ide', 'dhEmi']) === 'string'
+              ? new Date(readNestedValue(infNFe, ['ide', 'dhEmi']) as string)
+              : new Date(),
           accessKey: chave,
           reconciled: false, // Pronto para o motor de conciliação
         },
@@ -89,8 +175,9 @@ export class XmlExtractionProcessor extends WorkerHost {
 
       this.logger.log(`✅ Nota ${chave} processada para Empresa ${companyId}`);
       return { id: invoice.id, accessKey: chave };
-    } catch (error: any) {
-      this.logger.error(`❌ Falha no processamento: ${error.message}`);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      this.logger.error(`❌ Falha no processamento: ${message}`);
 
       // Registrar falha na tabela de Notificações conforme seu Schema
       await this.prisma.notificationLog.create({
@@ -98,7 +185,7 @@ export class XmlExtractionProcessor extends WorkerHost {
           companyId,
           type: NotificationType.COMPLIANCE_ISSUE,
           title: 'Erro no Processamento de XML',
-          message: `A nota ${accessKey || 'S/N'} falhou ao ser importada: ${error.message}`,
+          message: `A nota ${accessKey || 'S/N'} falhou ao ser importada: ${message}`,
           severity: NotificationSeverity.WARNING,
           status: 'PENDING',
         },

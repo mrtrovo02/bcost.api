@@ -9,6 +9,7 @@ import {
   CertificateStatus,
   NotificationType,
   NotificationSeverity,
+  DigitalCertificate,
 } from '@prisma/client';
 
 /**
@@ -48,6 +49,10 @@ export class ComplianceService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
   /**
    * Ponto de entrada rápido para verificações de saúde via Controller.
    */
@@ -83,9 +88,9 @@ export class ComplianceService {
           await this.processCertificateExpiration(cert, 'WARNING');
           alertsGenerated++;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         this.logger.error(
-          `❌ Erro no check do certificado ${cert.id}: ${error.message}`,
+          `❌ Erro no check do certificado ${cert.id}: ${this.getErrorMessage(error)}`,
         );
       }
     }
@@ -243,7 +248,7 @@ export class ComplianceService {
    * Processamento atômico de expiração de certificados.
    */
   private async processCertificateExpiration(
-    cert: any,
+    cert: DigitalCertificate,
     level: 'EXPIRED' | 'WARNING',
   ) {
     const isExpired = level === 'EXPIRED';
