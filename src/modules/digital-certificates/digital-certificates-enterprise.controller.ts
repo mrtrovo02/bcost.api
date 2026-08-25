@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateDigitalCertificateDto } from './dto/create-digital-certificate.dto.js';
 import { QueryDigitalCertificatesDto } from './dto/query-digital-certificates.dto.js';
@@ -43,7 +44,7 @@ export class DigitalCertificatesEnterpriseController {
   list(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: QueryDigitalCertificatesDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.list(companyId, query, req.user);
   }
@@ -51,7 +52,7 @@ export class DigitalCertificatesEnterpriseController {
   @Get(':companyId/summary')
   summary(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summary(companyId, req.user);
   }
@@ -60,7 +61,7 @@ export class DigitalCertificatesEnterpriseController {
   create(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateDigitalCertificateDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.create(companyId, body, req.user);
   }
@@ -69,7 +70,7 @@ export class DigitalCertificatesEnterpriseController {
   detail(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('certificateId', new ParseUUIDPipe()) certificateId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.detail(companyId, certificateId, req.user);
   }
@@ -79,7 +80,7 @@ export class DigitalCertificatesEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('certificateId', new ParseUUIDPipe()) certificateId: string,
     @Body() body: UpdateDigitalCertificateDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.update(companyId, certificateId, body, req.user);
   }
@@ -88,7 +89,7 @@ export class DigitalCertificatesEnterpriseController {
   revoke(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('certificateId', new ParseUUIDPipe()) certificateId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.revoke(companyId, certificateId, req.user);
   }
@@ -97,7 +98,7 @@ export class DigitalCertificatesEnterpriseController {
   remove(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('certificateId', new ParseUUIDPipe()) certificateId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.remove(companyId, certificateId, req.user);
   }

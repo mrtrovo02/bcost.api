@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { ComplianceEnterpriseService } from './compliance-enterprise.service.js';
 import { ComplianceEnterpriseQueryDto } from './dto/compliance-enterprise-query.dto.js';
@@ -31,7 +32,7 @@ export class ComplianceEnterpriseController {
   @Get('summary/:companyId')
   summary(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summary(companyId, req.user);
   }
@@ -40,7 +41,7 @@ export class ComplianceEnterpriseController {
   listRules(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: ComplianceEnterpriseQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listRules(companyId, query, req.user);
   }
@@ -49,7 +50,7 @@ export class ComplianceEnterpriseController {
   createRule(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateBusinessRuleEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createRule(companyId, body, req.user);
   }
@@ -59,7 +60,7 @@ export class ComplianceEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('ruleId', new ParseUUIDPipe()) ruleId: string,
     @Body() body: UpdateBusinessRuleEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateRule(companyId, ruleId, body, req.user);
   }
@@ -68,7 +69,7 @@ export class ComplianceEnterpriseController {
   enableRule(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('ruleId', new ParseUUIDPipe()) ruleId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setRuleEnabled(companyId, ruleId, true, req.user);
   }
@@ -77,7 +78,7 @@ export class ComplianceEnterpriseController {
   disableRule(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('ruleId', new ParseUUIDPipe()) ruleId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setRuleEnabled(companyId, ruleId, false, req.user);
   }
@@ -85,7 +86,7 @@ export class ComplianceEnterpriseController {
   @Post('rules/:companyId/defaults')
   createDefaultRules(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createDefaultRules(companyId, req.user);
   }
@@ -94,7 +95,7 @@ export class ComplianceEnterpriseController {
   listChecks(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: ComplianceEnterpriseQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listChecks(companyId, query, req.user);
   }
@@ -103,7 +104,7 @@ export class ComplianceEnterpriseController {
   createCheck(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateComplianceCheckEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createCheck(companyId, body, req.user);
   }
@@ -113,7 +114,7 @@ export class ComplianceEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('checkId', new ParseUUIDPipe()) checkId: string,
     @Body() body: UpdateComplianceCheckEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateCheck(companyId, checkId, body, req.user);
   }
@@ -122,7 +123,7 @@ export class ComplianceEnterpriseController {
   markInProgress(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('checkId', new ParseUUIDPipe()) checkId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setCheckStatus(
       companyId,
@@ -136,7 +137,7 @@ export class ComplianceEnterpriseController {
   resolveCheck(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('checkId', new ParseUUIDPipe()) checkId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setCheckStatus(
       companyId,
@@ -150,7 +151,7 @@ export class ComplianceEnterpriseController {
   ignoreCheck(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('checkId', new ParseUUIDPipe()) checkId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setCheckStatus(companyId, checkId, 'IGNORED', req.user);
   }
@@ -159,7 +160,7 @@ export class ComplianceEnterpriseController {
   reopenCheck(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('checkId', new ParseUUIDPipe()) checkId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setCheckStatus(companyId, checkId, 'OPEN', req.user);
   }
@@ -168,7 +169,7 @@ export class ComplianceEnterpriseController {
   runEngine(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: RunComplianceEngineDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.runEngine(companyId, body, req.user);
   }

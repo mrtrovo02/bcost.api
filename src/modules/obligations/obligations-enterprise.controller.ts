@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateFiscalObligationDto } from './dto/create-fiscal-obligation.dto.js';
 import { CreateTaxObligationDto } from './dto/create-tax-obligation.dto.js';
@@ -34,7 +35,7 @@ export class ObligationsEnterpriseController {
   listTax(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: QueryObligationsDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listTax(companyId, query, req.user);
   }
@@ -42,7 +43,7 @@ export class ObligationsEnterpriseController {
   @Get('tax/:companyId/summary')
   summaryTax(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summaryTax(companyId, req.user);
   }
@@ -51,7 +52,7 @@ export class ObligationsEnterpriseController {
   createTax(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateTaxObligationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createTax(companyId, body, req.user);
   }
@@ -60,7 +61,7 @@ export class ObligationsEnterpriseController {
   detailTax(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.detailTax(companyId, obligationId, req.user);
   }
@@ -70,7 +71,7 @@ export class ObligationsEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
     @Body() body: UpdateTaxObligationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateTax(companyId, obligationId, body, req.user);
   }
@@ -79,7 +80,7 @@ export class ObligationsEnterpriseController {
   markTaxAsPaid(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.markTaxAsPaid(companyId, obligationId, req.user);
   }
@@ -89,7 +90,7 @@ export class ObligationsEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
     @Body() body: RegisterTaxEvidenceDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.registerTaxEvidence(
       companyId,
@@ -103,7 +104,7 @@ export class ObligationsEnterpriseController {
   cancelTax(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.cancelTax(companyId, obligationId, req.user);
   }
@@ -112,7 +113,7 @@ export class ObligationsEnterpriseController {
   deleteTax(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.deleteTax(companyId, obligationId, req.user);
   }
@@ -121,7 +122,7 @@ export class ObligationsEnterpriseController {
   listFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: QueryObligationsDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listFiscal(companyId, query, req.user);
   }
@@ -129,7 +130,7 @@ export class ObligationsEnterpriseController {
   @Get('fiscal/:companyId/summary')
   summaryFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summaryFiscal(companyId, req.user);
   }
@@ -138,7 +139,7 @@ export class ObligationsEnterpriseController {
   createFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateFiscalObligationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createFiscal(companyId, body, req.user);
   }
@@ -147,7 +148,7 @@ export class ObligationsEnterpriseController {
   detailFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.detailFiscal(companyId, obligationId, req.user);
   }
@@ -157,7 +158,7 @@ export class ObligationsEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
     @Body() body: UpdateFiscalObligationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateFiscal(companyId, obligationId, body, req.user);
   }
@@ -167,7 +168,7 @@ export class ObligationsEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
     @Body() body: SubmitFiscalObligationDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.submitFiscal(companyId, obligationId, body, req.user);
   }
@@ -176,7 +177,7 @@ export class ObligationsEnterpriseController {
   acceptFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.acceptFiscal(companyId, obligationId, req.user);
   }
@@ -185,7 +186,7 @@ export class ObligationsEnterpriseController {
   rejectFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.rejectFiscal(companyId, obligationId, req.user);
   }
@@ -194,7 +195,7 @@ export class ObligationsEnterpriseController {
   deleteFiscal(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('obligationId', new ParseUUIDPipe()) obligationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.deleteFiscal(companyId, obligationId, req.user);
   }

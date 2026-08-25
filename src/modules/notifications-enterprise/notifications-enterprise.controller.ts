@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { CreateNotificationEnterpriseDto } from './dto/create-notification-enterprise.dto.js';
 import { CreateWebhookEnterpriseDto } from './dto/create-webhook-enterprise.dto.js';
@@ -31,7 +32,7 @@ export class NotificationsEnterpriseController {
   @Get('notifications/enterprise/summary/:companyId')
   summary(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.summary(companyId, req.user);
   }
@@ -40,7 +41,7 @@ export class NotificationsEnterpriseController {
   listNotifications(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: NotificationsEnterpriseQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listNotifications(companyId, query, req.user);
   }
@@ -49,7 +50,7 @@ export class NotificationsEnterpriseController {
   createNotification(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateNotificationEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createNotification(companyId, body, req.user);
   }
@@ -59,7 +60,7 @@ export class NotificationsEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
     @Body() body: UpdateNotificationEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateNotification(
       companyId,
@@ -73,7 +74,7 @@ export class NotificationsEnterpriseController {
   markRead(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.markNotificationRead(
       companyId,
@@ -86,7 +87,7 @@ export class NotificationsEnterpriseController {
   markUnread(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.markNotificationUnread(
       companyId,
@@ -99,7 +100,7 @@ export class NotificationsEnterpriseController {
   acknowledge(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.acknowledgeNotification(
       companyId,
@@ -112,7 +113,7 @@ export class NotificationsEnterpriseController {
   archive(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('notificationId', new ParseUUIDPipe()) notificationId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.archiveNotification(
       companyId,
@@ -125,7 +126,7 @@ export class NotificationsEnterpriseController {
   listWebhooks(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query() query: NotificationsEnterpriseQueryDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.listWebhooks(companyId, query, req.user);
   }
@@ -134,7 +135,7 @@ export class NotificationsEnterpriseController {
   createWebhook(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: CreateWebhookEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.createWebhook(companyId, body, req.user);
   }
@@ -144,7 +145,7 @@ export class NotificationsEnterpriseController {
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('webhookId', new ParseUUIDPipe()) webhookId: string,
     @Body() body: UpdateWebhookEnterpriseDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.updateWebhook(companyId, webhookId, body, req.user);
   }
@@ -153,7 +154,7 @@ export class NotificationsEnterpriseController {
   enableWebhook(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('webhookId', new ParseUUIDPipe()) webhookId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setWebhookActive(companyId, webhookId, true, req.user);
   }
@@ -162,7 +163,7 @@ export class NotificationsEnterpriseController {
   disableWebhook(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('webhookId', new ParseUUIDPipe()) webhookId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.setWebhookActive(companyId, webhookId, false, req.user);
   }
@@ -171,7 +172,7 @@ export class NotificationsEnterpriseController {
   testWebhook(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('webhookId', new ParseUUIDPipe()) webhookId: string,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.testWebhook(companyId, webhookId, req.user);
   }
@@ -180,7 +181,7 @@ export class NotificationsEnterpriseController {
   dispatchWebhookEvent(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: DispatchWebhookEventDto,
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.service.dispatchWebhookEvent(companyId, body, req.user);
   }
