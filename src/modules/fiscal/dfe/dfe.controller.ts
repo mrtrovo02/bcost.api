@@ -24,6 +24,10 @@ import { TenantContextGuard } from '../../../common/guards/tenant-context.guard.
 import { DfeService } from './dfe.service.js';
 import { PrismaService } from '../../../database/prisma.service.js';
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 @ApiTags('Fiscal - Inteligência e Automação DFe')
 @ApiBearerAuth('JWT')
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
@@ -53,8 +57,8 @@ export class DfeController {
   async syncNow(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     try {
       return await this.dfeService.syncCompanyInvoices(companyId);
-    } catch (error: any) {
-      throw new BadRequestException(error.message);
+    } catch (error: unknown) {
+      throw new BadRequestException(getErrorMessage(error));
     }
   }
 

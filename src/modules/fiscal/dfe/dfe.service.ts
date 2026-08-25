@@ -31,6 +31,10 @@ interface InvoiceGap {
   to: number;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 @Injectable()
 export class DfeService implements OnModuleInit {
   private readonly logger = new Logger(DfeService.name);
@@ -77,9 +81,9 @@ export class DfeService implements OnModuleInit {
     for (const company of activeCompanies) {
       try {
         await this.syncCompanyInvoices(company.id);
-      } catch (err: any) {
+      } catch (err: unknown) {
         this.logger.error(
-          `[DFe-Schedule] Falha na empresa ${company.id}: ${err.message}`,
+          `[DFe-Schedule] Falha na empresa ${company.id}: ${getErrorMessage(err)}`,
         );
       }
     }
@@ -158,9 +162,10 @@ export class DfeService implements OnModuleInit {
         syncedCount: documents.length,
         timestamp: new Date(),
       };
-    } catch (error: any) {
-      this.logger.error(`[DFe-Engine] Falha crítica: ${error.message}`);
-      throw new BadRequestException(`Erro na comunicação: ${error.message}`);
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      this.logger.error(`[DFe-Engine] Falha crítica: ${message}`);
+      throw new BadRequestException(`Erro na comunicação: ${message}`);
     }
   }
 

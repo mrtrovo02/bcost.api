@@ -7,6 +7,21 @@ import { PrismaService } from '../../../../database/prisma.service.js';
 import { XMLParser } from 'fast-xml-parser';
 import { Prisma, InvoiceStatus, InvoiceType } from '@prisma/client';
 
+type XmlProcessorJobData = {
+  companyId: string;
+  fileBuffer: string;
+  type: 'PRODUCT' | 'SERVICE' | 'NFSE' | 'NFE';
+};
+
+type XmlProcessorResult = {
+  success: true;
+  invoiceId: string;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 @Processor('xml-extraction')
 export class XmlProcessorConsumer extends WorkerHost {
   private readonly logger = new Logger(XmlProcessorConsumer.name);
@@ -19,7 +34,7 @@ export class XmlProcessorConsumer extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any>): Promise<any> {
+  async process(job: Job<XmlProcessorJobData>): Promise<XmlProcessorResult> {
     const { companyId, fileBuffer, type } = job.data;
     this.logger.log(
       `[XML-Worker] Processando ${type} para empresa: ${companyId}`,
@@ -66,6 +81,13 @@ export class XmlProcessorConsumer extends WorkerHost {
           },
         });
 
+        const payload: Prisma.InputJsonObject = {
+          totalValue: amount.toNumber(),
+          taxRate,
+          estimatedTax: estimatedTax.toNumber(),
+          xmlParsed: true,
+        };
+
         // Registro de Auditoria (Ajustado para o seu Schema: module, payload, action)
         await tx.auditLog.create({
           data: {
@@ -75,12 +97,7 @@ export class XmlProcessorConsumer extends WorkerHost {
             entityId: invoice.id,
             userId: '00000000-0000-0000-0000-000000000000', // Mock de sistema
             companyId,
-            payload: {
-              totalValue: amount.toNumber(),
-              taxRate,
-              estimatedTax: estimatedTax.toNumber(),
-              xmlParsed: true,
-            } as any,
+            payload,
           },
         });
 
@@ -88,8 +105,8 @@ export class XmlProcessorConsumer extends WorkerHost {
       });
 
       return { success: true, invoiceId: result.id };
-    } catch (error: any) {
-      this.logger.error(`[XML-Worker] Erro crítico: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(`[XML-Worker] Erro crítico: ${getErrorMessage(error)}`);
       throw error;
     }
   }

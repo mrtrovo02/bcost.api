@@ -10,6 +10,23 @@ import { PrismaService } from '../../../database/prisma.service.js';
 import { CreateInvoiceDto } from '../dto/create-invoice.dto.js';
 import { Prisma, InvoiceStatus, NFeStatus } from '@prisma/client';
 
+type InvoiceQueryFilters = {
+  startDate?: string | Date;
+  endDate?: string | Date;
+  status?: InvoiceStatus;
+  limit?: number | string;
+};
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isPrismaKnownRequestError(
+  error: unknown,
+): error is Prisma.PrismaClientKnownRequestError {
+  return error instanceof Prisma.PrismaClientKnownRequestError;
+}
+
 @Injectable()
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
@@ -95,15 +112,15 @@ export class InvoiceService {
           version: 1,
         },
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // P2002: Violação de Unique Constraint (accessKey já existente)
-      if (error.code === 'P2002') {
+      if (isPrismaKnownRequestError(error) && error.code === 'P2002') {
         throw new ConflictException(
           `Conflito: A Nota Fiscal com Chave ${dto.accessKey} já está registrada.`,
         );
       }
       this.logger.error(
-        `[InvoiceService] Falha crítica na criação: ${error.message}`,
+        `[InvoiceService] Falha crítica na criação: ${getErrorMessage(error)}`,
       );
       throw error;
     }
@@ -112,7 +129,7 @@ export class InvoiceService {
   /**
    * Busca de Notas: O isolamento por companyId é injetado automaticamente pelo PrismaService.
    */
-  async getInvoicesByCompany(companyId: string, filters?: any) {
+  async getInvoicesByCompany(companyId: string, filters?: InvoiceQueryFilters) {
     return this.db.invoice.findMany({
       where: {
         companyId,

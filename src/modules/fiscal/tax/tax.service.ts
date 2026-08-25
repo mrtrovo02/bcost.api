@@ -37,6 +37,10 @@ function calculateFactorRPercent(payroll12: number, rbt12: number): number {
   return (payroll12 / rbt12) * 100;
 }
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 @Injectable()
 export class TaxService {
   private readonly logger = new Logger(TaxService.name);
@@ -148,8 +152,10 @@ export class TaxService {
         },
         audit: integrity,
       };
-    } catch (error: any) {
-      this.logger.error(`[TaxEngine Fail] ${month}/${year}: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `[TaxEngine Fail] ${month}/${year}: ${getErrorMessage(error)}`,
+      );
       throw error;
     }
   }

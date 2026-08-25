@@ -13,6 +13,10 @@ import { SefazProtocolService } from './sefaz-protocol.service.js';
 import { XmlService } from '../xml/xml.service.js';
 import { InvoiceService } from '../invoices/invoice.service.js';
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 @Injectable()
 export class DfeProcessorService {
   private readonly logger = new Logger(DfeProcessorService.name);
@@ -86,11 +90,10 @@ export class DfeProcessorService {
       }
 
       return invoice;
-    } catch (error: any) {
-      this.logger.error(`[DfeProcessor Critical] Falha: ${error.message}`);
-      throw new BadRequestException(
-        `Erro no processamento do XML: ${error.message}`,
-      );
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      this.logger.error(`[DfeProcessor Critical] Falha: ${message}`);
+      throw new BadRequestException(`Erro no processamento do XML: ${message}`);
     }
   }
 
