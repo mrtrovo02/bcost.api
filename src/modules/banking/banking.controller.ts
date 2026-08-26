@@ -34,7 +34,7 @@ import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js'
  * Mantém as funções existentes:
  * - POST /banking/import/:companyId/:bankAccountId
  * - POST /banking/reconcile/:companyId
- * - POST /banking/unmatch/:transactionId
+ * - POST /banking/unmatch/:companyId/:transactionId
  *
  * Adiciona compatibilidade com o frontend atual:
  * - GET /banking/transactions/:companyId
@@ -569,13 +569,14 @@ export class BankingController {
    * ⏪ DESFAZER CONCILIAÇÃO
    * Útil para correções do usuário quando o auto-match erra.
    *
-   * POST /api/v1/banking/unmatch/:transactionId
+   * POST /api/v1/banking/unmatch/:companyId/:transactionId
    */
-  @Post('unmatch/:transactionId')
+  @Post('unmatch/:companyId/:transactionId')
   @LegacyApiAlias(
     '/banking/enterprise/reconciliation/:companyId/undo/:transactionId',
   )
-  async undoMatch(
+  async undoMatchForCompany(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
     @Body('userId') userId?: string,
   ) {
@@ -584,6 +585,38 @@ export class BankingController {
     return await this.reconciliationService.undoMatch(
       transactionId,
       userId || SYSTEM_USER_ID,
+      companyId,
+    );
+  }
+
+  /**
+   * ⏪ DESFAZER CONCILIAÇÃO (LEGADO)
+   * Mantido para compatibilidade, mas exige companyId em query/body para
+   * permitir validação pelo CompanyAccessGuard e pelo serviço.
+   *
+   * POST /api/v1/banking/unmatch/:transactionId?companyId=...
+   */
+  @Post('unmatch/:transactionId')
+  async undoMatchLegacy(
+    @Param('transactionId', new ParseUUIDPipe()) transactionId: string,
+    @Query('companyId') companyIdFromQuery?: string,
+    @Body('companyId') companyIdFromBody?: string,
+    @Body('userId') userId?: string,
+  ) {
+    const companyId = companyIdFromQuery || companyIdFromBody;
+
+    if (!companyId) {
+      throw new BadRequestException(
+        'companyId é obrigatório para desfazer conciliação bancária.',
+      );
+    }
+
+    const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+    return await this.reconciliationService.undoMatch(
+      transactionId,
+      userId || SYSTEM_USER_ID,
+      companyId,
     );
   }
 }
