@@ -8,7 +8,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  EmployeeRegime,
+  EntryOrigin,
+  FinancialEventType,
+  Prisma,
+} from '@prisma/client';
+import type { Employee, Payroll, PayrollEntry } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateEmployeeEnterpriseDto } from './dto/create-employee-enterprise.dto.js';
 import { CreatePayrollEnterpriseDto } from './dto/create-payroll-enterprise.dto.js';
@@ -38,41 +44,97 @@ type Amounts = {
   netSalary: number;
 };
 
+type EmployeeRecord = Employee;
+type PayrollRecord = Payroll & {
+  entries?: PayrollEntryRecord[];
+};
+type PayrollEntryRecord = PayrollEntry & {
+  employee?: EmployeeRecord | null;
+  payroll?: PayrollRecord | null;
+};
+
+type EmployeeOperationalStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
+
+type EnrichedEmployee = Omit<
+  EmployeeRecord,
+  | 'baseSalary'
+  | 'admissionAt'
+  | 'dismissalAt'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'deletedAt'
+> & {
+  baseSalary: number;
+  admissionAt: string | null;
+  dismissalAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+  operationalStatus: EmployeeOperationalStatus;
+};
+
+type EnrichedPayroll = Omit<
+  PayrollRecord,
+  'salariesAmount' | 'proLaboreAmount' | 'totalAmount' | 'createdAt'
+> & {
+  salariesAmount: number;
+  proLaboreAmount: number;
+  totalAmount: number;
+  createdAt: string | null;
+  periodLabel: string;
+};
+
+type EnrichedPayrollEntry = Omit<
+  PayrollEntryRecord,
+  | 'baseSalary'
+  | 'inssEmployee'
+  | 'inssEmployer'
+  | 'irrf'
+  | 'fgts'
+  | 'otherBenefits'
+  | 'otherDeductions'
+  | 'netSalary'
+  | 'createdAt'
+> & {
+  baseSalary: number;
+  inssEmployee: number;
+  inssEmployer: number;
+  irrf: number;
+  fgts: number;
+  otherBenefits: number;
+  otherDeductions: number;
+  netSalary: number;
+  createdAt: string | null;
+};
+
 @Injectable()
 export class PayrollEnterpriseService {
   private readonly logger = new Logger(PayrollEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get employeeModel() {
-    const model = (this.prisma as any).employee;
-    if (!model) throw new NotFoundException('Modelo employee não encontrado.');
-    return model;
+  private get employeeModel(): PrismaService['employee'] {
+    return this.prisma.employee;
   }
 
-  private get payrollModel() {
-    const model = (this.prisma as any).payroll;
-    if (!model) throw new NotFoundException('Modelo payroll não encontrado.');
-    return model;
+  private get payrollModel(): PrismaService['payroll'] {
+    return this.prisma.payroll;
   }
 
-  private get payrollEntryModel() {
-    const model = (this.prisma as any).payrollEntry;
-    if (!model)
-      throw new NotFoundException('Modelo payrollEntry não encontrado.');
-    return model;
+  private get payrollEntryModel(): PrismaService['payrollEntry'] {
+    return this.prisma.payrollEntry;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
-  private get financialEventModel() {
-    return (this.prisma as any).financialEvent;
+  private get financialEventModel(): PrismaService['financialEvent'] {
+    return this.prisma.financialEvent;
   }
 
-  private get accountingEntryModel() {
-    return (this.prisma as any).accountingEntry;
+  private get accountingEntryModel(): PrismaService['accountingEntry'] {
+    return this.prisma.accountingEntry;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -137,6 +199,16 @@ export class PayrollEnterpriseService {
     return Number(Number(value || 0).toFixed(2));
   }
 
+  private parseEmployeeRegime(value: string | undefined): EmployeeRegime {
+    if (!value) return EmployeeRegime.CLT;
+
+    if (Object.values(EmployeeRegime).includes(value as EmployeeRegime)) {
+      return value as EmployeeRegime;
+    }
+
+    throw new BadRequestException(`Regime de colaborador inválido: ${value}`);
+  }
+
   private normalize(value: unknown): unknown {
     if (value instanceof Prisma.Decimal) return value.toNumber();
     if (value instanceof Date) return value.toISOString();
@@ -154,12 +226,62 @@ export class PayrollEnterpriseService {
     return value;
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      !(value instanceof Date) &&
+      !(value instanceof Prisma.Decimal)
+    );
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null) return null;
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private async findCompany(companyId: string) {
     const company = await this.prisma.company.findFirst({
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company)
@@ -188,13 +310,13 @@ export class PayrollEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'payroll-enterprise',
       severity: params.statusCode && params.statusCode >= 400 ? 'WARN' : 'INFO',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const base = {
       module: params.module,
@@ -208,20 +330,15 @@ export class PayrollEnterpriseService {
       userAgent: null,
     };
 
-    const candidates = [
+    const candidates: Array<{
+      label: string;
+      data: Prisma.AuditLogUncheckedCreateInput;
+    }> = [
       {
         label: 'scalar',
         data: {
           companyId: params.companyId,
           ...(userId ? { userId } : {}),
-          ...base,
-        },
-      },
-      {
-        label: 'relation',
-        data: {
-          company: { connect: { id: params.companyId } },
-          ...(userId ? { user: { connect: { id: userId } } } : {}),
           ...base,
         },
       },
@@ -260,7 +377,7 @@ export class PayrollEnterpriseService {
     };
   }
 
-  private enrichEmployee(employee: any) {
+  private enrichEmployee(employee: EmployeeRecord): EnrichedEmployee {
     return {
       ...employee,
       baseSalary: this.toNumber(employee.baseSalary),
@@ -287,7 +404,7 @@ export class PayrollEnterpriseService {
     };
   }
 
-  private enrichPayroll(payroll: any) {
+  private enrichPayroll(payroll: PayrollRecord): EnrichedPayroll {
     return {
       ...payroll,
       salariesAmount: this.toNumber(payroll.salariesAmount),
@@ -300,7 +417,7 @@ export class PayrollEnterpriseService {
     };
   }
 
-  private enrichEntry(entry: any) {
+  private enrichEntry(entry: PayrollEntryRecord): EnrichedPayrollEntry {
     return {
       ...entry,
       baseSalary: this.toNumber(entry.baseSalary),
@@ -318,11 +435,12 @@ export class PayrollEnterpriseService {
   }
 
   private employeeWhere(companyId: string, query: PayrollEnterpriseQueryDto) {
-    const and: any[] = [{ companyId }];
+    const and: Prisma.EmployeeWhereInput[] = [{ companyId }];
 
     if (query.active !== undefined)
       and.push({ active: query.active === 'true' });
-    if (query.regime) and.push({ regime: query.regime });
+    if (query.regime)
+      and.push({ regime: this.parseEmployeeRegime(query.regime) });
 
     if (query.search) {
       and.push({
@@ -339,7 +457,7 @@ export class PayrollEnterpriseService {
   }
 
   private payrollWhere(companyId: string, query: PayrollEnterpriseQueryDto) {
-    const and: any[] = [{ companyId }];
+    const and: Prisma.PayrollWhereInput[] = [{ companyId }];
 
     if (query.month) and.push({ month: query.month });
     if (query.year) and.push({ year: query.year });
@@ -348,7 +466,7 @@ export class PayrollEnterpriseService {
   }
 
   private entryWhere(companyId: string, query: PayrollEnterpriseQueryDto) {
-    const and: any[] = [{ payroll: { companyId } }];
+    const and: Prisma.PayrollEntryWhereInput[] = [{ payroll: { companyId } }];
 
     if (query.payrollId) and.push({ payrollId: query.payrollId });
     if (query.employeeId) and.push({ employeeId: query.employeeId });
@@ -375,7 +493,7 @@ export class PayrollEnterpriseService {
     return { AND: and };
   }
 
-  private employeesSummary(items: any[]) {
+  private employeesSummary(items: Array<EmployeeRecord | EnrichedEmployee>) {
     const out = {
       count: items.length,
       active: 0,
@@ -409,7 +527,7 @@ export class PayrollEnterpriseService {
     return out;
   }
 
-  private payrollsSummary(items: any[]) {
+  private payrollsSummary(items: Array<PayrollRecord | EnrichedPayroll>) {
     const out = {
       count: items.length,
       salariesAmount: 0,
@@ -433,7 +551,9 @@ export class PayrollEnterpriseService {
     return out;
   }
 
-  private entriesSummary(items: any[]) {
+  private entriesSummary(
+    items: Array<PayrollEntryRecord | EnrichedPayrollEntry>,
+  ) {
     const out = {
       count: items.length,
       baseSalary: 0,
@@ -481,7 +601,7 @@ export class PayrollEnterpriseService {
   }
 
   private calculateAmounts(
-    employee: any,
+    employee: Pick<EmployeeRecord, 'baseSalary' | 'regime'>,
     overrides: Partial<Amounts> = {},
   ): Amounts {
     const baseSalary = this.money(
@@ -526,19 +646,19 @@ export class PayrollEnterpriseService {
     return out;
   }
 
-  private async recomputePayrollTotals(tx: any, payrollId: string) {
+  private async recomputePayrollTotals(
+    tx: Prisma.TransactionClient,
+    payrollId: string,
+  ) {
     const entries = await tx.payrollEntry.findMany({ where: { payrollId } });
 
     const salariesAmount = this.money(
-      entries.reduce(
-        (sum: number, entry: any) => sum + this.toNumber(entry.baseSalary),
-        0,
-      ),
+      entries.reduce((sum, entry) => sum + this.toNumber(entry.baseSalary), 0),
     );
 
     const totalAmount = this.money(
       entries.reduce(
-        (sum: number, entry: any) =>
+        (sum, entry) =>
           sum +
           this.toNumber(entry.netSalary) +
           this.toNumber(entry.inssEmployer) +
@@ -559,7 +679,7 @@ export class PayrollEnterpriseService {
 
   private async createFinancialEvent(
     companyId: string,
-    payroll: any,
+    payroll: Pick<PayrollRecord, 'id' | 'month' | 'year'>,
     amount: number,
   ) {
     if (!this.financialEventModel?.create) {
@@ -570,7 +690,7 @@ export class PayrollEnterpriseService {
       const event = await this.financialEventModel.create({
         data: {
           companyId,
-          type: 'PAYROLL_PAID' as any,
+          type: FinancialEventType.PAYROLL_PAID,
           amount,
           description: `Folha de pagamento ${String(payroll.month).padStart(2, '0')}/${payroll.year}`,
           referenceId: payroll.id,
@@ -596,7 +716,7 @@ export class PayrollEnterpriseService {
 
   private async createAccountingEntry(
     companyId: string,
-    payroll: any,
+    payroll: Pick<PayrollRecord, 'id' | 'month' | 'year'>,
     amount: number,
   ) {
     if (!this.accountingEntryModel?.create) {
@@ -612,7 +732,7 @@ export class PayrollEnterpriseService {
           debitCode: '5.1.01',
           creditCode: '2.1.01',
           amount,
-          origin: 'PAYROLL_AUTO' as any,
+          origin: EntryOrigin.PAYROLL_AUTO,
           referenceId: payroll.id,
           referenceType: 'PAYROLL',
           month: payroll.month,
@@ -647,9 +767,7 @@ export class PayrollEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichEmployee(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichEmployee(item));
 
     return {
       status: 'OK',
@@ -700,7 +818,7 @@ export class PayrollEnterpriseService {
         role: dto.role.trim(),
         baseSalary: dto.baseSalary,
         active: dto.active ?? true,
-        regime: (dto.regime || 'CLT') as any,
+        regime: this.parseEmployeeRegime(dto.regime),
       },
     });
 
@@ -758,7 +876,8 @@ export class PayrollEnterpriseService {
     if (dto.role !== undefined) data.role = dto.role.trim();
     if (dto.baseSalary !== undefined) data.baseSalary = dto.baseSalary;
     if (dto.active !== undefined) data.active = dto.active;
-    if (dto.regime !== undefined) data.regime = dto.regime as any;
+    if (dto.regime !== undefined)
+      data.regime = this.parseEmployeeRegime(dto.regime);
 
     const updated = await this.employeeModel.update({
       where: { id: employeeId },
@@ -828,9 +947,7 @@ export class PayrollEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichPayroll(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichPayroll(item));
 
     return {
       status: 'OK',
@@ -930,9 +1047,7 @@ export class PayrollEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichEntry(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichEntry(item));
 
     return {
       status: 'OK',
@@ -975,7 +1090,7 @@ export class PayrollEnterpriseService {
 
     const amounts = this.calculateAmounts(employee, dto as Partial<Amounts>);
 
-    const result = await this.prisma.$transaction(async (tx: any) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const existing = await tx.payrollEntry.findFirst({
         where: {
           payrollId: dto.payrollId,
@@ -1071,7 +1186,7 @@ export class PayrollEnterpriseService {
       netSalary: dto.netSalary ?? undefined,
     });
 
-    const result = await this.prisma.$transaction(async (tx: any) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const entry = await tx.payrollEntry.update({
         where: { id: payrollEntryId },
         data: amounts,
@@ -1137,13 +1252,13 @@ export class PayrollEnterpriseService {
       include: { entries: true },
     });
 
-    if (existing?.entries?.length > 0 && !dto.force) {
+    if ((existing?.entries?.length ?? 0) > 0 && !dto.force) {
       throw new ConflictException(
         `Folha ${String(dto.month).padStart(2, '0')}/${dto.year} já possui eventos. Use force=true para regenerar.`,
       );
     }
 
-    const result = await this.prisma.$transaction(async (tx: any) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       let payroll = existing;
 
       if (!payroll) {
@@ -1160,11 +1275,15 @@ export class PayrollEnterpriseService {
         });
       }
 
+      if (!payroll) {
+        throw new NotFoundException('Folha não encontrada após criação.');
+      }
+
       if (dto.force) {
         await tx.payrollEntry.deleteMany({ where: { payrollId: payroll.id } });
       }
 
-      const entries: Array<any> = [];
+      const entries: PayrollEntryRecord[] = [];
 
       for (const employee of employees) {
         const amounts = this.calculateAmounts(employee);
@@ -1224,7 +1343,7 @@ export class PayrollEnterpriseService {
       companyId,
       item: this.normalize(this.enrichPayroll(result.payroll)),
       entries: this.normalize(
-        result.entries.map((entry: any) => this.enrichEntry(entry)),
+        result.entries.map((entry) => this.enrichEntry(entry)),
       ),
       totals: {
         employees: employees.length,
