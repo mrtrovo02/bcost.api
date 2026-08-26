@@ -2,12 +2,13 @@
 
 import {
   IsDateString,
-  IsIn,
+  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { CertificateStatus } from '@prisma/client';
 
 export class UpdateDigitalCertificateDto {
   @IsOptional()
@@ -35,7 +36,6 @@ export class UpdateDigitalCertificateDto {
   validTo?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['ACTIVE', 'EXPIRED', 'REVOKED'])
-  status?: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  @IsEnum(CertificateStatus)
+  status?: CertificateStatus;
 }

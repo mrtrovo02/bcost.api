@@ -1,13 +1,13 @@
 'use strict';
 
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { CertificateStatus } from '@prisma/client';
 
 export class QueryDigitalCertificatesDto {
   @IsOptional()
-  @IsString()
-  @IsIn(['ACTIVE', 'EXPIRED', 'REVOKED'])
-  status?: 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+  @IsEnum(CertificateStatus)
+  status?: CertificateStatus;
 
   @IsOptional()
   @IsString()

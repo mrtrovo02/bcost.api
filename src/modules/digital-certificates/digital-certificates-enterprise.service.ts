@@ -8,6 +8,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CertificateStatus, Prisma } from '@prisma/client';
+import type { DigitalCertificate } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateDigitalCertificateDto } from './dto/create-digital-certificate.dto.js';
 import { QueryDigitalCertificatesDto } from './dto/query-digital-certificates.dto.js';
@@ -28,6 +29,20 @@ type CertificateOperationalStatus =
   | 'EXPIRED'
   | 'REVOKED';
 
+type EnrichedDigitalCertificate = Omit<
+  DigitalCertificate,
+  'validFrom' | 'validTo' | 'createdAt'
+> & {
+  validFrom: string;
+  validTo: string;
+  createdAt: string | null;
+  operationalStatus: CertificateOperationalStatus;
+  daysToExpire: number | null;
+  expired: boolean;
+  expiringSoon: boolean;
+  revoked: boolean;
+};
+
 @Injectable()
 export class DigitalCertificatesEnterpriseService {
   private readonly logger = new Logger(
@@ -36,20 +51,12 @@ export class DigitalCertificatesEnterpriseService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get certificateModel() {
-    const model = (this.prisma as any).digitalCertificate;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma digitalCertificate não encontrado.',
-      );
-    }
-
-    return model;
+  private get certificateModel(): PrismaService['digitalCertificate'] {
+    return this.prisma.digitalCertificate;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -112,6 +119,51 @@ export class DigitalCertificatesEnterpriseService {
     return value;
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private parseDate(value: string, field: string): Date {
     const parsed = new Date(value);
 
@@ -128,7 +180,9 @@ export class DigitalCertificatesEnterpriseService {
     }
   }
 
-  private getOperationalStatus(cert: any): CertificateOperationalStatus {
+  private getOperationalStatus(
+    cert: DigitalCertificate,
+  ): CertificateOperationalStatus {
     const status = String(cert.status || '').toUpperCase();
     const now = new Date();
     const validTo = new Date(cert.validTo);
@@ -151,7 +205,9 @@ export class DigitalCertificatesEnterpriseService {
     return Math.ceil(diff / (1000 * 60 * 60 * 24));
   }
 
-  private enrichCertificate(cert: any) {
+  private enrichCertificate(
+    cert: DigitalCertificate,
+  ): EnrichedDigitalCertificate {
     const validTo = new Date(cert.validTo);
     const validFrom = new Date(cert.validFrom);
     const operationalStatus = this.getOperationalStatus(cert);
@@ -176,7 +232,7 @@ export class DigitalCertificatesEnterpriseService {
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
@@ -186,7 +242,10 @@ export class DigitalCertificatesEnterpriseService {
     return company;
   }
 
-  private async findCertificate(companyId: string, certificateId: string) {
+  private async findCertificate(
+    companyId: string,
+    certificateId: string,
+  ): Promise<DigitalCertificate> {
     const certificate = await this.certificateModel.findFirst({
       where: {
         id: certificateId,
@@ -203,8 +262,11 @@ export class DigitalCertificatesEnterpriseService {
     return certificate;
   }
 
-  private buildWhere(companyId: string, query: QueryDigitalCertificatesDto) {
-    const andConditions: Record<string, unknown>[] = [
+  private buildWhere(
+    companyId: string,
+    query: QueryDigitalCertificatesDto,
+  ): Prisma.DigitalCertificateWhereInput {
+    const andConditions: Prisma.DigitalCertificateWhereInput[] = [
       {
         companyId,
       },
@@ -281,13 +343,13 @@ export class DigitalCertificatesEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'digital-certificates-enterprise',
       severity: params.statusCode && params.statusCode >= 400 ? 'WARN' : 'INFO',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: 'digital-certificates',
@@ -303,33 +365,13 @@ export class DigitalCertificatesEnterpriseService {
 
     const candidates: Array<{
       label: string;
-      data: Record<string, unknown>;
+      data: Prisma.AuditLogUncheckedCreateInput;
     }> = [
       {
         label: 'scalar-schema-first',
         data: {
           companyId: params.companyId,
           ...(userId ? { userId } : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation-schema-first',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
-          ...(userId
-            ? {
-                user: {
-                  connect: {
-                    id: userId,
-                  },
-                },
-              }
-            : {}),
           ...baseData,
         },
       },
@@ -403,7 +445,7 @@ export class DigitalCertificatesEnterpriseService {
 
     const items = rows
       .slice(0, limit)
-      .map((item: any) => this.enrichCertificate(item));
+      .map((item) => this.enrichCertificate(item));
 
     return {
       status: 'OK',
@@ -433,7 +475,7 @@ export class DigitalCertificatesEnterpriseService {
       take: 1000,
     });
 
-    const items = rows.map((item: any) => this.enrichCertificate(item));
+    const items = rows.map((item) => this.enrichCertificate(item));
     const summary = this.buildSummary(items);
 
     return {
@@ -446,7 +488,7 @@ export class DigitalCertificatesEnterpriseService {
     };
   }
 
-  private buildSummary(items: any[]) {
+  private buildSummary(items: EnrichedDigitalCertificate[]) {
     const summary = {
       count: items.length,
       active: 0,
