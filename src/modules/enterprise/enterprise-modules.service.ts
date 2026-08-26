@@ -13,7 +13,7 @@ import { EnterpriseModuleQueryDto } from './dto/enterprise-module-query.dto.js';
 type ModuleConfig = {
   slug: string;
   model: string;
-  prismaKey: string;
+  prismaKey: EnterprisePrismaModelKey;
   label: string;
   companyWhere: (companyId: string) => Record<string, unknown>;
   defaultOrderBy?: Record<string, unknown> | Record<string, unknown>[];
@@ -37,6 +37,41 @@ type RoadmapModuleConfig = {
   operationalGuardrails?: string[];
 };
 
+type EnterprisePrismaModelKey =
+  | 'user'
+  | 'company'
+  | 'userSession'
+  | 'companyUser'
+  | 'notificationLog'
+  | 'invoice'
+  | 'invoiceSefazEvent'
+  | 'bankTransaction'
+  | 'bankAccount'
+  | 'contract'
+  | 'customer'
+  | 'taxObligation'
+  | 'taxCalculation'
+  | 'fiscalObligation'
+  | 'employee'
+  | 'payroll'
+  | 'payrollEntry'
+  | 'accountPlan'
+  | 'accountingEntry'
+  | 'balanceLock'
+  | 'financialEvent'
+  | 'financialSnapshot'
+  | 'cashFlowProjection'
+  | 'digitalCertificate'
+  | 'webhookConfig'
+  | 'businessRule'
+  | 'complianceCheck'
+  | 'auditLog'
+  | 'automationJob'
+  | 'fiscalSimulationLog'
+  | 'taxReformRate'
+  | 'taxClassification'
+  | 'taxDestinationRule';
+
 type RoadmapAutomationBoundary = NonNullable<
   RoadmapModuleConfig['automationBoundary']
 >;
@@ -54,6 +89,20 @@ type EnterpriseCatalogItem = {
   canonicalOwner?: string;
   automationBoundary?: RoadmapAutomationBoundary;
   operationalGuardrails?: string[];
+};
+
+type EnterpriseModuleRecord = Record<string, unknown>;
+
+type EnterpriseModuleModel = {
+  findMany: (args: Record<string, unknown>) => Promise<unknown[]>;
+  count: (args: Record<string, unknown>) => Promise<number>;
+  groupBy?: (args: Record<string, unknown>) => Promise<unknown[]>;
+};
+
+type GroupByCountRecord = Record<string, unknown> & {
+  _count?: {
+    _all?: number;
+  };
 };
 
 @Injectable()
@@ -662,7 +711,9 @@ export class EnterpriseModulesService {
     );
   }
 
-  private buildPersistedCatalogItem(config: ModuleConfig): EnterpriseCatalogItem {
+  private buildPersistedCatalogItem(
+    config: ModuleConfig,
+  ): EnterpriseCatalogItem {
     return {
       slug: config.slug,
       model: config.model,
@@ -681,7 +732,8 @@ export class EnterpriseModulesService {
     config: RoadmapModuleConfig,
   ): EnterpriseCatalogItem {
     const automationBoundary =
-      config.automationBoundary ?? this.resolveRoadmapAutomationBoundary(config);
+      config.automationBoundary ??
+      this.resolveRoadmapAutomationBoundary(config);
 
     return {
       slug: config.slug,
@@ -730,7 +782,8 @@ export class EnterpriseModulesService {
     const canonicalOwner =
       config.canonicalOwner ?? this.resolveRoadmapCanonicalOwner(config);
     const automationBoundary =
-      config.automationBoundary ?? this.resolveRoadmapAutomationBoundary(config);
+      config.automationBoundary ??
+      this.resolveRoadmapAutomationBoundary(config);
     const operationalGuardrails =
       config.operationalGuardrails ??
       this.resolveRoadmapOperationalGuardrails(config, automationBoundary);
@@ -805,7 +858,10 @@ export class EnterpriseModulesService {
   private resolveRoadmapAutomationBoundary(
     config: RoadmapModuleConfig,
   ): RoadmapAutomationBoundary {
-    if (config.slug === 'command-center' || config.slug === 'audit-intelligence') {
+    if (
+      config.slug === 'command-center' ||
+      config.slug === 'audit-intelligence'
+    ) {
       return 'SOFTWARE_ONLY';
     }
 
@@ -876,10 +932,31 @@ export class EnterpriseModulesService {
     ];
   }
 
-  private getModel(config: ModuleConfig) {
-    const model = (this.prisma as any)[config.prismaKey];
+  private isEnterpriseModuleModel(
+    value: unknown,
+  ): value is EnterpriseModuleModel {
+    if (!value || typeof value !== 'object') return false;
 
-    if (!model) {
+    const candidate = value as EnterpriseModuleModel;
+
+    return (
+      typeof candidate.findMany === 'function' &&
+      typeof candidate.count === 'function'
+    );
+  }
+
+  private isModuleRecord(value: unknown): value is EnterpriseModuleRecord {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private isGroupByCountRecord(value: unknown): value is GroupByCountRecord {
+    return this.isModuleRecord(value);
+  }
+
+  private getModel(config: ModuleConfig): EnterpriseModuleModel {
+    const model = this.prisma[config.prismaKey] as unknown;
+
+    if (!this.isEnterpriseModuleModel(model)) {
       throw new NotFoundException(
         `Modelo Prisma não encontrado para ${config.slug}: ${config.prismaKey}`,
       );
@@ -1063,11 +1140,11 @@ export class EnterpriseModulesService {
   }
 
   private async safeStatusSummary(
-    model: any,
+    model: EnterpriseModuleModel,
     config: ModuleConfig,
     where: Record<string, unknown>,
   ) {
-    if (!config.statusField) return {};
+    if (!config.statusField || !model.groupBy) return {};
 
     try {
       const grouped = await model.groupBy({
@@ -1078,11 +1155,15 @@ export class EnterpriseModulesService {
         },
       });
 
-      return grouped.reduce((acc: Record<string, number>, row: any) => {
-        const key = String(row[config.statusField as string]);
-        acc[key] = row._count?._all ?? 0;
-        return acc;
-      }, {});
+      return grouped
+        .filter((row): row is GroupByCountRecord =>
+          this.isGroupByCountRecord(row),
+        )
+        .reduce((acc: Record<string, number>, row) => {
+          const key = String(row[config.statusField as string]);
+          acc[key] = row._count?._all ?? 0;
+          return acc;
+        }, {});
     } catch (error) {
       this.logger.warn(
         `[EnterpriseModules] groupBy falhou para ${config.slug}: ${
@@ -1094,7 +1175,7 @@ export class EnterpriseModulesService {
     }
   }
 
-  private buildFinancialSummary(slug: string, items: any[]) {
+  private buildFinancialSummary(slug: string, items: EnterpriseModuleRecord[]) {
     const amountKeys = [
       'amount',
       'taxAmount',
@@ -1114,7 +1195,7 @@ export class EnterpriseModulesService {
 
     for (const item of items) {
       for (const key of amountKeys) {
-        const value = item?.[key];
+        const value = item[key];
 
         if (value === undefined || value === null) continue;
 
@@ -1163,7 +1244,9 @@ export class EnterpriseModulesService {
       skip: offset,
     });
 
-    const sliced = Array.isArray(rows) ? rows.slice(0, limit) : [];
+    const sliced = rows
+      .slice(0, limit)
+      .filter((row): row is EnterpriseModuleRecord => this.isModuleRecord(row));
     const normalizedItems = this.normalize(sliced) as unknown[];
     const statusSummary = await this.safeStatusSummary(model, config, where);
     const financialSummary = this.buildFinancialSummary(slug, sliced);
@@ -1178,7 +1261,7 @@ export class EnterpriseModulesService {
       total: offset + sliced.length,
       limit,
       offset,
-      hasMore: Array.isArray(rows) ? rows.length > limit : false,
+      hasMore: rows.length > limit,
       summary: {
         count: sliced.length,
         status: statusSummary,
