@@ -3,13 +3,14 @@
 import { Type } from 'class-transformer';
 import {
   IsBooleanString,
-  IsIn,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import { ComplianceStatus, NotificationSeverity } from '@prisma/client';
 
 export class ComplianceEnterpriseQueryDto {
   @IsOptional()
@@ -17,14 +18,12 @@ export class ComplianceEnterpriseQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['INFO', 'WARNING', 'CRITICAL'])
-  severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+  @IsEnum(NotificationSeverity)
+  severity?: NotificationSeverity;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['OPEN', 'RESOLVED', 'IGNORED', 'IN_PROGRESS'])
-  status?: 'OPEN' | 'RESOLVED' | 'IGNORED' | 'IN_PROGRESS';
+  @IsEnum(ComplianceStatus)
+  status?: ComplianceStatus;
 
   @IsOptional()
   @IsBooleanString()

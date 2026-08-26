@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ComplianceStatus, NotificationSeverity, Prisma } from '@prisma/client';
+import type { BusinessRule, ComplianceCheck } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ComplianceEnterpriseQueryDto } from './dto/compliance-enterprise-query.dto.js';
 import { CreateBusinessRuleEnterpriseDto } from './dto/create-business-rule-enterprise.dto.js';
@@ -35,36 +36,51 @@ type EngineFinding = {
   metadata?: Record<string, unknown>;
 };
 
+type EnrichedBusinessRule = Omit<
+  BusinessRule,
+  'condition' | 'action' | 'createdAt' | 'updatedAt' | 'lastTriggeredAt'
+> & {
+  condition: unknown;
+  action: unknown;
+  createdAt: string | null;
+  updatedAt: string | null;
+  lastTriggeredAt: string | null;
+  operationalStatus: 'ENABLED' | 'DISABLED';
+};
+
+type EnrichedComplianceCheck = Omit<
+  ComplianceCheck,
+  'createdAt' | 'updatedAt' | 'resolvedAt'
+> & {
+  createdAt: string | null;
+  updatedAt: string | null;
+  resolvedAt: string | null;
+  operationalStatus: ComplianceStatus | 'CLOSED';
+};
+
+type BusinessRuleSummaryItem = Pick<BusinessRule, 'enabled' | 'triggerCount'>;
+
+type ComplianceCheckSummaryItem = Pick<
+  ComplianceCheck,
+  'resolved' | 'status' | 'severity'
+>;
+
 @Injectable()
 export class ComplianceEnterpriseService {
   private readonly logger = new Logger(ComplianceEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get businessRuleModel() {
-    const model = (this.prisma as any).businessRule;
-
-    if (!model) {
-      throw new NotFoundException('Modelo Prisma businessRule não encontrado.');
-    }
-
-    return model;
+  private get businessRuleModel(): PrismaService['businessRule'] {
+    return this.prisma.businessRule;
   }
 
-  private get complianceCheckModel() {
-    const model = (this.prisma as any).complianceCheck;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma complianceCheck não encontrado.',
-      );
-    }
-
-    return model;
+  private get complianceCheckModel(): PrismaService['complianceCheck'] {
+    return this.prisma.complianceCheck;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -114,6 +130,10 @@ export class ComplianceEnterpriseService {
     return Number(value || 0);
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
   private normalize(value: unknown): unknown {
     if (value instanceof Prisma.Decimal) return value.toNumber();
     if (value instanceof Date) return value.toISOString();
@@ -136,12 +156,53 @@ export class ComplianceEnterpriseService {
     return value;
   }
 
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private async findCompany(companyId: string) {
     const company = await this.prisma.company.findFirst({
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
@@ -171,12 +232,12 @@ export class ComplianceEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'compliance-enterprise',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: params.module,
@@ -190,20 +251,15 @@ export class ComplianceEnterpriseService {
       userAgent: null,
     };
 
-    const attempts: Array<{ label: string; data: Record<string, unknown> }> = [
+    const attempts: Array<{
+      label: string;
+      data: Prisma.AuditLogUncheckedCreateInput;
+    }> = [
       {
         label: 'scalar',
         data: {
           companyId: params.companyId,
           ...(userId ? { userId } : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation',
-        data: {
-          company: { connect: { id: params.companyId } },
-          ...(userId ? { user: { connect: { id: userId } } } : {}),
           ...baseData,
         },
       },
@@ -249,7 +305,7 @@ export class ComplianceEnterpriseService {
     };
   }
 
-  private enrichRule(rule: any) {
+  private enrichRule(rule: BusinessRule): EnrichedBusinessRule {
     return {
       ...rule,
       createdAt: rule.createdAt ? new Date(rule.createdAt).toISOString() : null,
@@ -261,7 +317,7 @@ export class ComplianceEnterpriseService {
     };
   }
 
-  private enrichCheck(check: any) {
+  private enrichCheck(check: ComplianceCheck): EnrichedComplianceCheck {
     return {
       ...check,
       resolvedAt: check.resolvedAt
@@ -280,8 +336,8 @@ export class ComplianceEnterpriseService {
   private buildRulesWhere(
     companyId: string,
     query: ComplianceEnterpriseQueryDto,
-  ) {
-    const and: Record<string, unknown>[] = [{ companyId }];
+  ): Prisma.BusinessRuleWhereInput {
+    const and: Prisma.BusinessRuleWhereInput[] = [{ companyId }];
 
     if (query.enabled !== undefined) {
       and.push({
@@ -314,8 +370,8 @@ export class ComplianceEnterpriseService {
   private buildChecksWhere(
     companyId: string,
     query: ComplianceEnterpriseQueryDto,
-  ) {
-    const and: Record<string, unknown>[] = [{ companyId }];
+  ): Prisma.ComplianceCheckWhereInput {
+    const and: Prisma.ComplianceCheckWhereInput[] = [{ companyId }];
 
     if (query.severity) {
       and.push({
@@ -366,7 +422,7 @@ export class ComplianceEnterpriseService {
     return and.length === 1 ? { companyId } : { AND: and };
   }
 
-  private buildRulesSummary(items: any[]) {
+  private buildRulesSummary(items: BusinessRuleSummaryItem[]) {
     const summary = {
       count: items.length,
       enabled: 0,
@@ -384,7 +440,7 @@ export class ComplianceEnterpriseService {
     return summary;
   }
 
-  private buildChecksSummary(items: any[]) {
+  private buildChecksSummary(items: ComplianceCheckSummaryItem[]) {
     const summary = {
       count: items.length,
       open: 0,
@@ -457,9 +513,7 @@ export class ComplianceEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichRule(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichRule(item));
 
     return {
       status: 'OK',
@@ -490,8 +544,8 @@ export class ComplianceEnterpriseService {
         companyId,
         name: dto.name.trim(),
         description: dto.description?.trim() || null,
-        condition: dto.condition,
-        action: dto.action,
+        condition: this.toJsonObject(dto.condition),
+        action: this.toJsonObject(dto.action),
         enabled: dto.enabled ?? true,
       },
     });
@@ -541,14 +595,15 @@ export class ComplianceEnterpriseService {
       throw new NotFoundException(`Regra de negócio não encontrada: ${ruleId}`);
     }
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.BusinessRuleUpdateInput = {};
 
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.description !== undefined) {
       data.description = dto.description?.trim() || null;
     }
-    if (dto.condition !== undefined) data.condition = dto.condition;
-    if (dto.action !== undefined) data.action = dto.action;
+    if (dto.condition !== undefined)
+      data.condition = this.toJsonObject(dto.condition);
+    if (dto.action !== undefined) data.action = this.toJsonObject(dto.action);
     if (dto.enabled !== undefined) data.enabled = dto.enabled;
 
     const updated = await this.businessRuleModel.update({
@@ -670,8 +725,8 @@ export class ComplianceEnterpriseService {
       },
     ];
 
-    const created: any[] = [];
-    const skipped: any[] = [];
+    const created: EnrichedBusinessRule[] = [];
+    const skipped: EnrichedBusinessRule[] = [];
 
     for (const rule of defaults) {
       const existing = await this.businessRuleModel.findFirst({
@@ -746,9 +801,7 @@ export class ComplianceEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichCheck(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichCheck(item));
 
     return {
       status: 'OK',

@@ -1,17 +1,16 @@
 'use strict';
 
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ComplianceStatus, NotificationSeverity } from '@prisma/client';
 
 export class UpdateComplianceCheckEnterpriseDto {
   @IsOptional()
-  @IsString()
-  @IsIn(['INFO', 'WARNING', 'CRITICAL'])
-  severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+  @IsEnum(NotificationSeverity)
+  severity?: NotificationSeverity;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['OPEN', 'RESOLVED', 'IGNORED', 'IN_PROGRESS'])
-  status?: 'OPEN' | 'RESOLVED' | 'IGNORED' | 'IN_PROGRESS';
+  @IsEnum(ComplianceStatus)
+  status?: ComplianceStatus;
 
   @IsOptional()
   @IsString()
