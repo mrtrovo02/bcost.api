@@ -19,8 +19,8 @@ type AuthUser = {
   id?: string;
   sub?: string;
   email?: string;
-  role?: string;
-  companyId?: string;
+  role?: string | null;
+  companyId?: string | null;
   [key: string]: unknown;
 };
 

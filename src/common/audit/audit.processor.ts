@@ -13,9 +13,7 @@ export class AuditProcessor extends WorkerHost {
     super();
   }
 
-  async process(
-    job: Job<AuditEventPayload, void, string>,
-  ): Promise<void> {
+  async process(job: Job<AuditEventPayload, void, string>): Promise<void> {
     try {
       const { data } = job;
 
@@ -36,7 +34,7 @@ export class AuditProcessor extends WorkerHost {
         },
       });
 
-      return { status: 'persisted' };
+      return;
     } catch (error) {
       this.logger.error(`Erro ao processar Job ${job.id}:`, error);
       throw error; // BullMQ tentará novamente com backoff

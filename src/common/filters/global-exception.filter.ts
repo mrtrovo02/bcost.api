@@ -84,14 +84,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     // 2. Persistência no AuditLog (Correção Técnica de Tipagem)
     if (!isScannerNotFound) {
-      const payload: Prisma.InputJsonObject = {
+      const payload: Record<string, Prisma.InputJsonValue> = {
         path: url,
         method,
         error: this.serializeMessage(message),
       };
 
       if (process.env.NODE_ENV !== 'production' && exception instanceof Error) {
-        payload.stack = exception.stack;
+        payload.stack = exception.stack ?? '';
       }
 
       await this.prisma.auditLog
@@ -106,7 +106,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
             userId: (store?.userId ?? undefined) as string,
             companyId: (store?.companyId ?? undefined) as string,
             statusCode: status,
-            payload,
+            payload: payload as Prisma.InputJsonObject,
             ipAddress: request.ip,
             userAgent: String(
               redactSensitiveHeaders(request.headers ?? {})['user-agent'] ?? '',
@@ -156,12 +156,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private serializeMessage(message: unknown): Prisma.InputJsonValue {
     if (
-      message === null ||
       typeof message === 'string' ||
       typeof message === 'number' ||
       typeof message === 'boolean'
     ) {
       return message;
+    }
+
+    if (message === null) {
+      return 'null';
     }
 
     return redactDeep(message) as Prisma.InputJsonValue;

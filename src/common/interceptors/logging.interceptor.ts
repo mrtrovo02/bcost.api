@@ -137,7 +137,7 @@ export class LoggingInterceptor implements NestInterceptor {
             payload: {
               method,
               url,
-              error: error?.message,
+              error: error?.message ?? 'Erro sem mensagem informada.',
             },
           });
         },
