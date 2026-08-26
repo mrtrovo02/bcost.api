@@ -37,13 +37,39 @@ export enum FallbackNFeStatus {
 }
 
 // Resolução segura de objetos de enum em runtime
-const SafeInvoiceType =
-  (PrismaClientPkg as Record<string, any>).InvoiceType ?? FallbackInvoiceType;
-const SafeInvoiceStatus =
-  (PrismaClientPkg as Record<string, any>).InvoiceStatus ??
-  FallbackInvoiceStatus;
-const SafeNFeStatus =
-  (PrismaClientPkg as Record<string, any>).NFeStatus ?? FallbackNFeStatus;
+type EnumLike = Record<string, string | number>;
+
+function getRuntimeEnum(
+  source: unknown,
+  key: string,
+  fallback: EnumLike,
+): EnumLike {
+  if (source && typeof source === 'object' && key in source) {
+    const value = (source as Record<string, unknown>)[key];
+
+    if (value && typeof value === 'object') {
+      return value as EnumLike;
+    }
+  }
+
+  return fallback;
+}
+
+const SafeInvoiceType = getRuntimeEnum(
+  PrismaClientPkg,
+  'InvoiceType',
+  FallbackInvoiceType,
+);
+const SafeInvoiceStatus = getRuntimeEnum(
+  PrismaClientPkg,
+  'InvoiceStatus',
+  FallbackInvoiceStatus,
+);
+const SafeNFeStatus = getRuntimeEnum(
+  PrismaClientPkg,
+  'NFeStatus',
+  FallbackNFeStatus,
+);
 
 const NFE_ISSUE_PURPOSES = [
   'NORMAL',

@@ -7,7 +7,7 @@ import {
   IsOptional,
   IsBoolean,
   IsDateString,
-  IsJSON,
+  IsObject,
   IsUUID,
 } from 'class-validator';
 import { InvoiceType } from '@prisma/client';
@@ -59,6 +59,6 @@ export class CreateInvoiceDto {
   isAutoCaptured?: boolean; // ADICIONADO PARA COMBINAR COM O SCHEMA
 
   @IsOptional()
-  @IsJSON()
-  rawJson?: any;
+  @IsObject()
+  rawJson?: Record<string, unknown>;
 }
