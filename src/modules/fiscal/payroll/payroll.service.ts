@@ -27,6 +27,10 @@ export class PayrollService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
   /**
    * Histórico completo para auditoria e conferência.
    * Adaptado para ordenar por Year e Month.
@@ -90,8 +94,8 @@ export class PayrollService {
             : 0,
         },
       });
-    } catch (error: any) {
-      this.logger.error(`[Payroll Error] ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(`[Payroll Error] ${this.getErrorMessage(error)}`);
       throw new BadRequestException(
         'Falha ao persistir folha no banco. Verifique os dados.',
       );
