@@ -16,11 +16,32 @@ export interface FactorRResult {
   potentialTaxSaving: string;
 }
 
+type FactorRPayrollData = {
+  salariesAmount?: unknown;
+  proLaboreAmount?: unknown;
+  taxesAmount?: unknown;
+};
+
 @Injectable()
 export class FactorREngineService {
   private readonly logger = new Logger(FactorREngineService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private parsePayrollData(value: Prisma.JsonValue): FactorRPayrollData {
+    return this.isRecord(value) ? value : {};
+  }
+
+  private toDecimal(value: unknown): Prisma.Decimal {
+    if (value instanceof Prisma.Decimal) return value;
+
+    const parsed = Number(value ?? 0);
+    return new Prisma.Decimal(Number.isFinite(parsed) ? parsed : 0);
+  }
 
   async calculate(
     companyId: string,
@@ -47,17 +68,12 @@ export class FactorREngineService {
     );
 
     const totalPayroll12m = history.reduce((acc, s) => {
-      // Aqui usamos a lógica de fallback: se o campo não existe na tipagem do Prisma,
-      // buscamos dentro do campo fatorRData ou usamos 0.
-      const data = s.fatorRData as any;
-      const salaries = data?.salariesAmount || 0;
-      const proLabore = data?.proLaboreAmount || 0;
-      const taxes = data?.taxesAmount || 0;
+      const data = this.parsePayrollData(s.fatorRData);
 
       return acc
-        .add(new Prisma.Decimal(salaries))
-        .add(new Prisma.Decimal(proLabore))
-        .add(new Prisma.Decimal(taxes));
+        .add(this.toDecimal(data.salariesAmount))
+        .add(this.toDecimal(data.proLaboreAmount))
+        .add(this.toDecimal(data.taxesAmount));
     }, new Prisma.Decimal(0));
 
     const factorR = totalRevenue12m.isZero()

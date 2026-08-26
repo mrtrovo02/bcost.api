@@ -298,6 +298,9 @@ export class FiscalController {
     const currentFactor = Number(monthlyTax.metrics.fatorR || 0);
     const requiredPayroll = Number((revenue * 0.28).toFixed(2));
     const missingPayroll = Math.max(0, requiredPayroll - actualPayroll);
+    const projectedSaving = factorR.optimized
+      ? factorR.currentSaving
+      : factorR.potentialSaving;
 
     return {
       companyId,
@@ -317,10 +320,10 @@ export class FiscalController {
           : `Ajuste folha/pró-labore em aproximadamente R$ ${missingPayroll.toFixed(
               2,
             )} para buscar enquadramento no Anexo III.`,
-      potentialSaving: Number((factorR as any)?.potentialSaving || 0),
+      potentialSaving: Number(projectedSaving || 0),
       projection: {
         nextMonth: nextMonthLabel(),
-        estimatedSaving: Number((factorR as any)?.potentialSaving || 0),
+        estimatedSaving: Number(projectedSaving || 0),
       },
       source: 'fiscal-payroll-alias',
       generatedAt: new Date().toISOString(),

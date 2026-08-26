@@ -59,6 +59,19 @@ type FiscalPerformancePoint = {
 type SimplesAnnex = 'III' | 'V';
 export type FiscalExportFormat = 'DOMINIO' | 'QUESTOR' | 'ALTERDATA';
 
+export type FactorROptimizationResult =
+  | {
+      optimized: true;
+      message: string;
+      currentSaving: number;
+    }
+  | {
+      optimized: false;
+      message: string;
+      action: string;
+      potentialSaving: number;
+    };
+
 export interface FiscalExportFile {
   filename: string;
   mimeType: string;
@@ -796,7 +809,11 @@ export class FiscalService implements OnModuleInit {
   // Otimização Fator R
   // ---------------------------------------------------------------------------
 
-  async getFactorROptimization(companyId: string, month: number, year: number) {
+  async getFactorROptimization(
+    companyId: string,
+    month: number,
+    year: number,
+  ): Promise<FactorROptimizationResult> {
     const stats = await this.calculateMonthlyTax(companyId, month, year);
     const { faturamentoMes, folhaMes, fatorR } = stats.metrics;
 
