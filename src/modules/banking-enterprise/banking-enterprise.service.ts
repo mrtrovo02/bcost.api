@@ -8,7 +8,13 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { FinancialEventType, Prisma, TransactionType } from '@prisma/client';
+import {
+  FinancialEventType,
+  InvoiceStatus,
+  ObligationStatus,
+  Prisma,
+  TransactionType,
+} from '@prisma/client';
 import type { BankAccount, BankTransaction } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AutoReconciliationEnterpriseDto } from './dto/auto-reconciliation-enterprise.dto.js';
@@ -75,6 +81,17 @@ type Candidate = {
   target: Record<string, unknown>;
 };
 
+type BankingCandidatesResult = {
+  status: 'OK';
+  message?: string;
+  module?: 'bank-reconciliation';
+  companyId: string;
+  transaction: unknown;
+  candidates: Candidate[];
+  total?: number;
+  generatedAt: string;
+};
+
 @Injectable()
 export class BankingEnterpriseService {
   private readonly logger = new Logger(BankingEnterpriseService.name);
@@ -95,6 +112,10 @@ export class BankingEnterpriseService {
 
   private get auditLogModel(): PrismaService['auditLog'] {
     return this.prisma.auditLog;
+  }
+
+  private get taxObligationModel(): PrismaService['taxObligation'] {
+    return this.prisma.taxObligation;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -1141,7 +1162,7 @@ export class BankingEnterpriseService {
     transactionId: string,
     query: AutoReconciliationEnterpriseDto,
     user?: AuthUser,
-  ) {
+  ): Promise<BankingCandidatesResult> {
     this.validateCompanyAccess(companyId, user);
 
     const amountTolerance = Number(query.amountTolerance ?? 0.05);
@@ -1199,7 +1220,7 @@ export class BankingEnterpriseService {
       });
 
       for (const invoice of invoices) {
-        const customerName = (invoice as any).customer?.name || '';
+        const customerName = invoice.customer?.name || '';
         const targetDescription = `${invoice.number || ''} ${customerName}`;
 
         const scoring = this.calculateCandidateScore({
@@ -1231,7 +1252,7 @@ export class BankingEnterpriseService {
     }
 
     if (transaction.type === TransactionType.DEBIT) {
-      const taxObligations = await (this.prisma as any).taxObligation.findMany({
+      const taxObligations = await this.taxObligationModel.findMany({
         where: {
           companyId,
           status: {
@@ -1340,10 +1361,10 @@ export class BankingEnterpriseService {
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
-      let target: any = null;
+      let target: Record<string, unknown> | null = null;
 
       if (dto.targetType === 'INVOICE') {
-        target = await tx.invoice.findFirst({
+        const invoice = await tx.invoice.findFirst({
           where: {
             id: dto.targetId,
             companyId,
@@ -1351,7 +1372,7 @@ export class BankingEnterpriseService {
           },
         });
 
-        if (!target) {
+        if (!invoice) {
           throw new NotFoundException(
             `Invoice não encontrada: ${dto.targetId}`,
           );
@@ -1373,29 +1394,31 @@ export class BankingEnterpriseService {
           );
         }
 
-        await tx.invoice.update({
+        const updatedInvoice = await tx.invoice.update({
           where: {
             id: dto.targetId,
           },
           data: {
             reconciled: true,
-            status: 'PAID' as any,
+            status: InvoiceStatus.PAID,
             version: {
               increment: 1,
             },
           },
         });
+
+        target = this.normalize(updatedInvoice) as Record<string, unknown>;
       }
 
       if (dto.targetType === 'TAX_OBLIGATION') {
-        target = await (tx as any).taxObligation.findFirst({
+        const taxObligation = await tx.taxObligation.findFirst({
           where: {
             id: dto.targetId,
             companyId,
           },
         });
 
-        if (!target) {
+        if (!taxObligation) {
           throw new NotFoundException(
             `TaxObligation não encontrada: ${dto.targetId}`,
           );
@@ -1417,17 +1440,19 @@ export class BankingEnterpriseService {
           );
         }
 
-        await (tx as any).taxObligation.update({
+        const updatedObligation = await tx.taxObligation.update({
           where: {
             id: dto.targetId,
           },
           data: {
-            status: 'PAID',
+            status: ObligationStatus.PAID,
             version: {
               increment: 1,
             },
           },
         });
+
+        target = this.normalize(updatedObligation) as Record<string, unknown>;
       }
 
       const updated = await tx.bankTransaction.update({
@@ -1535,7 +1560,7 @@ export class BankingEnterpriseService {
         user,
       );
 
-      const best = (candidates as any).candidates?.[0] as Candidate | undefined;
+      const best = candidates.candidates[0];
 
       if (!best || best.score < 70) {
         results.push({
@@ -1652,7 +1677,7 @@ export class BankingEnterpriseService {
           },
           data: {
             reconciled: false,
-            status: 'NORMAL' as any,
+            status: InvoiceStatus.NORMAL,
             version: {
               increment: 1,
             },
@@ -1661,12 +1686,12 @@ export class BankingEnterpriseService {
       }
 
       if (transaction.taxObligationId) {
-        await (tx as any).taxObligation.update({
+        await tx.taxObligation.update({
           where: {
             id: transaction.taxObligationId,
           },
           data: {
-            status: 'PENDING',
+            status: ObligationStatus.PENDING,
             version: {
               increment: 1,
             },
