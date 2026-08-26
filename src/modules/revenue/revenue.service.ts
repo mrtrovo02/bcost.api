@@ -1,7 +1,12 @@
 'use strict';
 
 import { Injectable, Logger } from '@nestjs/common';
-import { ContractStatus, InvoiceStatus, Prisma } from '@prisma/client';
+import {
+  ContractStatus,
+  InvoiceStatus,
+  InvoiceType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 
 type BillingMode = 'MANUAL' | 'MONTHLY_JOB' | 'QUEUE' | 'AUTOMATION';
@@ -78,6 +83,51 @@ export class RevenueService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   /**
    * Endpoint legado:
    * POST /revenue/process-billing/:companyId
@@ -140,18 +190,18 @@ export class RevenueService {
     const contracts = await this.prisma.contract.findMany({
       where: {
         companyId,
-        status: 'ACTIVE',
+        status: ContractStatus.ACTIVE,
         deletedAt: null,
-      } as any,
+      },
       orderBy: {
         createdAt: 'asc',
-      } as any,
+      },
     });
 
     const results: BillingContractResult[] = [];
     let amountCreated = 0;
 
-    for (const contract of contracts as any[]) {
+    for (const contract of contracts) {
       const contractId = String(contract.id);
       const customerId = contract.customerId
         ? String(contract.customerId)
@@ -210,16 +260,16 @@ export class RevenueService {
           where: {
             companyId,
             customerId,
-            type: 'SERVICE',
+            type: InvoiceType.SERVICE,
             deletedAt: null,
             issuedAt: {
               gte: period.start,
               lt: period.end,
             },
-          } as any,
+          },
           orderBy: {
             issuedAt: 'desc',
-          } as any,
+          },
         });
 
         if (existing && !force) {
@@ -241,11 +291,11 @@ export class RevenueService {
               companyId,
               customerId,
               amount: contract.amount,
-              type: 'SERVICE',
+              type: InvoiceType.SERVICE,
               status: InvoiceStatus.NORMAL,
               issuedAt: now,
               reconciled: false,
-            } as any,
+            },
           });
 
           await tx.contract.update({
@@ -254,7 +304,7 @@ export class RevenueService {
             },
             data: {
               lastBillingAt: now,
-            } as any,
+            },
           });
 
           return invoice;
@@ -602,7 +652,7 @@ export class RevenueService {
     payload?: Record<string, unknown>;
     statusCode?: number | null;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = (this.prisma as any).auditLog;
+    const auditLog = this.prisma.auditLog;
 
     if (!auditLog?.create) {
       return {
@@ -611,13 +661,13 @@ export class RevenueService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload ?? {}),
       severity: params.severity ?? 'INFO',
       source: params.source ?? params.module,
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: params.module,
@@ -631,25 +681,13 @@ export class RevenueService {
       payload,
     };
 
-    const candidates: Record<string, unknown>[] = [
+    const candidates: Prisma.AuditLogUncheckedCreateInput[] = [
       {
         companyId: params.companyId,
         ...baseData,
       },
       {
-        company: {
-          connect: {
-            id: params.companyId,
-          },
-        },
-        ...baseData,
-      },
-      {
-        company: {
-          connect: {
-            id: params.companyId,
-          },
-        },
+        companyId: params.companyId,
         module: params.module,
         action: params.action,
         entity: params.entity,
