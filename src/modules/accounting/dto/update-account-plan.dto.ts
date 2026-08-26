@@ -2,12 +2,13 @@
 
 import {
   IsBoolean,
-  IsIn,
+  IsEnum,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { AccountType } from '@prisma/client';
 
 export class UpdateAccountPlanDto {
   @IsOptional()
@@ -17,22 +18,8 @@ export class UpdateAccountPlanDto {
   name?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'ATIVO',
-    'PASSIVO',
-    'PATRIMONIO_LIQUIDO',
-    'RECEITA',
-    'DESPESA',
-    'CUSTO',
-  ])
-  type?:
-    | 'ATIVO'
-    | 'PASSIVO'
-    | 'PATRIMONIO_LIQUIDO'
-    | 'RECEITA'
-    | 'DESPESA'
-    | 'CUSTO';
+  @IsEnum(AccountType)
+  type?: AccountType;
 
   @IsOptional()
   @IsString()

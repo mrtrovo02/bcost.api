@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AccountType, EntryOrigin, Prisma } from '@prisma/client';
+import type { AccountingEntry, AccountPlan } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateAccountPlanDto } from './dto/create-account-plan.dto.js';
 import { CreateAccountingEntryDto } from './dto/create-accounting-entry.dto.js';
@@ -26,46 +27,41 @@ type AuthUser = {
   [key: string]: unknown;
 };
 
+type EnrichedAccountPlan = Omit<AccountPlan, 'createdAt'> & {
+  createdAt: string | null;
+  scope: 'COMPANY' | 'GLOBAL';
+};
+
+type EnrichedAccountingEntry = Omit<
+  AccountingEntry,
+  'amount' | 'date' | 'createdAt'
+> & {
+  amount: number;
+  date: string | null;
+  createdAt: string | null;
+  periodLabel: string;
+};
+
 @Injectable()
 export class AccountingEnterpriseService {
   private readonly logger = new Logger(AccountingEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get accountPlanModel() {
-    const model = (this.prisma as any).accountPlan;
-
-    if (!model) {
-      throw new NotFoundException('Modelo Prisma accountPlan não encontrado.');
-    }
-
-    return model;
+  private get accountPlanModel(): PrismaService['accountPlan'] {
+    return this.prisma.accountPlan;
   }
 
-  private get accountingEntryModel() {
-    const model = (this.prisma as any).accountingEntry;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma accountingEntry não encontrado.',
-      );
-    }
-
-    return model;
+  private get accountingEntryModel(): PrismaService['accountingEntry'] {
+    return this.prisma.accountingEntry;
   }
 
-  private get balanceLockModel() {
-    const model = (this.prisma as any).balanceLock;
-
-    if (!model) {
-      throw new NotFoundException('Modelo Prisma balanceLock não encontrado.');
-    }
-
-    return model;
+  private get balanceLockModel(): PrismaService['balanceLock'] {
+    return this.prisma.balanceLock;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -128,6 +124,51 @@ export class AccountingEnterpriseService {
     return value;
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private parseDate(value: string, field: string): Date {
     const parsed = new Date(value);
 
@@ -150,7 +191,7 @@ export class AccountingEnterpriseService {
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
@@ -232,13 +273,13 @@ export class AccountingEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'accounting-enterprise',
       severity: params.statusCode && params.statusCode >= 400 ? 'WARN' : 'INFO',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: params.module,
@@ -254,33 +295,13 @@ export class AccountingEnterpriseService {
 
     const candidates: Array<{
       label: string;
-      data: Record<string, unknown>;
+      data: Prisma.AuditLogUncheckedCreateInput;
     }> = [
       {
         label: 'scalar-schema-first',
         data: {
           companyId: params.companyId,
           ...(userId ? { userId } : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation-schema-first',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
-          ...(userId
-            ? {
-                user: {
-                  connect: {
-                    id: userId,
-                  },
-                },
-              }
-            : {}),
           ...baseData,
         },
       },
@@ -330,8 +351,11 @@ export class AccountingEnterpriseService {
     };
   }
 
-  private buildAccountPlanWhere(companyId: string, query: QueryAccountingDto) {
-    const andConditions: Record<string, unknown>[] = [
+  private buildAccountPlanWhere(
+    companyId: string,
+    query: QueryAccountingDto,
+  ): Prisma.AccountPlanWhereInput {
+    const andConditions: Prisma.AccountPlanWhereInput[] = [
       {
         OR: [
           {
@@ -386,8 +410,11 @@ export class AccountingEnterpriseService {
     };
   }
 
-  private buildEntryWhere(companyId: string, query: QueryAccountingDto) {
-    const andConditions: Record<string, unknown>[] = [{ companyId }];
+  private buildEntryWhere(
+    companyId: string,
+    query: QueryAccountingDto,
+  ): Prisma.AccountingEntryWhereInput {
+    const andConditions: Prisma.AccountingEntryWhereInput[] = [{ companyId }];
 
     if (query.month) andConditions.push({ month: query.month });
     if (query.year) andConditions.push({ year: query.year });
@@ -411,7 +438,7 @@ export class AccountingEnterpriseService {
     }
 
     if (query.from || query.to) {
-      const date: Record<string, Date> = {};
+      const date: Prisma.DateTimeFilter<'AccountingEntry'> = {};
 
       if (query.from) date.gte = this.parseDate(query.from, 'from');
       if (query.to) date.lte = this.parseDate(query.to, 'to');
@@ -459,7 +486,7 @@ export class AccountingEnterpriseService {
     return andConditions.length === 1 ? { companyId } : { AND: andConditions };
   }
 
-  private enrichPlan(item: any) {
+  private enrichPlan(item: AccountPlan): EnrichedAccountPlan {
     return {
       ...item,
       createdAt: item.createdAt ? new Date(item.createdAt).toISOString() : null,
@@ -467,7 +494,7 @@ export class AccountingEnterpriseService {
     };
   }
 
-  private enrichEntry(item: any) {
+  private enrichEntry(item: AccountingEntry): EnrichedAccountingEntry {
     return {
       ...item,
       date: item.date ? new Date(item.date).toISOString() : null,
@@ -480,7 +507,7 @@ export class AccountingEnterpriseService {
     };
   }
 
-  private buildPlanSummary(items: any[]) {
+  private buildPlanSummary(items: EnrichedAccountPlan[]) {
     const summary = {
       count: items.length,
       active: 0,
@@ -505,7 +532,7 @@ export class AccountingEnterpriseService {
     return summary;
   }
 
-  private buildEntrySummary(items: any[]) {
+  private buildEntrySummary(items: EnrichedAccountingEntry[]) {
     const summary = {
       count: items.length,
       totalDebit: 0,
@@ -568,9 +595,7 @@ export class AccountingEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichPlan(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichPlan(item));
 
     return {
       status: 'OK',
@@ -686,7 +711,7 @@ export class AccountingEnterpriseService {
       );
     }
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.AccountPlanUpdateInput = {};
 
     if (dto.name !== undefined) data.name = dto.name.trim();
     if (dto.type !== undefined) data.type = dto.type;
@@ -851,9 +876,7 @@ export class AccountingEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichEntry(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichEntry(item));
 
     return {
       status: 'OK',
@@ -1012,7 +1035,7 @@ export class AccountingEnterpriseService {
     await this.validateAccountExists(companyId, nextDebitCode, 'debitCode');
     await this.validateAccountExists(companyId, nextCreditCode, 'creditCode');
 
-    const data: Record<string, unknown> = {
+    const data: Prisma.AccountingEntryUpdateInput = {
       date: nextDate,
       debitCode: nextDebitCode,
       creditCode: nextCreditCode,

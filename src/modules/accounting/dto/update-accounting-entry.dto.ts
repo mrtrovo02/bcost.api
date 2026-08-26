@@ -3,7 +3,7 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
-  IsIn,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -11,6 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { EntryOrigin } from '@prisma/client';
 
 export class UpdateAccountingEntryDto {
   @IsOptional()
@@ -42,20 +43,8 @@ export class UpdateAccountingEntryDto {
   amount?: number;
 
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'MANUAL',
-    'INVOICE_AUTO',
-    'PAYROLL_AUTO',
-    'BANK_IMPORT',
-    'TAX_PAYMENT',
-  ])
-  origin?:
-    | 'MANUAL'
-    | 'INVOICE_AUTO'
-    | 'PAYROLL_AUTO'
-    | 'BANK_IMPORT'
-    | 'TAX_PAYMENT';
+  @IsEnum(EntryOrigin)
+  origin?: EntryOrigin;
 
   @IsOptional()
   @IsString()

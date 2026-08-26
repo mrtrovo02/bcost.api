@@ -10,6 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { AccountType, EntryOrigin } from '@prisma/client';
 
 export class QueryAccountingDto {
   @IsOptional()
@@ -17,27 +18,12 @@ export class QueryAccountingDto {
   search?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'ATIVO',
-    'PASSIVO',
-    'PATRIMONIO_LIQUIDO',
-    'RECEITA',
-    'DESPESA',
-    'CUSTO',
-  ])
-  type?: string;
+  @IsIn(['ALL', ...Object.values(AccountType)])
+  type?: AccountType | 'ALL';
 
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'MANUAL',
-    'INVOICE_AUTO',
-    'PAYROLL_AUTO',
-    'BANK_IMPORT',
-    'TAX_PAYMENT',
-  ])
-  origin?: string;
+  @IsIn(['ALL', ...Object.values(EntryOrigin)])
+  origin?: EntryOrigin | 'ALL';
 
   @IsOptional()
   @IsString()
