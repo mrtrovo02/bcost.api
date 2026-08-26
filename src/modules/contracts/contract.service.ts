@@ -126,7 +126,7 @@ export class ContractService {
               payload: {
                 invoiceId: invoice.id,
                 amount: contract.amount.toString(),
-              } as any,
+              } satisfies Prisma.InputJsonObject,
               responseTime: Date.now() - contractStartTime,
               statusCode: 201,
             },
@@ -137,10 +137,10 @@ export class ContractService {
 
         results.push(execution);
         this.logger.log(`[Billing Success] Contrato ${contract.id} faturado.`);
-      } catch (err: any) {
-        this.logger.error(
-          `[Billing Fail] Contrato ${contract.id}: ${err.message}`,
-        );
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+
+        this.logger.error(`[Billing Fail] Contrato ${contract.id}: ${message}`);
       }
     }
 
