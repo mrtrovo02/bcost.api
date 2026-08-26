@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { Company } from '@prisma/client';
 import { PrismaService } from '#database/prisma.service.js';
 import {
   normalizePlanToTier,
@@ -67,15 +68,12 @@ export type PlanDefinition = {
 
 export type LimitKey = keyof PlanDefinition['limits'];
 
-interface CompanyRecord {
-  id: string;
-  name?: string;
-  cnpj?: string;
-  taxRegime?: string;
-  active?: boolean;
+interface CompanyRecord extends Pick<
+  Company,
+  'id' | 'name' | 'cnpj' | 'taxRegime' | 'active'
+> {
   planLevel?: string | null;
-  settings?: Record<string, unknown> | null;
-  [key: string]: unknown;
+  settings?: Prisma.JsonValue | null;
 }
 
 const PLAN_ORDER: Record<PlanLevel, number> = {
@@ -277,6 +275,51 @@ export class BillingEntitlementsService {
     return PLAN_ORDER[plan] >= PLAN_ORDER[minPlan];
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private validateCompanyAccess(companyId: string, user?: AuthUser) {
     const userCompanyId = user?.companyId;
     const role = String(user?.role || '').toUpperCase();
@@ -305,7 +348,7 @@ export class BillingEntitlementsService {
   }
 
   private async findCompany(companyId: string): Promise<CompanyRecord> {
-    const company = await (this.prisma as any).company.findFirst({
+    const company = await this.prisma.company.findFirst({
       where: {
         id: companyId,
         deletedAt: null,
@@ -316,7 +359,7 @@ export class BillingEntitlementsService {
       throw new NotFoundException(`Empresa não encontrada: ${companyId}`);
     }
 
-    return company as CompanyRecord;
+    return company;
   }
 
   private async safeAuditLog(params: {
@@ -328,7 +371,7 @@ export class BillingEntitlementsService {
     source?: string;
     payload?: Record<string, unknown>;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = (this.prisma as any).auditLog;
+    const auditLog = this.prisma.auditLog;
     const userId = this.getUserId(params.user);
 
     if (!auditLog?.create) {
@@ -338,13 +381,13 @@ export class BillingEntitlementsService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload ?? {}),
       severity: params.severity ?? 'INFO',
       source: params.source ?? 'billing-entitlements',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: 'billing',
@@ -360,7 +403,7 @@ export class BillingEntitlementsService {
 
     const candidates: Array<{
       label: string;
-      data: Record<string, unknown>;
+      data: Prisma.AuditLogUncheckedCreateInput;
     }> = [
       {
         label: 'scalar-schema-first',
@@ -371,44 +414,9 @@ export class BillingEntitlementsService {
         },
       },
       {
-        label: 'relation-schema-first',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
-          ...(userId
-            ? {
-                user: {
-                  connect: {
-                    id: userId,
-                  },
-                },
-              }
-            : {}),
-          ...baseData,
-        },
-      },
-      {
         label: 'scalar-minimal-schema-first',
         data: {
           companyId: params.companyId,
-          module: 'billing',
-          action: params.action,
-          entity: 'CompanyPlan',
-          entityId: params.entityId ?? params.companyId,
-          payload,
-        },
-      },
-      {
-        label: 'relation-minimal-schema-first',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
           module: 'billing',
           action: params.action,
           entity: 'CompanyPlan',
@@ -545,33 +553,33 @@ export class BillingEntitlementsService {
     const oldPlan = this.normalizePlan(before.planLevel);
     const newPlan = this.normalizePlan(planLevelInput);
 
-    const currentSettings =
-      before.settings && typeof before.settings === 'object'
-        ? before.settings
-        : {};
+    const currentSettings = this.isPlainRecord(before.settings)
+      ? before.settings
+      : {};
+    const currentBilling = this.isPlainRecord(currentSettings.billing)
+      ? currentSettings.billing
+      : {};
 
-    const updated = await (this.prisma as any).company.update({
+    const updated = await this.prisma.company.update({
       where: {
         id: companyId,
       },
       data: {
         planLevel: newPlan,
-        settings: {
-          ...(currentSettings as Record<string, unknown>),
+        settings: this.toJsonObject({
+          ...currentSettings,
           billing: {
-            ...((currentSettings as Record<string, unknown>).billing as
-              | Record<string, unknown>
-              | undefined),
+            ...currentBilling,
             lastPlanChangeAt: new Date().toISOString(),
             lastPlanChangeBy: this.getUserId(user),
             lastPlanChangeReason: reason ?? null,
             requestedPlanInput: planLevelInput,
           },
-        },
+        }),
       },
     });
 
-    const entitlements = this.buildEntitlements(updated as CompanyRecord);
+    const entitlements = this.buildEntitlements(updated);
 
     const audit = await this.safeAuditLog({
       companyId,
