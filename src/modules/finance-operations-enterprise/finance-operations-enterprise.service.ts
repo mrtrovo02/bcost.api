@@ -49,6 +49,40 @@ type FinanceItem = {
   raw?: unknown;
 };
 
+type FinancePrismaModelKey =
+  | 'company'
+  | 'invoice'
+  | 'taxObligation'
+  | 'fiscalObligation'
+  | 'bankTransaction'
+  | 'bankAccount'
+  | 'financialEvent'
+  | 'financialSnapshot'
+  | 'cashFlowProjection'
+  | 'customer'
+  | 'contract';
+
+type FinanceSourceRecord = Record<string, unknown> & {
+  id?: unknown;
+  customer?: Record<string, unknown> | null;
+  bankAccount?: Record<string, unknown> | null;
+};
+
+type FinanceReadableModel = {
+  findMany?: (args?: unknown) => Promise<unknown[]>;
+  findFirst?: (args?: unknown) => Promise<unknown | null>;
+  findUnique?: (args?: unknown) => Promise<unknown | null>;
+  count?: (args?: unknown) => Promise<number>;
+};
+
+type FinanceFindFirstModel = FinanceReadableModel & {
+  findFirst: (args?: unknown) => Promise<unknown | null>;
+};
+
+type DecimalLike = {
+  toNumber: () => number;
+};
+
 @Injectable()
 export class FinanceOperationsEnterpriseService {
   private readonly logger = new Logger(FinanceOperationsEnterpriseService.name);
@@ -128,14 +162,40 @@ export class FinanceOperationsEnterpriseService {
     }
   }
 
-  private getModel(prismaKey: string): any | null {
-    const model = (this.prisma as any)[prismaKey];
+  private isReadableModel(value: unknown): value is FinanceReadableModel {
+    if (!value || typeof value !== 'object') return false;
 
-    if (!model?.findMany && !model?.findFirst && !model?.count) {
-      return null;
+    const candidate = value as FinanceReadableModel;
+
+    return Boolean(
+      candidate.findMany || candidate.findFirst || candidate.count,
+    );
+  }
+
+  private isSourceRecord(value: unknown): value is FinanceSourceRecord {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private isDecimalLike(value: unknown): value is DecimalLike {
+    if (!value || typeof value !== 'object' || !('toNumber' in value)) {
+      return false;
     }
 
-    return model;
+    return typeof (value as DecimalLike).toNumber === 'function';
+  }
+
+  private hasFindFirst(
+    value: FinanceReadableModel | null,
+  ): value is FinanceFindFirstModel {
+    return Boolean(value?.findFirst);
+  }
+
+  private getModel(
+    prismaKey: FinancePrismaModelKey,
+  ): FinanceReadableModel | null {
+    const model = this.prisma[prismaKey] as unknown;
+
+    return this.isReadableModel(model) ? model : null;
   }
 
   private normalize(value: unknown): unknown {
@@ -169,15 +229,37 @@ export class FinanceOperationsEnterpriseService {
       return Number.isFinite(parsed) ? parsed : 0;
     }
 
-    if (value && typeof value === 'object' && 'toNumber' in value) {
+    if (this.isDecimalLike(value)) {
       try {
-        return Number((value as any).toNumber());
+        return Number(value.toNumber());
       } catch {
         return 0;
       }
     }
 
     return 0;
+  }
+
+  private toText(value: unknown): string | null {
+    if (value === null || value === undefined) return null;
+
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed || null;
+    }
+
+    if (
+      typeof value === 'number' ||
+      typeof value === 'boolean' ||
+      typeof value === 'bigint'
+    ) {
+      return String(value);
+    }
+
+    if (value instanceof Date) return value.toISOString();
+    if (value instanceof Prisma.Decimal) return value.toString();
+
+    return null;
   }
 
   private toDate(value: unknown): Date | null {
@@ -330,7 +412,7 @@ export class FinanceOperationsEnterpriseService {
   private async ensureCompany(companyId: string) {
     const companyModel = this.getModel('company');
 
-    if (!companyModel?.findFirst && !companyModel?.findUnique) {
+    if (!this.hasFindFirst(companyModel)) {
       throw new NotFoundException('Modelo Prisma company não encontrado.');
     }
 
@@ -345,7 +427,11 @@ export class FinanceOperationsEnterpriseService {
     return this.normalize(company);
   }
 
-  private async fetchSafe(prismaKey: string, companyId: string, take = 1000) {
+  private async fetchSafe(
+    prismaKey: FinancePrismaModelKey,
+    companyId: string,
+    take = 1000,
+  ): Promise<FinanceSourceRecord[]> {
     const model = this.getModel(prismaKey);
 
     if (!model?.findMany) return [];
@@ -366,7 +452,8 @@ export class FinanceOperationsEnterpriseService {
 
     for (const args of variants) {
       try {
-        return await model.findMany(args);
+        const rows = await model.findMany(args);
+        return rows.filter((item) => this.isSourceRecord(item));
       } catch (error) {
         this.logger.warn(
           `[FinanceOperationsEnterprise] Falha ao buscar ${prismaKey}: ${
@@ -379,7 +466,10 @@ export class FinanceOperationsEnterpriseService {
     return [];
   }
 
-  private invoiceToReceivable(invoice: any, includeRaw: boolean): FinanceItem {
+  private invoiceToReceivable(
+    invoice: FinanceSourceRecord,
+    includeRaw: boolean,
+  ): FinanceItem {
     const amount = this.toNumber(
       invoice.amount ?? invoice.totalAmount ?? invoice.value,
     );
@@ -411,14 +501,27 @@ export class FinanceOperationsEnterpriseService {
       id: String(invoice.id),
       type: 'RECEIVABLE',
       source: 'invoice',
-      title: `Nota fiscal ${invoice.number || invoice.accessKey || invoice.id}`,
-      description: invoice.description || invoice.serviceDescription || null,
+      title: `Nota fiscal ${
+        this.toText(invoice.number) ||
+        this.toText(invoice.accessKey) ||
+        this.toText(invoice.id) ||
+        'sem identificador'
+      }`,
+      description:
+        this.toText(invoice.description) ||
+        this.toText(invoice.serviceDescription),
       amount,
       status: status === 'PAID' ? 'RECEIVED' : status,
       dueDate: this.iso(dueDate),
       occurredAt: this.iso(invoice.issuedAt ?? invoice.createdAt),
-      customerName: invoice.customer?.name || invoice.customerName || null,
-      document: invoice.customer?.document || invoice.document || null,
+      customerName:
+        invoice.customer?.name?.toString() ||
+        invoice.customerName?.toString() ||
+        null,
+      document:
+        invoice.customer?.document?.toString() ||
+        invoice.document?.toString() ||
+        null,
       daysOverdue,
       daysToDue,
       riskLevel: this.riskLevel(status, amount, daysOverdue),
@@ -427,7 +530,7 @@ export class FinanceOperationsEnterpriseService {
   }
 
   private taxObligationToPayable(
-    obligation: any,
+    obligation: FinanceSourceRecord,
     includeRaw: boolean,
   ): FinanceItem {
     const amount = this.toNumber(
@@ -451,10 +554,13 @@ export class FinanceOperationsEnterpriseService {
       type: 'PAYABLE',
       source: 'tax-obligation',
       title:
-        obligation.name ||
-        obligation.description ||
-        `Obrigação tributária ${obligation.id}`,
-      description: obligation.type || obligation.period || null,
+        this.toText(obligation.name) ||
+        this.toText(obligation.description) ||
+        `Obrigação tributária ${
+          this.toText(obligation.id) || 'sem identificador'
+        }`,
+      description:
+        this.toText(obligation.type) || this.toText(obligation.period),
       amount,
       status,
       dueDate: this.iso(dueDate),
@@ -467,7 +573,7 @@ export class FinanceOperationsEnterpriseService {
   }
 
   private fiscalObligationToPayable(
-    obligation: any,
+    obligation: FinanceSourceRecord,
     includeRaw: boolean,
   ): FinanceItem {
     const amount = this.toNumber(
@@ -496,11 +602,13 @@ export class FinanceOperationsEnterpriseService {
       type: 'PAYABLE',
       source: 'fiscal-obligation',
       title:
-        obligation.name ||
-        obligation.type ||
-        obligation.obligationType ||
-        `Obrigação fiscal ${obligation.id}`,
-      description: obligation.receiptNumber || obligation.protocol || null,
+        this.toText(obligation.name) ||
+        this.toText(obligation.type) ||
+        this.toText(obligation.obligationType) ||
+        `Obrigação fiscal ${this.toText(obligation.id) || 'sem identificador'}`,
+      description:
+        this.toText(obligation.receiptNumber) ||
+        this.toText(obligation.protocol),
       amount,
       status,
       dueDate: this.iso(dueDate),
@@ -513,7 +621,7 @@ export class FinanceOperationsEnterpriseService {
   }
 
   private bankTransactionToCashItem(
-    transaction: any,
+    transaction: FinanceSourceRecord,
     includeRaw: boolean,
   ): FinanceItem {
     const amount = this.toNumber(transaction.amount ?? transaction.value);
@@ -534,12 +642,15 @@ export class FinanceOperationsEnterpriseService {
       type,
       source: 'bank-transaction',
       title:
-        transaction.description ||
-        transaction.memo ||
-        transaction.reference ||
-        `Transação bancária ${transaction.id}`,
+        this.toText(transaction.description) ||
+        this.toText(transaction.memo) ||
+        this.toText(transaction.reference) ||
+        `Transação bancária ${
+          this.toText(transaction.id) || 'sem identificador'
+        }`,
       description:
-        transaction.bankAccount?.name || transaction.bankAccountId || null,
+        this.toText(transaction.bankAccount?.name) ||
+        this.toText(transaction.bankAccountId),
       amount: Math.abs(amount),
       status: transaction.reconciled ? 'PAID' : 'OPEN',
       dueDate: null,
@@ -709,7 +820,7 @@ export class FinanceOperationsEnterpriseService {
     const receivables = this.sortItems(
       this.applyStatusFilter(
         this.applyDateFilter(
-          invoices.map((invoice: any) =>
+          invoices.map((invoice) =>
             this.invoiceToReceivable(invoice, includeRaw),
           ),
           query,
@@ -722,10 +833,10 @@ export class FinanceOperationsEnterpriseService {
       this.applyStatusFilter(
         this.applyDateFilter(
           [
-            ...taxObligations.map((item: any) =>
+            ...taxObligations.map((item) =>
               this.taxObligationToPayable(item, includeRaw),
             ),
-            ...fiscalObligations.map((item: any) =>
+            ...fiscalObligations.map((item) =>
               this.fiscalObligationToPayable(item, includeRaw),
             ),
           ],
@@ -737,7 +848,7 @@ export class FinanceOperationsEnterpriseService {
 
     const cashItems = this.sortItems(
       this.applyDateFilter(
-        bankTransactions.map((item: any) =>
+        bankTransactions.map((item) =>
           this.bankTransactionToCashItem(item, includeRaw),
         ),
         query,
