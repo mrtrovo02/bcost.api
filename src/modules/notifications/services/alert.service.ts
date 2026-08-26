@@ -5,6 +5,7 @@
 // =============================================================================
 
 import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../../database/prisma.service.js';
 import {
   NotificationType,
@@ -29,6 +30,16 @@ export interface IAnomalyAlert {
   metadata?: Prisma.InputJsonValue;
 }
 
+export interface CriticalAnomalyAlertEvent {
+  companyId: string;
+  severity: 'HIGH';
+  title: string;
+  message: string;
+  notificationId: string;
+  metadata: Prisma.InputJsonValue;
+  occurredAt: string;
+}
+
 /**
  * Mapeamento de severidade do alerta interno para o enum do schema.
  * LOW  → INFO
@@ -45,7 +56,10 @@ const SEVERITY_MAP: Record<IAnomalyAlert['severity'], NotificationSeverity> = {
 export class AlertService {
   private readonly logger = new Logger(AlertService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   /**
    * Dispara um alerta de conformidade ou anomalia financeira.
@@ -87,7 +101,7 @@ export class AlertService {
 
       // Escalada para push crítico em caso de severidade HIGH
       if (alert.severity === 'HIGH') {
-        this.dispatchCriticalPush(alert);
+        this.dispatchCriticalPush(alert, notification.id);
       }
 
       return notification;
@@ -103,14 +117,26 @@ export class AlertService {
 
   /**
    * Escalada crítica para canais de alta prioridade.
-   * Placeholder para Redis Pub/Sub, Socket.io ou integração WhatsApp/Discord.
-   * Ativado automaticamente quando severity === 'HIGH'.
+   * Publica evento interno para consumidores WebSocket, workers e integrações externas.
    */
-  private dispatchCriticalPush(alert: IAnomalyAlert): void {
+  private dispatchCriticalPush(
+    alert: IAnomalyAlert,
+    notificationId: string,
+  ): void {
     this.logger.log(
       `[PUSH CRITICAL] Escalada de alerta HIGH para administradores — empresa ${alert.companyId}`,
     );
-    // TODO: implementar Redis Pub/Sub ou NotificationGateway.sendNotification()
-    // quando o módulo de push estiver disponível
+
+    const event: CriticalAnomalyAlertEvent = {
+      companyId: alert.companyId,
+      severity: 'HIGH',
+      title: 'Anomalia crítica detectada',
+      message: alert.message,
+      notificationId,
+      metadata: alert.metadata ?? {},
+      occurredAt: new Date().toISOString(),
+    };
+
+    this.eventEmitter.emit('notification.critical-anomaly', event);
   }
 }

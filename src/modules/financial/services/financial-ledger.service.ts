@@ -20,7 +20,7 @@ export class FinancialLedgerService {
     tx?: Prisma.TransactionClient,
   ) {
     const client = tx || this.prisma;
-    const { occurredAt, amount, ...rest } = data;
+    const { occurredAt, amount, metadata, ...rest } = data;
 
     // Normalização de data para o Schema
     const dateObj = new Date(occurredAt);
@@ -50,6 +50,7 @@ export class FinancialLedgerService {
     return client.financialEvent.create({
       data: {
         ...rest,
+        metadata: metadata as Prisma.InputJsonObject | undefined,
         amount: new Prisma.Decimal(amount), // Garante precisão decimal do Schema
         month,
         year,

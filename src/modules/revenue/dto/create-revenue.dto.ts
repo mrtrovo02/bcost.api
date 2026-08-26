@@ -7,7 +7,7 @@ export const CreateRevenueSchema = z.object({
   category: z.enum(['SERVICE', 'PRODUCT', 'OTHER']),
   dueDate: z.string().datetime(),
   companyId: z.string().uuid(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 export class CreateRevenueDto extends createZodDto(CreateRevenueSchema) {}

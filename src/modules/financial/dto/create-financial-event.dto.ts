@@ -17,8 +17,7 @@ export const CreateFinancialEventSchema = z.object({
   referenceId: z.string().uuid().optional(),
   referenceType: z.string().optional(),
   occurredAt: z.date().default(() => new Date()),
-  // FIX: Adicionado z.string() como primeiro argumento do record
-  metadata: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export class CreateFinancialEventDto extends createZodDto(
