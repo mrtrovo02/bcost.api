@@ -14,6 +14,7 @@ import {
   ObligationStatus,
   Prisma,
 } from '@prisma/client';
+import type { FiscalObligation, TaxObligation } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateFiscalObligationDto } from './dto/create-fiscal-obligation.dto.js';
 import { CreateTaxObligationDto } from './dto/create-tax-obligation.dto.js';
@@ -47,38 +48,55 @@ type FiscalOperationalStatus =
   | 'REJECTED'
   | 'OVERDUE';
 
+type TaxObligationRecord = TaxObligation;
+type FiscalObligationRecord = FiscalObligation;
+
+type EnrichedTaxObligation = Omit<
+  TaxObligationRecord,
+  'amount' | 'dueDate' | 'createdAt'
+> & {
+  amount: number;
+  dueDate: string;
+  createdAt: string | null;
+  operationalStatus: TaxOperationalStatus;
+  daysToDue: number | null;
+  overdue: boolean;
+  paid: boolean;
+  cancelled: boolean;
+};
+
+type EnrichedFiscalObligation = Omit<
+  FiscalObligationRecord,
+  'dueDate' | 'submittedAt' | 'createdAt' | 'updatedAt'
+> & {
+  dueDate: string;
+  submittedAt: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  operationalStatus: FiscalOperationalStatus;
+  daysToDue: number | null;
+  overdue: boolean;
+  submitted: boolean;
+  accepted: boolean;
+  rejected: boolean;
+};
+
 @Injectable()
 export class ObligationsEnterpriseService {
   private readonly logger = new Logger(ObligationsEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get taxModel() {
-    const model = (this.prisma as any).taxObligation;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma taxObligation não encontrado.',
-      );
-    }
-
-    return model;
+  private get taxModel(): PrismaService['taxObligation'] {
+    return this.prisma.taxObligation;
   }
 
-  private get fiscalModel() {
-    const model = (this.prisma as any).fiscalObligation;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma fiscalObligation não encontrado.',
-      );
-    }
-
-    return model;
+  private get fiscalModel(): PrismaService['fiscalObligation'] {
+    return this.prisma.fiscalObligation;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -141,6 +159,56 @@ export class ObligationsEnterpriseService {
     return value;
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      !(value instanceof Date) &&
+      !(value instanceof Prisma.Decimal)
+    );
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null) return null;
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private parseDate(value: string, field: string): Date {
     const parsed = new Date(value);
 
@@ -163,7 +231,7 @@ export class ObligationsEnterpriseService {
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
@@ -173,7 +241,9 @@ export class ObligationsEnterpriseService {
     return company;
   }
 
-  private getTaxOperationalStatus(item: any): TaxOperationalStatus {
+  private getTaxOperationalStatus(
+    item: TaxObligationRecord,
+  ): TaxOperationalStatus {
     const status = String(item.status || 'PENDING').toUpperCase();
 
     if (status === 'PAID') return 'PAID';
@@ -189,7 +259,9 @@ export class ObligationsEnterpriseService {
     return status as TaxOperationalStatus;
   }
 
-  private getFiscalOperationalStatus(item: any): FiscalOperationalStatus {
+  private getFiscalOperationalStatus(
+    item: FiscalObligationRecord,
+  ): FiscalOperationalStatus {
     const status = String(item.status || 'PENDING').toUpperCase();
 
     if (status === 'ACCEPTED') return 'ACCEPTED';
@@ -205,7 +277,7 @@ export class ObligationsEnterpriseService {
     return status as FiscalOperationalStatus;
   }
 
-  private enrichTax(item: any) {
+  private enrichTax(item: TaxObligationRecord): EnrichedTaxObligation {
     const dueDate = new Date(item.dueDate);
     const operationalStatus = this.getTaxOperationalStatus(item);
     const daysToDue = Number.isNaN(dueDate.getTime())
@@ -228,7 +300,7 @@ export class ObligationsEnterpriseService {
     };
   }
 
-  private enrichFiscal(item: any) {
+  private enrichFiscal(item: FiscalObligationRecord): EnrichedFiscalObligation {
     const dueDate = new Date(item.dueDate);
     const submittedAt = item.submittedAt ? new Date(item.submittedAt) : null;
     const operationalStatus = this.getFiscalOperationalStatus(item);
@@ -365,13 +437,13 @@ export class ObligationsEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'obligations-enterprise',
       severity: params.statusCode && params.statusCode >= 400 ? 'WARN' : 'INFO',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: params.module,
@@ -387,33 +459,13 @@ export class ObligationsEnterpriseService {
 
     const candidates: Array<{
       label: string;
-      data: Record<string, unknown>;
+      data: Prisma.AuditLogUncheckedCreateInput;
     }> = [
       {
         label: 'scalar-schema-first',
         data: {
           companyId: params.companyId,
           ...(userId ? { userId } : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation-schema-first',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
-          ...(userId
-            ? {
-                user: {
-                  connect: {
-                    id: userId,
-                  },
-                },
-              }
-            : {}),
           ...baseData,
         },
       },
@@ -463,7 +515,7 @@ export class ObligationsEnterpriseService {
     };
   }
 
-  private buildTaxSummary(items: any[]) {
+  private buildTaxSummary(items: EnrichedTaxObligation[]) {
     const summary = {
       count: items.length,
       pending: 0,
@@ -527,7 +579,7 @@ export class ObligationsEnterpriseService {
     return summary;
   }
 
-  private buildFiscalSummary(items: any[]) {
+  private buildFiscalSummary(items: EnrichedFiscalObligation[]) {
     const summary = {
       count: items.length,
       pending: 0,
@@ -604,7 +656,7 @@ export class ObligationsEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => this.enrichTax(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichTax(item));
 
     return {
       status: 'OK',
@@ -634,7 +686,7 @@ export class ObligationsEnterpriseService {
       take: 1000,
     });
 
-    const items = rows.map((item: any) => this.enrichTax(item));
+    const items = rows.map((item) => this.enrichTax(item));
 
     return {
       status: 'OK',
@@ -1062,9 +1114,7 @@ export class ObligationsEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichFiscal(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichFiscal(item));
 
     return {
       status: 'OK',
@@ -1099,7 +1149,7 @@ export class ObligationsEnterpriseService {
       take: 1000,
     });
 
-    const items = rows.map((item: any) => this.enrichFiscal(item));
+    const items = rows.map((item) => this.enrichFiscal(item));
 
     return {
       status: 'OK',

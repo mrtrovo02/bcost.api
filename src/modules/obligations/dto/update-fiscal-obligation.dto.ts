@@ -3,7 +3,7 @@
 import { Type } from 'class-transformer';
 import {
   IsDateString,
-  IsIn,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -11,26 +11,12 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { FiscalObligationStatus, FiscalObligationType } from '@prisma/client';
 
 export class UpdateFiscalObligationDto {
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'DAS',
-    'GPS',
-    'DARF',
-    'SPED_FISCAL',
-    'SPED_CONTRIBUICOES',
-    'ECD',
-    'ECF',
-    'DCTF',
-    'RAIS',
-    'CAGED',
-    'DIRF',
-    'DEFIS',
-    'PGDAS',
-  ])
-  type?: string;
+  @IsEnum(FiscalObligationType)
+  type?: FiscalObligationType;
 
   @IsOptional()
   @Type(() => Number)
@@ -51,22 +37,8 @@ export class UpdateFiscalObligationDto {
   dueDate?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'PENDING',
-    'GENERATED',
-    'SUBMITTED',
-    'ACCEPTED',
-    'REJECTED',
-    'OVERDUE',
-  ])
-  status?:
-    | 'PENDING'
-    | 'GENERATED'
-    | 'SUBMITTED'
-    | 'ACCEPTED'
-    | 'REJECTED'
-    | 'OVERDUE';
+  @IsEnum(FiscalObligationStatus)
+  status?: FiscalObligationStatus;
 
   @IsOptional()
   @IsString()
