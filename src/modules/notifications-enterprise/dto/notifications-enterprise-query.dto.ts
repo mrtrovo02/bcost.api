@@ -3,13 +3,19 @@
 import { Type } from 'class-transformer';
 import {
   IsBooleanString,
-  IsIn,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import {
+  NotificationChannel,
+  NotificationSeverity,
+  NotificationStatus,
+  NotificationType,
+} from '@prisma/client';
 
 export class NotificationsEnterpriseQueryDto {
   @IsOptional()
@@ -17,47 +23,20 @@ export class NotificationsEnterpriseQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn([
-    'TAX_READY',
-    'FACTOR_R_ALERT',
-    'COMPLIANCE_ISSUE',
-    'CERT_EXPIRATION',
-    'PAYMENT_OVERDUE',
-    'PREDICTIVE_CASHFLOW_ALERT',
-    'DAS_OVERDUE',
-    'SPED_DUE',
-    'ECF_DUE',
-    'ECAC_PENDENCY',
-    'EMPLOYEE_DISMISSAL_DUE',
-  ])
-  type?:
-    | 'TAX_READY'
-    | 'FACTOR_R_ALERT'
-    | 'COMPLIANCE_ISSUE'
-    | 'CERT_EXPIRATION'
-    | 'PAYMENT_OVERDUE'
-    | 'PREDICTIVE_CASHFLOW_ALERT'
-    | 'DAS_OVERDUE'
-    | 'SPED_DUE'
-    | 'ECF_DUE'
-    | 'ECAC_PENDENCY'
-    | 'EMPLOYEE_DISMISSAL_DUE';
+  @IsEnum(NotificationType)
+  type?: NotificationType;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['WEBSOCKET', 'EMAIL', 'SMS', 'WHATSAPP', 'PUSH', 'WEBHOOK'])
-  channel?: 'WEBSOCKET' | 'EMAIL' | 'SMS' | 'WHATSAPP' | 'PUSH' | 'WEBHOOK';
+  @IsEnum(NotificationChannel)
+  channel?: NotificationChannel;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['PENDING', 'SENT', 'FAILED', 'RETRY', 'READ', 'ARCHIVED'])
-  status?: 'PENDING' | 'SENT' | 'FAILED' | 'RETRY' | 'READ' | 'ARCHIVED';
+  @IsEnum(NotificationStatus)
+  status?: NotificationStatus;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['INFO', 'WARNING', 'CRITICAL'])
-  severity?: 'INFO' | 'WARNING' | 'CRITICAL';
+  @IsEnum(NotificationSeverity)
+  severity?: NotificationSeverity;
 
   @IsOptional()
   @IsBooleanString()

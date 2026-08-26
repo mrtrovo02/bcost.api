@@ -14,6 +14,7 @@ import {
   NotificationType,
   Prisma,
 } from '@prisma/client';
+import type { NotificationLog, WebhookConfig } from '@prisma/client';
 import { createHmac, randomBytes } from 'crypto';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateNotificationEnterpriseDto } from './dto/create-notification-enterprise.dto.js';
@@ -47,34 +48,48 @@ type WebhookDeliveryResult = {
   responsePreview?: string;
 };
 
+type EnrichedNotificationLog = Omit<
+  NotificationLog,
+  'metadata' | 'createdAt' | 'sentAt' | 'readAt' | 'acknowledgedAt'
+> & {
+  metadata: unknown;
+  createdAt: string | null;
+  sentAt: string | null;
+  readAt: string | null;
+  acknowledgedAt: string | null;
+  operationalStatus: NotificationStatus | 'ACKNOWLEDGED';
+};
+
+type EnrichedWebhookConfig = Omit<WebhookConfig, 'secret' | 'createdAt'> & {
+  secret?: undefined;
+  secretMasked: string | null;
+  createdAt: string | null;
+  operationalStatus: 'ACTIVE' | 'INACTIVE';
+};
+
+type NotificationSummaryItem = Pick<
+  NotificationLog,
+  'status' | 'severity' | 'channel' | 'read' | 'acknowledged'
+>;
+
+type WebhookSummaryItem = Pick<WebhookConfig, 'active' | 'events'>;
+
 @Injectable()
 export class NotificationsEnterpriseService {
   private readonly logger = new Logger(NotificationsEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get notificationLogModel() {
-    const model = (this.prisma as any).notificationLog;
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma notificationLog não encontrado.',
-      );
-    }
-    return model;
+  private get notificationLogModel(): PrismaService['notificationLog'] {
+    return this.prisma.notificationLog;
   }
 
-  private get webhookConfigModel() {
-    const model = (this.prisma as any).webhookConfig;
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma webhookConfig não encontrado.',
-      );
-    }
-    return model;
+  private get webhookConfigModel(): PrismaService['webhookConfig'] {
+    return this.prisma.webhookConfig;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -139,12 +154,57 @@ export class NotificationsEnterpriseService {
     return value;
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private async findCompany(companyId: string) {
     const company = await this.prisma.company.findFirst({
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
@@ -160,7 +220,9 @@ export class NotificationsEnterpriseService {
     return `${secret.slice(0, 4)}****************${secret.slice(-4)}`;
   }
 
-  private enrichNotification(notification: any) {
+  private enrichNotification(
+    notification: NotificationLog,
+  ): EnrichedNotificationLog {
     return {
       ...notification,
       createdAt: notification.createdAt
@@ -183,7 +245,7 @@ export class NotificationsEnterpriseService {
     };
   }
 
-  private enrichWebhook(webhook: any) {
+  private enrichWebhook(webhook: WebhookConfig): EnrichedWebhookConfig {
     return {
       ...webhook,
       secret: undefined,
@@ -198,15 +260,14 @@ export class NotificationsEnterpriseService {
   private buildNotificationsWhere(
     companyId: string,
     query: NotificationsEnterpriseQueryDto,
-  ) {
-    const and: Record<string, unknown>[] = [{ companyId }];
+  ): Prisma.NotificationLogWhereInput {
+    const and: Prisma.NotificationLogWhereInput[] = [{ companyId }];
 
-    if (query.type) and.push({ type: query.type as NotificationType });
-    if (query.channel)
-      and.push({ channel: query.channel as NotificationChannel });
-    if (query.status) and.push({ status: query.status as NotificationStatus });
+    if (query.type) and.push({ type: query.type });
+    if (query.channel) and.push({ channel: query.channel });
+    if (query.status) and.push({ status: query.status });
     if (query.severity) {
-      and.push({ severity: query.severity as NotificationSeverity });
+      and.push({ severity: query.severity });
     }
 
     if (query.read !== undefined) {
@@ -232,8 +293,8 @@ export class NotificationsEnterpriseService {
   private buildWebhooksWhere(
     companyId: string,
     query: NotificationsEnterpriseQueryDto,
-  ) {
-    const and: Record<string, unknown>[] = [{ companyId }];
+  ): Prisma.WebhookConfigWhereInput {
+    const and: Prisma.WebhookConfigWhereInput[] = [{ companyId }];
 
     if (query.active !== undefined) {
       and.push({ active: query.active === 'true' });
@@ -255,7 +316,7 @@ export class NotificationsEnterpriseService {
     return and.length === 1 ? { companyId } : { AND: and };
   }
 
-  private buildNotificationSummary(items: any[]) {
+  private buildNotificationSummary(items: NotificationSummaryItem[]) {
     const summary = {
       count: items.length,
       unread: 0,
@@ -321,7 +382,7 @@ export class NotificationsEnterpriseService {
     return summary;
   }
 
-  private buildWebhookSummary(items: any[]) {
+  private buildWebhookSummary(items: WebhookSummaryItem[]) {
     const summary = {
       count: items.length,
       active: 0,
@@ -363,12 +424,12 @@ export class NotificationsEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'notifications-enterprise',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: params.module,
@@ -382,20 +443,15 @@ export class NotificationsEnterpriseService {
       userAgent: null,
     };
 
-    const attempts: Array<{ label: string; data: Record<string, unknown> }> = [
+    const attempts: Array<{
+      label: string;
+      data: Prisma.AuditLogUncheckedCreateInput;
+    }> = [
       {
         label: 'scalar',
         data: {
           companyId: params.companyId,
           ...(userId ? { userId } : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation',
-        data: {
-          company: { connect: { id: params.companyId } },
-          ...(userId ? { user: { connect: { id: userId } } } : {}),
           ...baseData,
         },
       },
@@ -479,7 +535,7 @@ export class NotificationsEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => {
+    const items = rows.slice(0, limit).map((item) => {
       return this.enrichNotification(item);
     });
 
@@ -511,23 +567,19 @@ export class NotificationsEnterpriseService {
       data: {
         companyId,
         userId: dto.userId ?? null,
-        type: (dto.type ||
-          NotificationType.COMPLIANCE_ISSUE) as NotificationType,
+        type: dto.type || NotificationType.COMPLIANCE_ISSUE,
         title: dto.title.trim(),
         message: dto.message.trim(),
-        channel: (dto.channel ||
-          NotificationChannel.WEBSOCKET) as NotificationChannel,
-        status: (dto.status ||
-          NotificationStatus.PENDING) as NotificationStatus,
-        severity: (dto.severity ||
-          NotificationSeverity.INFO) as NotificationSeverity,
+        channel: dto.channel || NotificationChannel.WEBSOCKET,
+        status: dto.status || NotificationStatus.PENDING,
+        severity: dto.severity || NotificationSeverity.INFO,
         read: false,
         acknowledged: false,
-        metadata: {
+        metadata: this.toJsonObject({
           ...(dto.metadata || {}),
           source: 'notifications-enterprise',
           createdBy: this.getUserId(user),
-        },
+        }),
         sentAt:
           dto.status === 'SENT' || dto.channel === 'WEBSOCKET'
             ? new Date()
@@ -577,21 +629,20 @@ export class NotificationsEnterpriseService {
       );
     }
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.NotificationLogUncheckedUpdateInput = {};
 
     if (dto.title !== undefined) data.title = dto.title.trim();
     if (dto.message !== undefined) data.message = dto.message.trim();
-    if (dto.status !== undefined)
-      data.status = dto.status as NotificationStatus;
+    if (dto.status !== undefined) data.status = dto.status;
     if (dto.severity !== undefined) {
-      data.severity = dto.severity as NotificationSeverity;
+      data.severity = dto.severity;
     }
 
     if (dto.metadata !== undefined) {
-      data.metadata = {
-        ...((current.metadata as Record<string, unknown>) || {}),
+      data.metadata = this.toJsonObject({
+        ...(this.isPlainRecord(current.metadata) ? current.metadata : {}),
         ...dto.metadata,
-      };
+      });
     }
 
     if (dto.read !== undefined) {
@@ -660,7 +711,7 @@ export class NotificationsEnterpriseService {
     return this.updateNotification(
       companyId,
       notificationId,
-      { read: false, status: 'PENDING' },
+      { read: false, status: NotificationStatus.PENDING },
       user,
     );
   }
@@ -686,7 +737,7 @@ export class NotificationsEnterpriseService {
     return this.updateNotification(
       companyId,
       notificationId,
-      { status: 'ARCHIVED', read: true },
+      { status: NotificationStatus.ARCHIVED, read: true },
       user,
     );
   }
@@ -708,7 +759,7 @@ export class NotificationsEnterpriseService {
       skip: offset,
     });
 
-    const items = rows.slice(0, limit).map((item: any) => {
+    const items = rows.slice(0, limit).map((item) => {
       return this.enrichWebhook(item);
     });
 
@@ -794,7 +845,7 @@ export class NotificationsEnterpriseService {
       throw new NotFoundException(`Webhook não encontrado: ${webhookId}`);
     }
 
-    const data: Record<string, unknown> = {};
+    const data: Prisma.WebhookConfigUpdateInput = {};
 
     if (dto.url !== undefined) data.url = dto.url.trim();
 
@@ -859,7 +910,7 @@ export class NotificationsEnterpriseService {
 
   private buildWebhookPayload(params: {
     companyId: string;
-    webhook: any;
+    webhook: WebhookConfig;
     event: string;
     severity: NotificationSeverity;
     title: string;
@@ -887,7 +938,7 @@ export class NotificationsEnterpriseService {
 
   private async deliverWebhook(params: {
     companyId: string;
-    webhook: any;
+    webhook: WebhookConfig;
     event: string;
     severity: NotificationSeverity;
     title: string;
@@ -969,11 +1020,11 @@ export class NotificationsEnterpriseService {
         read: false,
         acknowledged: false,
         sentAt: ok ? new Date() : null,
-        metadata: {
+        metadata: this.toJsonObject({
           source: 'webhooks-enterprise',
           event: params.event,
           delivery: this.normalize(params.result),
-        },
+        }),
       },
     });
   }
@@ -1004,7 +1055,7 @@ export class NotificationsEnterpriseService {
     });
 
     const results: WebhookDeliveryResult[] = [];
-    const deliveryLogs: any[] = [];
+    const deliveryLogs: EnrichedNotificationLog[] = [];
 
     for (const webhook of webhooks) {
       const result = await this.deliverWebhook({
