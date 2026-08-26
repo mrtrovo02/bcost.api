@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 import {
   IsBooleanString,
   IsDateString,
-  IsIn,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -12,6 +12,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
+import { EmployeeRegime } from '@prisma/client';
 
 export class PayrollEnterpriseQueryDto {
   @IsOptional()
@@ -19,9 +20,8 @@ export class PayrollEnterpriseQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['CLT', 'PJ', 'ESTAGIO', 'AUTONOMO', 'SOCIO_ADMINISTRADOR'])
-  regime?: string;
+  @IsEnum(EmployeeRegime)
+  regime?: EmployeeRegime;
 
   @IsOptional()
   @IsBooleanString()

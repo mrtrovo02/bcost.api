@@ -4,7 +4,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
-  IsIn,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
@@ -12,6 +12,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
+import { EmployeeRegime } from '@prisma/client';
 
 export class UpdateEmployeeEnterpriseDto {
   @IsOptional()
@@ -56,7 +57,6 @@ export class UpdateEmployeeEnterpriseDto {
   active?: boolean;
 
   @IsOptional()
-  @IsString()
-  @IsIn(['CLT', 'PJ', 'ESTAGIO', 'AUTONOMO', 'SOCIO_ADMINISTRADOR'])
-  regime?: string;
+  @IsEnum(EmployeeRegime)
+  regime?: EmployeeRegime;
 }
