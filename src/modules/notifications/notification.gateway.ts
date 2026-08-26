@@ -26,6 +26,8 @@ type ReconciliationResult = { autoReconciled: number } & Record<
   string,
   unknown
 >;
+type RealtimeNotificationPayload = Record<string, unknown>;
+type DashboardUpdatePayload = Record<string, unknown>;
 
 @WebSocketGateway({
   cors: {
@@ -177,7 +179,7 @@ export class NotificationGateway
   /**
    * Envia atualizações genéricas do módulo Fiscal/Banking
    */
-  sendNotification(companyId: string, payload: any) {
+  sendNotification(companyId: string, payload: RealtimeNotificationPayload) {
     this.server.to(`company_${companyId}`).emit('fiscal_update', payload);
     this.logger.debug(
       `[WS] Notificação fiscal enviada para company_${companyId}`,
@@ -187,7 +189,7 @@ export class NotificationGateway
   /**
    * Atualiza widgets do Dashboard em tempo real
    */
-  sendDashboardUpdate(companyId: string, data: any) {
+  sendDashboardUpdate(companyId: string, data: DashboardUpdatePayload) {
     this.server.to(`company_${companyId}`).emit('dashboard-update', data);
     this.logger.debug(
       `[WS] Dashboard update enviado para company_${companyId}`,
