@@ -6,7 +6,15 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { ComplianceStatus, NotificationSeverity, Prisma } from '@prisma/client';
+import {
+  ComplianceStatus,
+  InvoiceStatus,
+  JobStatus,
+  NFeStatus,
+  NotificationSeverity,
+  ObligationStatus,
+  Prisma,
+} from '@prisma/client';
 import type { BusinessRule, ComplianceCheck } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ComplianceEnterpriseQueryDto } from './dto/compliance-enterprise-query.dto.js';
@@ -65,6 +73,12 @@ type ComplianceCheckSummaryItem = Pick<
   'resolved' | 'status' | 'severity'
 >;
 
+type PayrollWithEntries = Prisma.PayrollGetPayload<{
+  include: {
+    entries: true;
+  };
+}>;
+
 @Injectable()
 export class ComplianceEnterpriseService {
   private readonly logger = new Logger(ComplianceEnterpriseService.name);
@@ -81,6 +95,42 @@ export class ComplianceEnterpriseService {
 
   private get auditLogModel(): PrismaService['auditLog'] {
     return this.prisma.auditLog;
+  }
+
+  private get digitalCertificateModel(): PrismaService['digitalCertificate'] {
+    return this.prisma.digitalCertificate;
+  }
+
+  private get taxObligationModel(): PrismaService['taxObligation'] {
+    return this.prisma.taxObligation;
+  }
+
+  private get fiscalObligationModel(): PrismaService['fiscalObligation'] {
+    return this.prisma.fiscalObligation;
+  }
+
+  private get bankTransactionModel(): PrismaService['bankTransaction'] {
+    return this.prisma.bankTransaction;
+  }
+
+  private get employeeModel(): PrismaService['employee'] {
+    return this.prisma.employee;
+  }
+
+  private get payrollModel(): PrismaService['payroll'] {
+    return this.prisma.payroll;
+  }
+
+  private get accountingEntryModel(): PrismaService['accountingEntry'] {
+    return this.prisma.accountingEntry;
+  }
+
+  private get automationJobModel(): PrismaService['automationJob'] {
+    return this.prisma.automationJob;
+  }
+
+  private get invoiceModel(): PrismaService['invoice'] {
+    return this.prisma.invoice;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -956,10 +1006,7 @@ export class ComplianceEnterpriseService {
     companyId: string,
     findings: EngineFinding[],
   ) {
-    const model = (this.prisma as any).digitalCertificate;
-    if (!model?.findMany) return;
-
-    const certificates = await model.findMany({
+    const certificates = await this.digitalCertificateModel.findMany({
       where: { companyId },
       take: 500,
     });
@@ -1028,77 +1075,76 @@ export class ComplianceEnterpriseService {
   ) {
     const now = new Date();
 
-    const taxModel = (this.prisma as any).taxObligation;
-    if (taxModel?.findMany) {
-      const taxObligations = await taxModel.findMany({
-        where: { companyId },
-        take: 1000,
-      });
+    const taxObligations = await this.taxObligationModel.findMany({
+      where: { companyId },
+      take: 1000,
+    });
 
-      for (const item of taxObligations) {
-        const overdue = new Date(item.dueDate).getTime() < now.getTime();
-        const status = String(item.status);
+    for (const item of taxObligations) {
+      const overdue = new Date(item.dueDate).getTime() < now.getTime();
+      const status = item.status;
 
-        if (overdue && !['PAID', 'CANCELLED'].includes(status)) {
-          findings.push({
-            key: `TAX_OVERDUE:${item.id}`,
-            checkName: 'Obrigação tributária vencida',
-            severity: NotificationSeverity.CRITICAL,
-            description: `${item.name} venceu em ${new Date(item.dueDate).toISOString()}. Valor: ${this.toNumber(item.amount)}.`,
-            source: 'tax-obligations',
-            entity: 'TaxObligation',
-            entityId: item.id,
-            metadata: {
-              status,
-              dueDate: item.dueDate,
-              amount: this.toNumber(item.amount),
-            },
-          });
-        }
+      const settledStatuses: ObligationStatus[] = [
+        ObligationStatus.PAID,
+        ObligationStatus.CANCELLED,
+      ];
+
+      if (overdue && !settledStatuses.includes(status)) {
+        findings.push({
+          key: `TAX_OVERDUE:${item.id}`,
+          checkName: 'Obrigação tributária vencida',
+          severity: NotificationSeverity.CRITICAL,
+          description: `${item.name} venceu em ${new Date(item.dueDate).toISOString()}. Valor: ${this.toNumber(item.amount)}.`,
+          source: 'tax-obligations',
+          entity: 'TaxObligation',
+          entityId: item.id,
+          metadata: {
+            status,
+            dueDate: item.dueDate,
+            amount: this.toNumber(item.amount),
+          },
+        });
       }
     }
 
-    const fiscalModel = (this.prisma as any).fiscalObligation;
-    if (fiscalModel?.findMany) {
-      const fiscalObligations = await fiscalModel.findMany({
-        where: { companyId },
-        take: 1000,
-      });
+    const fiscalObligations = await this.fiscalObligationModel.findMany({
+      where: { companyId },
+      take: 1000,
+    });
 
-      for (const item of fiscalObligations) {
-        const overdue = new Date(item.dueDate).getTime() < now.getTime();
-        const status = String(item.status);
+    for (const item of fiscalObligations) {
+      const overdue = new Date(item.dueDate).getTime() < now.getTime();
+      const status = item.status;
 
-        if (status === 'REJECTED') {
-          findings.push({
-            key: `FISCAL_REJECTED:${item.id}`,
-            checkName: 'Obrigação fiscal rejeitada',
-            severity: NotificationSeverity.CRITICAL,
-            description: `${item.type} ${item.referenceMonth}/${item.referenceYear} está rejeitada.`,
-            source: 'fiscal-obligations',
-            entity: 'FiscalObligation',
-            entityId: item.id,
-            metadata: {
-              status,
-              type: item.type,
-            },
-          });
-        } else if (overdue && !['ACCEPTED', 'SUBMITTED'].includes(status)) {
-          findings.push({
-            key: `FISCAL_OVERDUE:${item.id}`,
-            checkName: 'Obrigação fiscal vencida',
-            severity: NotificationSeverity.WARNING,
-            description: `${item.type} ${item.referenceMonth}/${item.referenceYear} venceu em ${new Date(item.dueDate).toISOString()}.`,
-            source: 'fiscal-obligations',
-            entity: 'FiscalObligation',
-            entityId: item.id,
-            metadata: {
-              status,
-              type: item.type,
-              dueDate: item.dueDate,
-            },
-          });
-        }
+      if (status === 'REJECTED') {
+        findings.push({
+          key: `FISCAL_REJECTED:${item.id}`,
+          checkName: 'Obrigação fiscal rejeitada',
+          severity: NotificationSeverity.CRITICAL,
+          description: `${item.type} ${item.referenceMonth}/${item.referenceYear} está rejeitada.`,
+          source: 'fiscal-obligations',
+          entity: 'FiscalObligation',
+          entityId: item.id,
+          metadata: {
+            status,
+            type: item.type,
+          },
+        });
+      } else if (overdue && !['ACCEPTED', 'SUBMITTED'].includes(status)) {
+        findings.push({
+          key: `FISCAL_OVERDUE:${item.id}`,
+          checkName: 'Obrigação fiscal vencida',
+          severity: NotificationSeverity.WARNING,
+          description: `${item.type} ${item.referenceMonth}/${item.referenceYear} venceu em ${new Date(item.dueDate).toISOString()}.`,
+          source: 'fiscal-obligations',
+          entity: 'FiscalObligation',
+          entityId: item.id,
+          metadata: {
+            status,
+            type: item.type,
+            dueDate: item.dueDate,
+          },
+        });
       }
     }
   }
@@ -1107,12 +1153,9 @@ export class ComplianceEnterpriseService {
     companyId: string,
     findings: EngineFinding[],
   ) {
-    const model = (this.prisma as any).bankTransaction;
-    if (!model?.findMany) return;
-
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const transactions = await model.findMany({
+    const transactions = await this.bankTransactionModel.findMany({
       where: {
         companyId,
         reconciled: false,
@@ -1144,16 +1187,11 @@ export class ComplianceEnterpriseService {
     companyId: string,
     findings: EngineFinding[],
   ) {
-    const employeeModel = (this.prisma as any).employee;
-    const payrollModel = (this.prisma as any).payroll;
-
-    if (!employeeModel?.count || !payrollModel?.findFirst) return;
-
     const now = new Date();
     const month = now.getUTCMonth() + 1;
     const year = now.getUTCFullYear();
 
-    const activeEmployees = await employeeModel.count({
+    const activeEmployees = await this.employeeModel.count({
       where: {
         companyId,
         active: true,
@@ -1176,16 +1214,17 @@ export class ComplianceEnterpriseService {
       return;
     }
 
-    const payroll = await payrollModel.findFirst({
-      where: {
-        companyId,
-        month,
-        year,
-      },
-      include: {
-        entries: true,
-      },
-    });
+    const payroll: PayrollWithEntries | null =
+      await this.payrollModel.findFirst({
+        where: {
+          companyId,
+          month,
+          year,
+        },
+        include: {
+          entries: true,
+        },
+      });
 
     if (!payroll) {
       findings.push({
@@ -1228,10 +1267,7 @@ export class ComplianceEnterpriseService {
     companyId: string,
     findings: EngineFinding[],
   ) {
-    const model = (this.prisma as any).accountingEntry;
-    if (!model?.findMany) return;
-
-    const invalidEntries = await model.findMany({
+    const invalidEntries = await this.accountingEntryModel.findMany({
       where: {
         companyId,
         OR: [{ debitCode: '' }, { creditCode: '' }, { amount: { lte: 0 } }],
@@ -1261,13 +1297,10 @@ export class ComplianceEnterpriseService {
     companyId: string,
     findings: EngineFinding[],
   ) {
-    const model = (this.prisma as any).automationJob;
-    if (!model?.findMany) return;
-
-    const failedJobs = await model.findMany({
+    const failedJobs = await this.automationJobModel.findMany({
       where: {
         companyId,
-        status: 'FAILED',
+        status: JobStatus.FAILED,
       },
       orderBy: {
         createdAt: 'desc',
@@ -1298,20 +1331,17 @@ export class ComplianceEnterpriseService {
     companyId: string,
     findings: EngineFinding[],
   ) {
-    const model = (this.prisma as any).invoice;
-    if (!model?.findMany) return;
-
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const oldPending = await model.findMany({
+    const oldPending = await this.invoiceModel.findMany({
       where: {
         companyId,
         deletedAt: null,
         issuedAt: { lt: sevenDaysAgo },
         OR: [
-          { nfeStatus: 'DRAFT' },
-          { nfeStatus: 'PENDING_AUTHORIZATION' },
-          { status: 'PENDING' },
+          { nfeStatus: NFeStatus.DRAFT },
+          { nfeStatus: NFeStatus.PENDING_AUTHORIZATION },
+          { status: InvoiceStatus.PENDING },
         ],
       },
       take: 100,
@@ -1358,7 +1388,7 @@ export class ComplianceEnterpriseService {
     await this.pushInvoiceFindings(companyId, findings);
 
     const createChecks = dto.createChecks ?? true;
-    const created: any[] = [];
+    const created: EnrichedComplianceCheck[] = [];
     const skipped: EngineFinding[] = [];
 
     if (createChecks) {
