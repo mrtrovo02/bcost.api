@@ -29,7 +29,7 @@ type AuditRecord = {
   module?: string | null;
   entity?: string | null;
   entityId?: string | null;
-  payload?: any;
+  payload?: unknown;
   statusCode?: number | null;
   responseTime?: number | null;
   ipAddress?: string | null;
@@ -46,6 +46,29 @@ type AuditFinding = {
   module?: string | null;
   action?: string | null;
   evidence?: Record<string, unknown>;
+};
+
+type AuditPrismaModelKey =
+  | 'auditLog'
+  | 'company'
+  | 'notificationLog'
+  | 'automationJob'
+  | 'complianceCheck';
+
+type AuditReadableModel = {
+  findMany?: (args?: unknown) => Promise<unknown[]>;
+  findFirst?: (args?: unknown) => Promise<unknown | null>;
+  findUnique?: (args?: unknown) => Promise<unknown | null>;
+  count?: (args?: unknown) => Promise<number>;
+};
+
+type AuditLogReadableModel = AuditReadableModel & {
+  findMany: (args?: unknown) => Promise<unknown[]>;
+  count: (args?: unknown) => Promise<number>;
+};
+
+type AuditFindFirstModel = AuditReadableModel & {
+  findFirst: (args?: unknown) => Promise<unknown | null>;
 };
 
 @Injectable()
@@ -105,20 +128,42 @@ export class AuditIntelligenceEnterpriseService {
     return value;
   }
 
-  private getModel(prismaKey: string): any | null {
-    const model = (this.prisma as any)[prismaKey];
+  private isReadableModel(value: unknown): value is AuditReadableModel {
+    if (!value || typeof value !== 'object') return false;
 
-    if (!model?.findMany && !model?.findFirst && !model?.count) {
-      return null;
-    }
+    const candidate = value as AuditReadableModel;
 
-    return model;
+    return Boolean(
+      candidate.findMany || candidate.findFirst || candidate.count,
+    );
   }
 
-  private get auditLogModel(): any {
+  private hasAuditLogRead(
+    value: AuditReadableModel | null,
+  ): value is AuditLogReadableModel {
+    return Boolean(value?.findMany && value.count);
+  }
+
+  private hasFindFirst(
+    value: AuditReadableModel | null,
+  ): value is AuditFindFirstModel {
+    return Boolean(value?.findFirst);
+  }
+
+  private isAuditRecord(value: unknown): value is AuditRecord {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private getModel(prismaKey: AuditPrismaModelKey): AuditReadableModel | null {
+    const model = this.prisma[prismaKey] as unknown;
+
+    return this.isReadableModel(model) ? model : null;
+  }
+
+  private get auditLogModel(): AuditLogReadableModel {
     const model = this.getModel('auditLog');
 
-    if (!model?.findMany || !model?.count) {
+    if (!this.hasAuditLogRead(model)) {
       throw new NotFoundException('Modelo Prisma auditLog não encontrado.');
     }
 
@@ -128,13 +173,12 @@ export class AuditIntelligenceEnterpriseService {
   private async ensureCompany(companyId: string) {
     const companyModel = this.getModel('company');
 
-    if (!companyModel?.findFirst && !companyModel?.findUnique) {
+    if (!this.hasFindFirst(companyModel)) {
       throw new NotFoundException('Modelo Prisma company não encontrado.');
     }
 
     const attempts: Array<() => Promise<unknown>> = [
       () => companyModel.findFirst({ where: { id: companyId } }),
-      () => companyModel.findUnique({ where: { id: companyId } }),
       () =>
         companyModel.findFirst({
           where: { id: companyId },
@@ -206,16 +250,16 @@ export class AuditIntelligenceEnterpriseService {
   }
 
   private endpoint(record: AuditRecord): string {
-    const payload = record.payload || {};
+    const request = this.payloadRecord(record.payload, 'request');
 
-    return String(
-      payload.url ||
-        payload.path ||
-        payload.endpoint ||
-        payload.request?.url ||
-        payload.request?.path ||
-        record.entity ||
-        'unknown',
+    return (
+      this.payloadText(record.payload, 'url') ||
+      this.payloadText(record.payload, 'path') ||
+      this.payloadText(record.payload, 'endpoint') ||
+      this.payloadText(request, 'url') ||
+      this.payloadText(request, 'path') ||
+      record.entity ||
+      'unknown'
     );
   }
 
@@ -493,7 +537,7 @@ export class AuditIntelligenceEnterpriseService {
 
   private async supportingSignals(companyId: string) {
     const safeCount = async (
-      prismaKey: string,
+      prismaKey: AuditPrismaModelKey,
       where: Record<string, unknown>,
     ) => {
       const model = this.getModel(prismaKey);
@@ -573,11 +617,13 @@ export class AuditIntelligenceEnterpriseService {
     const includeRecommendations = query.includeRecommendations !== 'false';
     const includeRaw = query.includeRaw === 'true';
 
-    const records = (await this.auditLogModel.findMany({
-      where: this.buildWhere(companyId, query),
-      orderBy: { createdAt: 'desc' },
-      take: lookback,
-    })) as AuditRecord[];
+    const records = (
+      await this.auditLogModel.findMany({
+        where: this.buildWhere(companyId, query),
+        orderBy: { createdAt: 'desc' },
+        take: lookback,
+      })
+    ).filter((record) => this.isAuditRecord(record));
 
     const byModule = this.groupBy(records, (record) =>
       String(record.module || 'unknown'),
@@ -699,36 +745,37 @@ export class AuditIntelligenceEnterpriseService {
   private slimFindingEvidence(finding: AuditFinding) {
     const evidence = finding.evidence || {};
 
-    const byModule = Array.isArray((evidence as any).byModule)
-      ? (evidence as any).byModule.slice(0, 5)
+    const byModule = Array.isArray(evidence.byModule)
+      ? evidence.byModule.slice(0, 5)
       : [];
 
-    const byAction = Array.isArray((evidence as any).byAction)
-      ? (evidence as any).byAction.slice(0, 5)
+    const byAction = Array.isArray(evidence.byAction)
+      ? evidence.byAction.slice(0, 5)
       : [];
 
-    const byEndpoint = Array.isArray((evidence as any).byEndpoint)
-      ? (evidence as any).byEndpoint.slice(0, 5)
+    const byEndpoint = Array.isArray(evidence.byEndpoint)
+      ? evidence.byEndpoint.slice(0, 5)
       : [];
 
-    const latest = Array.isArray((evidence as any).latest)
-      ? (evidence as any).latest
-      : [];
+    const latest = Array.isArray(evidence.latest) ? evidence.latest : [];
 
-    const latestSummary = latest.slice(0, 5).map((item: any) => ({
-      id: item?.id || null,
-      action: item?.action || null,
-      module: item?.module || null,
-      entity: item?.entity || null,
-      statusCode: item?.statusCode || null,
-      path:
-        item?.payload?.path ||
-        item?.payload?.url ||
-        item?.payload?.endpoint ||
-        null,
-      method: item?.payload?.method || null,
-      createdAt: item?.createdAt || null,
-    }));
+    const latestSummary = latest
+      .slice(0, 5)
+      .filter((item): item is AuditRecord => this.isAuditRecord(item))
+      .map((item) => ({
+        id: item.id || null,
+        action: item.action || null,
+        module: item.module || null,
+        entity: item.entity || null,
+        statusCode: item.statusCode || null,
+        path:
+          this.payloadText(item.payload, 'path') ||
+          this.payloadText(item.payload, 'url') ||
+          this.payloadText(item.payload, 'endpoint') ||
+          null,
+        method: this.payloadText(item.payload, 'method'),
+        createdAt: item.createdAt || null,
+      }));
 
     return {
       byModule,
@@ -737,6 +784,31 @@ export class AuditIntelligenceEnterpriseService {
       latestSummary,
       totalLatestReturned: latestSummary.length,
     };
+  }
+
+  private payloadText(payload: unknown, key: string): string | null {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return null;
+    }
+
+    const value = (payload as Record<string, unknown>)[key];
+
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private payloadRecord(
+    payload: unknown,
+    key: string,
+  ): Record<string, unknown> | null {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return null;
+    }
+
+    const value = (payload as Record<string, unknown>)[key];
+
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : null;
   }
 
   private slimFinding(finding: AuditFinding) {
