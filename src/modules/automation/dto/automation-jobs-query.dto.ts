@@ -1,7 +1,8 @@
 'use strict';
 
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { JobStatus } from '@prisma/client';
 
 export class AutomationJobsQueryDto {
   @IsOptional()
@@ -18,8 +19,8 @@ export class AutomationJobsQueryDto {
   offset?: number;
 
   @IsOptional()
-  @IsString()
-  status?: string;
+  @IsEnum(JobStatus)
+  status?: JobStatus;
 
   @IsOptional()
   @IsString()

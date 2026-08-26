@@ -7,7 +7,8 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { JobStatus, Prisma } from '@prisma/client';
+import type { AutomationJob } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RevenueService } from '../revenue/revenue.service.js';
 import { AutomationJobsQueryDto } from './dto/automation-jobs-query.dto.js';
@@ -39,6 +40,14 @@ type AutomationActionResult = {
   generatedAt: string;
 };
 
+type AutomationExecutionResult = {
+  supported: boolean;
+  type: string;
+  engine?: string;
+  message?: string;
+  result?: unknown;
+};
+
 @Injectable()
 export class AutomationJobsEnterpriseService {
   private readonly logger = new Logger(AutomationJobsEnterpriseService.name);
@@ -48,20 +57,12 @@ export class AutomationJobsEnterpriseService {
     private readonly revenueService: RevenueService,
   ) {}
 
-  private get automationJobModel() {
-    const model = (this.prisma as any).automationJob;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma automationJob não encontrado.',
-      );
-    }
-
-    return model;
+  private get automationJobModel(): PrismaService['automationJob'] {
+    return this.prisma.automationJob;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private normalize(value: unknown): unknown {
@@ -81,6 +82,51 @@ export class AutomationJobsEnterpriseService {
     }
 
     return value;
+  }
+
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null || value === undefined) return null;
+
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -131,8 +177,11 @@ export class AutomationJobsEnterpriseService {
     return parsed;
   }
 
-  private buildWhere(companyId: string, query: AutomationJobsQueryDto) {
-    const andConditions: Record<string, unknown>[] = [
+  private buildWhere(
+    companyId: string,
+    query: AutomationJobsQueryDto,
+  ): Prisma.AutomationJobWhereInput {
+    const andConditions: Prisma.AutomationJobWhereInput[] = [
       {
         companyId,
       },
@@ -198,7 +247,7 @@ export class AutomationJobsEnterpriseService {
     };
   }
 
-  private async findJobById(jobId: string) {
+  private async findJobById(jobId: string): Promise<AutomationJob> {
     const model = this.automationJobModel;
 
     const job = await model.findFirst({
@@ -214,11 +263,11 @@ export class AutomationJobsEnterpriseService {
     return job;
   }
 
-  private statusCounts(items: any[]) {
+  private statusCounts(items: AutomationJob[]) {
     const counts: Record<string, number> = {};
 
     for (const item of items) {
-      const key = String(item?.status || 'UNKNOWN');
+      const key = String(item.status || 'UNKNOWN');
       counts[key] = (counts[key] || 0) + 1;
     }
 
@@ -245,13 +294,13 @@ export class AutomationJobsEnterpriseService {
       };
     }
 
-    const auditPayload = {
+    const auditPayload = this.toJsonObject({
       ...(params.metadata || {}),
       ...(params.payload || {}),
       severity: params.severity || 'INFO',
       source: params.source || 'automation-jobs-enterprise',
       metadata: params.metadata || {},
-    };
+    });
 
     const baseData = {
       module: 'automation',
@@ -267,7 +316,7 @@ export class AutomationJobsEnterpriseService {
 
     const candidates: Array<{
       label: string;
-      data: Record<string, unknown>;
+      data: Prisma.AuditLogUncheckedCreateInput;
     }> = [
       {
         label: 'scalar-company-user',
@@ -278,44 +327,9 @@ export class AutomationJobsEnterpriseService {
         },
       },
       {
-        label: 'relation-company-user',
+        label: 'scalar-minimal',
         data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
-          ...(userId
-            ? {
-                user: {
-                  connect: {
-                    id: userId,
-                  },
-                },
-              }
-            : {}),
-          ...baseData,
-        },
-      },
-      {
-        label: 'relation-company-no-user',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
-          ...baseData,
-        },
-      },
-      {
-        label: 'minimal-relation-company',
-        data: {
-          company: {
-            connect: {
-              id: params.companyId,
-            },
-          },
+          companyId: params.companyId,
           action: params.action,
           module: 'automation',
           entity: 'AutomationJob',
@@ -360,21 +374,21 @@ export class AutomationJobsEnterpriseService {
 
   private async safeSetStatus(
     jobId: string,
-    statuses: string[],
+    statuses: JobStatus[],
     options?: {
       clearError?: boolean;
       progress?: number;
     },
   ): Promise<{
     applied: boolean;
-    job: unknown;
+    job: AutomationJob;
     warning?: string;
   }> {
     const model = this.automationJobModel;
     const errors: string[] = [];
 
     for (const status of statuses) {
-      const updateCandidates: Record<string, unknown>[] = [
+      const updateCandidates: Prisma.AutomationJobUpdateInput[] = [
         {
           status,
           ...(options?.clearError ? { error: null } : {}),
@@ -426,7 +440,7 @@ export class AutomationJobsEnterpriseService {
     };
   }
 
-  private async markJobRunning(jobId: string) {
+  private async markJobRunning(jobId: string): Promise<AutomationJob> {
     const model = this.automationJobModel;
 
     try {
@@ -435,15 +449,15 @@ export class AutomationJobsEnterpriseService {
           id: jobId,
         },
         data: {
-          status: 'RUNNING',
+          status: JobStatus.RUNNING,
           progress: 10,
           error: null,
           startedAt: new Date(),
           completedAt: null,
           updatedAt: new Date(),
-          result: {
+          result: this.toJsonObject({
             retryStartedAt: new Date().toISOString(),
-          },
+          }),
         },
       });
     } catch {
@@ -452,14 +466,17 @@ export class AutomationJobsEnterpriseService {
           id: jobId,
         },
         data: {
-          status: 'RUNNING',
+          status: JobStatus.RUNNING,
           updatedAt: new Date(),
         },
       });
     }
   }
 
-  private async markJobCompleted(jobId: string, result: unknown) {
+  private async markJobCompleted(
+    jobId: string,
+    result: unknown,
+  ): Promise<AutomationJob> {
     const model = this.automationJobModel;
 
     try {
@@ -468,12 +485,12 @@ export class AutomationJobsEnterpriseService {
           id: jobId,
         },
         data: {
-          status: 'COMPLETED',
+          status: JobStatus.COMPLETED,
           progress: 100,
           error: null,
           completedAt: new Date(),
           updatedAt: new Date(),
-          result: this.normalize(result) as Prisma.InputJsonValue,
+          result: this.toInputJsonValue(result) ?? {},
         },
       });
     } catch {
@@ -482,15 +499,19 @@ export class AutomationJobsEnterpriseService {
           id: jobId,
         },
         data: {
-          status: 'COMPLETED',
+          status: JobStatus.COMPLETED,
           updatedAt: new Date(),
-          result: this.normalize(result) as Prisma.InputJsonValue,
+          result: this.toInputJsonValue(result) ?? {},
         },
       });
     }
   }
 
-  private async markJobFailed(jobId: string, error: unknown, result?: unknown) {
+  private async markJobFailed(
+    jobId: string,
+    error: unknown,
+    result?: unknown,
+  ): Promise<AutomationJob> {
     const model = this.automationJobModel;
     const message = error instanceof Error ? error.message : String(error);
 
@@ -500,16 +521,16 @@ export class AutomationJobsEnterpriseService {
           id: jobId,
         },
         data: {
-          status: 'FAILED',
+          status: JobStatus.FAILED,
           progress: 100,
           error: message,
           completedAt: new Date(),
           updatedAt: new Date(),
-          result: {
+          result: this.toJsonObject({
             error: message,
             ...(result ? { result: this.normalize(result) } : {}),
             failedAt: new Date().toISOString(),
-          } as Prisma.InputJsonValue,
+          }),
         },
       });
     } catch {
@@ -518,18 +539,20 @@ export class AutomationJobsEnterpriseService {
           id: jobId,
         },
         data: {
-          status: 'FAILED',
+          status: JobStatus.FAILED,
           updatedAt: new Date(),
-          result: {
+          result: this.toJsonObject({
             error: message,
             failedAt: new Date().toISOString(),
-          } as Prisma.InputJsonValue,
+          }),
         },
       });
     }
   }
 
-  private async executeJob(job: any) {
+  private async executeJob(
+    job: AutomationJob,
+  ): Promise<AutomationExecutionResult> {
     const type = String(job.type || '').toUpperCase();
 
     if (type === 'REVENUE_BILLING') {
@@ -576,7 +599,7 @@ export class AutomationJobsEnterpriseService {
     const offset = Math.max(Number(query.offset || 0), 0);
     const where = this.buildWhere(companyId, query);
 
-    let rows: any[] = [];
+    let rows: AutomationJob[] = [];
     let usedFallback = false;
     let fallbackReason: string | null = null;
 
@@ -662,7 +685,7 @@ export class AutomationJobsEnterpriseService {
 
     await this.markJobRunning(jobId);
 
-    let execution: unknown;
+    let execution: AutomationExecutionResult | undefined;
     let updatedJob: unknown;
     let applied = false;
     let status: AutomationActionResult['status'] = 'OK';
@@ -671,16 +694,11 @@ export class AutomationJobsEnterpriseService {
     try {
       execution = await this.executeJob(current);
 
-      if (
-        execution &&
-        typeof execution === 'object' &&
-        'supported' in execution &&
-        (execution as any).supported === false
-      ) {
+      if (execution.supported === false) {
         status = 'OK_WITH_WARNING';
         message =
           'Retry registrado, mas o tipo de job ainda não possui executor automático.';
-        updatedJob = await this.safeSetStatus(jobId, ['QUEUED', 'PENDING'], {
+        updatedJob = await this.safeSetStatus(jobId, [JobStatus.QUEUED], {
           clearError: false,
           progress: 0,
         }).then((result) => result.job);
@@ -742,13 +760,9 @@ export class AutomationJobsEnterpriseService {
 
     this.validateCompanyAccess(current.companyId, user);
 
-    const update = await this.safeSetStatus(
-      jobId,
-      ['CANCELLED', 'CANCELED', 'FAILED'],
-      {
-        progress: 0,
-      },
-    );
+    const update = await this.safeSetStatus(jobId, [JobStatus.FAILED], {
+      progress: 0,
+    });
 
     const audit = await this.safeAuditLog({
       companyId: current.companyId,
