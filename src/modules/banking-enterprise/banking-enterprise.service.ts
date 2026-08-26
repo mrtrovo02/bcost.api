@@ -9,6 +9,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FinancialEventType, Prisma, TransactionType } from '@prisma/client';
+import type { BankAccount, BankTransaction } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AutoReconciliationEnterpriseDto } from './dto/auto-reconciliation-enterprise.dto.js';
 import { BankingEnterpriseQueryDto } from './dto/banking-enterprise-query.dto.js';
@@ -28,6 +29,40 @@ type AuthUser = {
 };
 
 type ReconciliationTargetType = 'INVOICE' | 'TAX_OBLIGATION';
+type BankingReconciliationStatus =
+  | 'RECONCILED_INVOICE'
+  | 'RECONCILED_TAX'
+  | 'RECONCILED_MANUAL'
+  | 'PENDING';
+
+type BankAccountRecord = BankAccount;
+type BankTransactionRecord = BankTransaction & {
+  bankAccount?: unknown;
+  invoice?: unknown;
+  taxObligation?: unknown;
+};
+
+type EnrichedBankAccount = Omit<
+  BankAccountRecord,
+  'balanceCache' | 'createdAt' | 'updatedAt' | 'deletedAt'
+> & {
+  balanceCache: number;
+  status: 'ACTIVE' | 'DELETED';
+  createdAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+};
+
+type EnrichedBankTransaction = Omit<
+  BankTransactionRecord,
+  'amount' | 'occurredAt' | 'createdAt'
+> & {
+  amount: number;
+  signedAmount: number;
+  occurredAt: string | null;
+  createdAt: string | null;
+  reconciliationStatus: BankingReconciliationStatus;
+};
 
 type Candidate = {
   targetType: ReconciliationTargetType;
@@ -46,34 +81,20 @@ export class BankingEnterpriseService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  private get bankAccountModel() {
-    const model = (this.prisma as any).bankAccount;
-
-    if (!model) {
-      throw new NotFoundException('Modelo Prisma bankAccount não encontrado.');
-    }
-
-    return model;
+  private get bankAccountModel(): PrismaService['bankAccount'] {
+    return this.prisma.bankAccount;
   }
 
-  private get bankTransactionModel() {
-    const model = (this.prisma as any).bankTransaction;
-
-    if (!model) {
-      throw new NotFoundException(
-        'Modelo Prisma bankTransaction não encontrado.',
-      );
-    }
-
-    return model;
+  private get bankTransactionModel(): PrismaService['bankTransaction'] {
+    return this.prisma.bankTransaction;
   }
 
-  private get financialEventModel() {
-    return (this.prisma as any).financialEvent;
+  private get financialEventModel(): PrismaService['financialEvent'] {
+    return this.prisma.financialEvent;
   }
 
-  private get auditLogModel() {
-    return (this.prisma as any).auditLog;
+  private get auditLogModel(): PrismaService['auditLog'] {
+    return this.prisma.auditLog;
   }
 
   private getUserId(user?: AuthUser): string | null {
@@ -147,6 +168,56 @@ export class BankingEnterpriseService {
     return value;
   }
 
+  private isPlainRecord(value: unknown): value is Record<string, unknown> {
+    return (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      !(value instanceof Date) &&
+      !(value instanceof Prisma.Decimal)
+    );
+  }
+
+  private toInputJsonValue(value: unknown): Prisma.InputJsonValue | null {
+    if (value === null) return null;
+    if (value instanceof Prisma.Decimal) return value.toNumber();
+    if (value instanceof Date) return value.toISOString();
+
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
+      return value;
+    }
+
+    if (typeof value === 'bigint') return value.toString();
+
+    if (Array.isArray(value)) {
+      return value.map((item) => this.toInputJsonValue(item));
+    }
+
+    if (this.isPlainRecord(value)) {
+      return this.toJsonObject(value);
+    }
+
+    return String(value);
+  }
+
+  private toJsonObject(value: unknown): Prisma.InputJsonObject {
+    if (!this.isPlainRecord(value)) return {};
+
+    const output: Record<string, Prisma.InputJsonValue | null> = {};
+
+    for (const [key, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) {
+        output[key] = this.toInputJsonValue(innerValue);
+      }
+    }
+
+    return output as Prisma.InputJsonObject;
+  }
+
   private toNumber(value: unknown): number {
     if (value instanceof Prisma.Decimal) return value.toNumber();
     return Number(value || 0);
@@ -164,7 +235,7 @@ export class BankingEnterpriseService {
       where: {
         id: companyId,
         deletedAt: null,
-      } as any,
+      },
     });
 
     if (!company) {
@@ -192,7 +263,7 @@ export class BankingEnterpriseService {
     return account;
   }
 
-  private enrichAccount(account: any) {
+  private enrichAccount(account: BankAccountRecord): EnrichedBankAccount {
     const balance = this.toNumber(account.balanceCache);
 
     return {
@@ -211,7 +282,9 @@ export class BankingEnterpriseService {
     };
   }
 
-  private enrichTransaction(transaction: any) {
+  private enrichTransaction(
+    transaction: BankTransactionRecord,
+  ): EnrichedBankTransaction {
     const amount = this.toNumber(transaction.amount);
 
     return {
@@ -234,7 +307,7 @@ export class BankingEnterpriseService {
     };
   }
 
-  private buildAccountSummary(items: any[]) {
+  private buildAccountSummary(items: EnrichedBankAccount[]) {
     const summary = {
       count: items.length,
       active: 0,
@@ -256,7 +329,7 @@ export class BankingEnterpriseService {
     return summary;
   }
 
-  private buildTransactionSummary(items: any[]) {
+  private buildTransactionSummary(items: EnrichedBankTransaction[]) {
     const summary = {
       count: items.length,
       credits: 0,
@@ -420,13 +493,13 @@ export class BankingEnterpriseService {
       };
     }
 
-    const payload = {
+    const payload = this.toJsonObject({
       ...(params.payload || {}),
       source: 'banking-enterprise',
       severity: params.statusCode && params.statusCode >= 400 ? 'WARN' : 'INFO',
       auditSchemaVersion: 'auditlog-v1-schema-first',
       recordedAt: new Date().toISOString(),
-    };
+    });
 
     const baseData = {
       module: params.module,
@@ -440,48 +513,30 @@ export class BankingEnterpriseService {
       userAgent: null,
     };
 
-    const candidates: Array<{ label: string; data: Record<string, unknown> }> =
-      [
-        {
-          label: 'scalar-schema-first',
-          data: {
-            companyId: params.companyId,
-            ...(userId ? { userId } : {}),
-            ...baseData,
-          },
+    const candidates: Array<{
+      label: string;
+      data: Prisma.AuditLogUncheckedCreateInput;
+    }> = [
+      {
+        label: 'scalar-schema-first',
+        data: {
+          companyId: params.companyId,
+          ...(userId ? { userId } : {}),
+          ...baseData,
         },
-        {
-          label: 'relation-schema-first',
-          data: {
-            company: {
-              connect: {
-                id: params.companyId,
-              },
-            },
-            ...(userId
-              ? {
-                  user: {
-                    connect: {
-                      id: userId,
-                    },
-                  },
-                }
-              : {}),
-            ...baseData,
-          },
+      },
+      {
+        label: 'scalar-minimal',
+        data: {
+          companyId: params.companyId,
+          module: params.module,
+          action: params.action,
+          entity: params.entity,
+          entityId: params.entityId ?? null,
+          payload,
         },
-        {
-          label: 'scalar-minimal',
-          data: {
-            companyId: params.companyId,
-            module: params.module,
-            action: params.action,
-            entity: params.entity,
-            entityId: params.entityId ?? null,
-            payload,
-          },
-        },
-      ];
+      },
+    ];
 
     const errors: string[] = [];
 
@@ -518,7 +573,10 @@ export class BankingEnterpriseService {
 
   private async createFinancialEventForReconciliation(params: {
     companyId: string;
-    transaction: any;
+    transaction: Pick<
+      BankTransactionRecord,
+      'id' | 'bankAccountId' | 'occurredAt' | 'amount'
+    >;
     targetType: ReconciliationTargetType;
     targetId: string;
     note?: string;
@@ -598,9 +656,7 @@ export class BankingEnterpriseService {
       skip: offset,
     });
 
-    const items = rows
-      .slice(0, limit)
-      .map((item: any) => this.enrichAccount(item));
+    const items = rows.slice(0, limit).map((item) => this.enrichAccount(item));
 
     return {
       status: 'OK',
@@ -817,7 +873,7 @@ export class BankingEnterpriseService {
 
     const items = rows
       .slice(0, limit)
-      .map((item: any) => this.enrichTransaction(item));
+      .map((item) => this.enrichTransaction(item));
 
     return {
       status: 'OK',
@@ -940,7 +996,7 @@ export class BankingEnterpriseService {
 
     if (dto.metadata !== undefined) {
       data.metadata = {
-        ...(current.metadata || {}),
+        ...this.toJsonObject(current.metadata),
         ...dto.metadata,
         updatedBy: 'banking-enterprise',
         updatedAt: new Date().toISOString(),
@@ -1384,7 +1440,7 @@ export class BankingEnterpriseService {
           taxObligationId:
             dto.targetType === 'TAX_OBLIGATION' ? dto.targetId : null,
           metadata: {
-            ...(transaction.metadata || {}),
+            ...this.toJsonObject(transaction.metadata),
             reconciliation: {
               targetType: dto.targetType,
               targetId: dto.targetId,
@@ -1627,7 +1683,7 @@ export class BankingEnterpriseService {
           invoiceId: null,
           taxObligationId: null,
           metadata: {
-            ...(transaction.metadata || {}),
+            ...this.toJsonObject(transaction.metadata),
             reconciliationUndo: {
               previousInvoiceId: transaction.invoiceId,
               previousTaxObligationId: transaction.taxObligationId,
@@ -1688,10 +1744,8 @@ export class BankingEnterpriseService {
       }),
     ]);
 
-    const enrichedAccounts = accounts.map((item: any) =>
-      this.enrichAccount(item),
-    );
-    const enrichedTransactions = transactions.map((item: any) =>
+    const enrichedAccounts = accounts.map((item) => this.enrichAccount(item));
+    const enrichedTransactions = transactions.map((item) =>
       this.enrichTransaction(item),
     );
 
