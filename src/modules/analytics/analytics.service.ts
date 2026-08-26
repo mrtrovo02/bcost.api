@@ -1,6 +1,7 @@
 'use strict';
 
 import { Injectable, Logger } from '@nestjs/common';
+import { ObligationStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 
 export interface FiscalHealthScore {
@@ -59,8 +60,9 @@ export class AnalyticsService {
     }
 
     const total = obligations.length;
-    // 🚀 Uso de Casting para evitar erro de Enum se houver conflito de tipos global
-    const paid = obligations.filter((o) => o.status === ('PAID' as any)).length;
+    const paid = obligations.filter(
+      (obligation) => obligation.status === ObligationStatus.PAID,
+    ).length;
     const score = Math.round((paid / total) * 100);
 
     return {

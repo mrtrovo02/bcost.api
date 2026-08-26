@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+import type { BankTransaction } from '@prisma/client';
 
 /**
  * Interface para estruturação das anomalias detectadas.
@@ -10,7 +12,7 @@ export interface AnomalyResult {
   severity: 'LOW' | 'MEDIUM' | 'HIGH';
   description: string;
   transactionId?: string;
-  metadata?: any;
+  metadata?: Prisma.InputJsonObject;
 }
 
 @Injectable()
@@ -25,6 +27,16 @@ export class AnomalyDetectionService {
   };
 
   constructor(private prisma: PrismaService) {}
+
+  private anomalyToJson(anomaly: AnomalyResult): Prisma.InputJsonObject {
+    return {
+      type: anomaly.type,
+      severity: anomaly.severity,
+      description: anomaly.description,
+      transactionId: anomaly.transactionId ?? null,
+      metadata: anomaly.metadata ?? {},
+    };
+  }
 
   /**
    * Ponto de entrada principal para análise de anomalias por empresa.
@@ -81,7 +93,7 @@ export class AnomalyDetectionService {
   /**
    * Detecta transações idênticas em uma janela curta de tempo (Possível erro humano ou falha de sistema).
    */
-  private detectDuplicity(txs: any[]): AnomalyResult[] {
+  private detectDuplicity(txs: BankTransaction[]): AnomalyResult[] {
     const results: AnomalyResult[] = [];
 
     for (let i = 0; i < txs.length; i++) {
@@ -120,7 +132,7 @@ export class AnomalyDetectionService {
   /**
    * Detecção estatística baseada em Z-Score (Desvio Padrão).
    */
-  private detectZScoreOutliers(txs: any[]): AnomalyResult[] {
+  private detectZScoreOutliers(txs: BankTransaction[]): AnomalyResult[] {
     const amounts = txs.map((t) => Math.abs(Number(t.amount)));
     const n = amounts.length;
     const mean = amounts.reduce((a, b) => a + b, 0) / n;
@@ -152,7 +164,7 @@ export class AnomalyDetectionService {
   /**
    * Detecção básica por mediana para o cenário de "Cold Start".
    */
-  private detectBasicOutliers(txs: any[]): AnomalyResult[] {
+  private detectBasicOutliers(txs: BankTransaction[]): AnomalyResult[] {
     const sortedTxs = [...txs].sort(
       (a, b) => Math.abs(Number(a.amount)) - Math.abs(Number(b.amount)),
     );
@@ -190,8 +202,8 @@ export class AnomalyDetectionService {
           companyId: companyId,
           payload: {
             found: anomalies.length,
-            details: anomalies,
-          } as any,
+            details: anomalies.map((anomaly) => this.anomalyToJson(anomaly)),
+          } satisfies Prisma.InputJsonObject,
           statusCode: 200,
           userAgent: 'SYSTEM_WORKER_IA',
         },
