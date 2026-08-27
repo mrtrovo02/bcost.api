@@ -2,16 +2,42 @@
 
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { AuditLog } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateAuditLogDto } from './dto/create-audit-log.dto.js';
 import { QueryAuditLogDto } from './dto/query-audit-log.dto.js';
 
+type AuditSeverity = 'INFO' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+
+type AuditLogResponse = {
+  id: string | null;
+  companyId: string | null;
+  userId: string | null;
+  module: string;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  severity: AuditSeverity;
+  source: string;
+  statusCode: number | null;
+  responseTime: number | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown>;
+  payload: Prisma.JsonValue | Record<string, unknown>;
+  persisted?: boolean;
+  message?: string;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
+};
+
 type AuditListResult = {
-  items: unknown[];
+  items: AuditLogResponse[];
   total: number;
   limit: number;
   offset: number;
   generatedAt: string;
+  fallback?: boolean;
 };
 
 @Injectable()
@@ -19,18 +45,6 @@ export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
   constructor(private readonly prisma: PrismaService) {}
-
-  private get auditModel() {
-    const prismaAny = this.prisma as any;
-
-    return (
-      prismaAny.auditLog ??
-      prismaAny.auditLogs ??
-      prismaAny.auditEvent ??
-      prismaAny.extended?.auditLog ??
-      null
-    );
-  }
 
   private toDate(value?: string, fieldName = 'date'): Date | undefined {
     if (!value) return undefined;
@@ -55,41 +69,61 @@ export class AuditService {
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  private normalize(row: any) {
-    const payload: Record<string, unknown> =
-      row.payload && typeof row.payload === 'object' ? row.payload : {};
-    const metadata: Record<string, unknown> =
-      row.metadata && typeof row.metadata === 'object' ? row.metadata : payload;
+  private asRecord(value: Prisma.JsonValue | unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return {};
+    }
+
+    return value as Record<string, unknown>;
+  }
+
+  private normalize(row: AuditLog): AuditLogResponse {
+    const payload = this.asRecord(row.payload);
+    const metadata = payload;
 
     return {
       id: row.id,
-      companyId: row.companyId ?? row.company?.id ?? null,
-      userId: row.userId ?? row.user?.id ?? null,
-      module: row.module ?? row.source ?? 'SYSTEM',
-      action: row.action ?? row.event ?? row.type ?? 'UNKNOWN_ACTION',
-      entity: row.entity ?? row.resource ?? row.model ?? 'UNKNOWN_ENTITY',
-      entityId: row.entityId ?? row.resourceId ?? null,
-      severity: row.severity ?? payload.severity ?? row.level ?? 'INFO',
-      source: row.source ?? payload.source ?? row.module ?? 'SYSTEM',
+      companyId: row.companyId ?? null,
+      userId: row.userId ?? null,
+      module: row.module || 'SYSTEM',
+      action: row.action || 'UNKNOWN_ACTION',
+      entity: row.entity || 'UNKNOWN_ENTITY',
+      entityId: row.entityId ?? null,
+      severity:
+        typeof payload.severity === 'string' ? payload.severity : 'INFO',
+      source:
+        typeof payload.source === 'string'
+          ? payload.source
+          : row.module || 'SYSTEM',
       statusCode: row.statusCode ?? null,
       responseTime: row.responseTime ?? null,
-      ipAddress: row.ipAddress ?? row.ip ?? null,
+      ipAddress: row.ipAddress ?? null,
       userAgent: row.userAgent ?? null,
       metadata,
-      payload: row.payload ?? row.metadata ?? row.details ?? {},
-      createdAt: row.createdAt ?? row.timestamp ?? null,
-      updatedAt: row.updatedAt ?? null,
+      payload: row.payload ?? {},
+      createdAt: row.createdAt ?? null,
+      updatedAt: null,
     };
   }
 
-  private buildWhere(companyId: string, query: QueryAuditLogDto) {
-    const where: Record<string, unknown> = {
+  private buildWhere(
+    companyId: string,
+    query: QueryAuditLogDto,
+  ): Prisma.AuditLogWhereInput {
+    const where: Prisma.AuditLogWhereInput = {
       companyId,
     };
 
     if (query.action) {
       where.action = {
         contains: query.action,
+        mode: 'insensitive',
+      };
+    }
+
+    if (query.module) {
+      where.module = {
+        contains: query.module,
         mode: 'insensitive',
       };
     }
@@ -107,6 +141,17 @@ export class AuditService {
 
     if (query.userId) {
       where.userId = query.userId;
+    }
+
+    if (query.search) {
+      where.OR = [
+        { module: { contains: query.search, mode: 'insensitive' } },
+        { action: { contains: query.search, mode: 'insensitive' } },
+        { entity: { contains: query.search, mode: 'insensitive' } },
+        { entityId: { contains: query.search, mode: 'insensitive' } },
+        { ipAddress: { contains: query.search, mode: 'insensitive' } },
+        { userAgent: { contains: query.search, mode: 'insensitive' } },
+      ];
     }
 
     const from = this.toDate(query.from, 'from');
@@ -135,18 +180,13 @@ export class AuditService {
     );
   }
 
-  private buildPayload(dto: CreateAuditLogDto) {
+  private buildPayload(dto: CreateAuditLogDto): Prisma.InputJsonObject {
     return {
       ...(dto.metadata ?? {}),
       severity: dto.severity ?? 'INFO',
       source: dto.source ?? this.resolveModule(dto),
       manualEvent: true,
     };
-  }
-
-  private async tryCreate(model: any, data: Record<string, unknown>) {
-    const created = await model.create({ data });
-    return this.normalize(created);
   }
 
   private includesIgnoreCase(value: unknown, expected?: string): boolean {
@@ -163,7 +203,10 @@ export class AuditService {
     return String(value ?? '').toLowerCase() === String(expected).toLowerCase();
   }
 
-  private matchesAuditQuery(item: any, query: QueryAuditLogDto): boolean {
+  private matchesAuditQuery(
+    item: AuditLogResponse,
+    query: QueryAuditLogDto,
+  ): boolean {
     if (query.module && !this.equalsIgnoreCase(item.module, query.module)) {
       return false;
     }
@@ -246,89 +289,20 @@ export class AuditService {
     companyId: string,
     query: QueryAuditLogDto = {},
   ): Promise<AuditListResult> {
-    const model = this.auditModel;
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
     const offset = Math.max(Number(query.offset || 0), 0);
-
-    if (!model?.findMany) {
-      return {
-        items: [],
-        total: 0,
-        limit,
-        offset,
-        generatedAt: new Date().toISOString(),
-      };
-    }
-
-    /**
-     * Estratégia enterprise:
-     * 1. Tenta query avançada no Prisma.
-     * 2. Se houver drift entre schema/Prisma Client, cai para query simples por empresa.
-     * 3. Normaliza todos os registros.
-     * 4. Aplica filtros em memória para garantir semântica correta.
-     *
-     * Isso evita 422/500 e garante que ?module=automation retorne somente automation.
-     */
     const where = this.buildWhere(companyId, query);
-
-    let rawItems: any[] = [];
-    let usedFallback = false;
-
     const fetchLimit = Math.max(limit + offset, 500);
 
-    try {
-      rawItems = await model.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        take: fetchLimit,
-        skip: 0,
-      });
-    } catch (error) {
-      usedFallback = true;
+    const rawItems = await this.prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: fetchLimit,
+      skip: 0,
+    });
 
-      this.logger.warn(
-        `[Audit] Falha ao consultar logs com filtros avançados: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-
-      try {
-        rawItems = await model.findMany({
-          where: { companyId },
-          orderBy: { createdAt: 'desc' },
-          take: fetchLimit,
-          skip: 0,
-        });
-      } catch (fallbackError) {
-        this.logger.warn(
-          `[Audit] Fallback por companyId falhou: ${
-            fallbackError instanceof Error
-              ? fallbackError.message
-              : String(fallbackError)
-          }`,
-        );
-
-        try {
-          rawItems = await model.findMany({
-            orderBy: { createdAt: 'desc' },
-            take: fetchLimit,
-            skip: 0,
-          });
-        } catch {
-          rawItems = [];
-        }
-      }
-    }
-
-    const normalized = Array.isArray(rawItems)
-      ? rawItems.map((row) => this.normalize(row))
-      : [];
-
-    const companyFiltered = normalized.filter(
-      (item: any) => String(item.companyId || '') === String(companyId),
-    );
-
-    const filtered = companyFiltered.filter((item: any) =>
+    const normalized = rawItems.map((row) => this.normalize(row));
+    const filtered = normalized.filter((item) =>
       this.matchesAuditQuery(item, query),
     );
 
@@ -340,17 +314,12 @@ export class AuditService {
       limit,
       offset,
       generatedAt: new Date().toISOString(),
-      ...(usedFallback
-        ? {
-            fallback: true,
-          }
-        : {}),
-    } as AuditListResult & { fallback?: boolean };
+    };
   }
 
   async summary(companyId: string) {
     const result = await this.list(companyId, { limit: 500, offset: 0 });
-    const items = result.items as any[];
+    const items = result.items;
 
     const bySeverity = items.reduce<Record<string, number>>((acc, item) => {
       const key = String(item.severity || 'INFO');
@@ -383,124 +352,24 @@ export class AuditService {
   }
 
   async create(companyId: string, dto: CreateAuditLogDto) {
-    const model = this.auditModel;
     const moduleName = this.resolveModule(dto);
     const payload = this.buildPayload(dto);
 
-    if (!model?.create) {
-      return {
-        id: null,
+    const created = await this.prisma.auditLog.create({
+      data: {
         companyId,
         userId: dto.userId ?? null,
         module: moduleName,
         action: dto.action,
         entity: dto.entity,
         entityId: dto.entityId ?? null,
-        severity: dto.severity ?? 'INFO',
-        source: dto.source ?? moduleName,
-        payload,
-        metadata: payload,
-        persisted: false,
-        message:
-          'Modelo AuditLog ainda não está disponível no Prisma Client. Evento retornado sem persistência.',
-        createdAt: new Date().toISOString(),
-      };
-    }
-
-    const candidates: Record<string, unknown>[] = [
-      {
-        company: {
-          connect: {
-            id: companyId,
-          },
-        },
-        ...(dto.userId
-          ? {
-              user: {
-                connect: {
-                  id: dto.userId,
-                },
-              },
-            }
-          : {}),
-        module: moduleName,
-        action: dto.action,
-        entity: dto.entity,
-        entityId: dto.entityId ?? null,
         payload,
         ipAddress: dto.ipAddress ?? null,
         userAgent: dto.userAgent ?? null,
       },
+    });
 
-      {
-        company: {
-          connect: {
-            id: companyId,
-          },
-        },
-        module: moduleName,
-        action: dto.action,
-        entity: dto.entity,
-        entityId: dto.entityId ?? null,
-        payload,
-        ipAddress: dto.ipAddress ?? null,
-        userAgent: dto.userAgent ?? null,
-      },
-
-      {
-        company: {
-          connect: {
-            id: companyId,
-          },
-        },
-        module: moduleName,
-        action: dto.action,
-        entity: dto.entity,
-        entityId: dto.entityId ?? null,
-        payload,
-      },
-
-      {
-        companyId,
-        module: moduleName,
-        action: dto.action,
-        entity: dto.entity,
-        entityId: dto.entityId ?? null,
-        userId: dto.userId ?? null,
-        payload,
-        ipAddress: dto.ipAddress ?? null,
-        userAgent: dto.userAgent ?? null,
-      },
-
-      {
-        companyId,
-        module: moduleName,
-        action: dto.action,
-        entity: dto.entity,
-        entityId: dto.entityId ?? null,
-        payload,
-      },
-    ];
-
-    const errors: string[] = [];
-
-    for (const data of candidates) {
-      try {
-        return await this.tryCreate(model, data);
-      } catch (error) {
-        errors.push(error instanceof Error ? error.message : String(error));
-      }
-    }
-
-    this.logger.error(
-      `[Audit] Todas as tentativas de create falharam: ${errors.join(' | ')}`,
-    );
-
-    throw new BadRequestException(
-      `Não foi possível registrar auditoria após múltiplas estratégias. Último erro: ${
-        errors[errors.length - 1] || 'erro desconhecido'
-      }`,
-    );
+    return this.normalize(created);
   }
 
   async health(companyId: string) {
@@ -514,39 +383,6 @@ export class AuditService {
       latestCount: summary.latest.length,
       generatedAt: new Date().toISOString(),
     };
-  }
-  private normalizeAuditValue(value: unknown): unknown {
-    if (value instanceof Prisma.Decimal) return value.toNumber();
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === 'bigint') return value.toString();
-
-    if (Array.isArray(value)) {
-      return value.map((item) => this.normalizeAuditValue(item));
-    }
-
-    if (value && typeof value === 'object') {
-      const output: Record<string, unknown> = {};
-
-      for (const [key, innerValue] of Object.entries(value)) {
-        output[key] = this.normalizeAuditValue(innerValue);
-      }
-
-      return output;
-    }
-
-    return value;
-  }
-
-  private parseAuditDate(value?: string, field = 'date'): Date | undefined {
-    if (!value) return undefined;
-
-    const parsed = new Date(value);
-
-    if (Number.isNaN(parsed.getTime())) {
-      throw new Error(`${field} inválido.`);
-    }
-
-    return parsed;
   }
 
   async listEnterpriseAuditLogs(
@@ -566,115 +402,14 @@ export class AuditService {
       to?: string;
     } = {},
   ) {
-    const prismaAny = this.prisma as any;
-    const auditLog = prismaAny.auditLog;
-
-    if (!auditLog) {
-      return {
-        companyId,
-        status: 'OK_WITH_FALLBACK',
-        items: [],
-        total: 0,
-        limit: Number(query.limit || 100),
-        offset: Number(query.offset || 0),
-        hasMore: false,
-        summary: {
-          count: 0,
-          warning: 'Modelo auditLog indisponível no PrismaService.',
-        },
-        generatedAt: new Date().toISOString(),
-      };
-    }
-
     const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
     const offset = Math.max(Number(query.offset || 0), 0);
-
-    const andConditions: Record<string, unknown>[] = [];
-
-    /**
-     * Compatibilidade:
-     * - Alguns Prisma Clients aceitam companyId escalar.
-     * - Outros exigem relação company: { id }.
-     * Para findMany normalmente companyId funciona se o campo escalar existe.
-     */
-    andConditions.push({
-      OR: [{ companyId }, { company: { id: companyId } }],
+    const result = await this.list(companyId, {
+      ...query,
+      limit: limit + 1,
+      offset,
     });
-
-    if (query.module) andConditions.push({ module: query.module });
-    if (query.action) andConditions.push({ action: query.action });
-    if (query.entity) andConditions.push({ entity: query.entity });
-    if (query.entityId) andConditions.push({ entityId: query.entityId });
-    if (query.userId) {
-      andConditions.push({
-        OR: [{ userId: query.userId }, { user: { id: query.userId } }],
-      });
-    }
-
-    if (query.search) {
-      andConditions.push({
-        OR: [
-          { action: { contains: query.search, mode: 'insensitive' } },
-          { module: { contains: query.search, mode: 'insensitive' } },
-          { entity: { contains: query.search, mode: 'insensitive' } },
-        ],
-      });
-    }
-
-    const from = this.parseAuditDate(query.from, 'from');
-    const to = this.parseAuditDate(query.to, 'to');
-
-    if (from || to) {
-      andConditions.push({
-        createdAt: {
-          ...(from ? { gte: from } : {}),
-          ...(to ? { lte: to } : {}),
-        },
-      });
-    }
-
-    const where = andConditions.length ? { AND: andConditions } : {};
-
-    let rows: any[] = [];
-    let usedFallback = false;
-    let fallbackReason: string | null = null;
-
-    try {
-      rows = await auditLog.findMany({
-        where,
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: limit + 1,
-        skip: offset,
-      });
-    } catch (error) {
-      usedFallback = true;
-      fallbackReason = error instanceof Error ? error.message : String(error);
-
-      rows = await auditLog.findMany({
-        take: limit + 1,
-        skip: offset,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-    }
-
-    const normalizedRows = (this.normalizeAuditValue(rows) as unknown[]).filter(
-      (item) => {
-        if (!item || typeof item !== 'object') return false;
-
-        return this.matchesAuditQuery(
-          this.normalize(item),
-          query as QueryAuditLogDto,
-        );
-      },
-    );
-
-    const sliced = normalizedRows.slice(0, limit).map((item) =>
-      this.normalize(item),
-    );
+    const sliced = result.items.slice(0, limit);
 
     const summaryByModule: Record<string, number> = {};
     const summaryByAction: Record<string, number> = {};
@@ -689,22 +424,16 @@ export class AuditService {
 
     return {
       companyId,
-      status: usedFallback ? 'OK_WITH_FALLBACK' : 'OK',
+      status: 'OK',
       items: sliced,
-      total: offset + sliced.length,
+      total: result.total,
       limit,
       offset,
-      hasMore: rows.length > limit,
+      hasMore: result.items.length > limit,
       summary: {
         count: sliced.length,
         byModule: summaryByModule,
         byAction: summaryByAction,
-        ...(usedFallback
-          ? {
-              fallback: true,
-              fallbackReason,
-            }
-          : {}),
       },
       generatedAt: new Date().toISOString(),
     };
