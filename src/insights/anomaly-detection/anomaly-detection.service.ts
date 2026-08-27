@@ -3,6 +3,32 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { subDays } from 'date-fns';
+import { InvoiceStatus, Prisma, TransactionType } from '@prisma/client';
+
+type TransactionWithAuditRelations = Prisma.BankTransactionGetPayload<{
+  include: {
+    bankAccount: true;
+    invoice: true;
+    taxObligation: true;
+  };
+}>;
+
+type InvoiceWithBankTransaction = Prisma.InvoiceGetPayload<{
+  include: {
+    bankTransaction: true;
+  };
+}>;
+
+export type EnrichedAnomaly = TransactionWithAuditRelations & {
+  deviationScore: number;
+  isAnomalous: boolean;
+  auditContext: {
+    averageForPeriod: number;
+    differenceFromMean: number;
+    severity: 'LOW' | 'MEDIUM' | 'CRITICAL';
+    reason: string;
+  };
+};
 
 @Injectable()
 export class AnomalyDetectionService {
@@ -13,7 +39,10 @@ export class AnomalyDetectionService {
   /**
    * 🔍 Motor de Auditoria Estatística: Detecta desvios de padrão financeiro.
    */
-  async detectAnomalies(companyId: string, days: number = 30) {
+  async detectAnomalies(
+    companyId: string,
+    days: number = 30,
+  ): Promise<EnrichedAnomaly[]> {
     this.logger.debug(
       `🔬 Analisando comportamento estatístico: Empresa ${companyId}`,
     );
@@ -54,7 +83,7 @@ export class AnomalyDetectionService {
     const threshold = 2 * stdDev;
 
     const anomalies = transactions
-      .map((t) => {
+      .map((t): EnrichedAnomaly => {
         const amount = Math.abs(Number(t.amount));
         const diff = Math.abs(amount - mean);
 
@@ -100,8 +129,11 @@ export class AnomalyDetectionService {
   /**
    * Tenta deduzir o motivo da anomalia com base no contexto do banco
    */
-  private determineReason(transaction: any, zScore: number): string {
-    if (!transaction.invoiceId && transaction.type === 'CREDIT') {
+  private determineReason(
+    transaction: TransactionWithAuditRelations,
+    zScore: number,
+  ): string {
+    if (!transaction.invoiceId && transaction.type === TransactionType.CREDIT) {
       return 'Receita sem Nota Fiscal vinculada (Risco Fiscal)';
     }
     if (zScore > 5) {
@@ -123,22 +155,18 @@ export class AnomalyDetectionService {
     this.logger.log(`🛡️ Auditando integridade de notas para: ${companyId}`);
 
     const invoices = await this.prisma.invoice.findMany({
-      where: { companyId, status: 'NORMAL' },
+      where: { companyId, status: InvoiceStatus.NORMAL },
       include: {
-        bankTransaction: true, // Nome corrigido conforme seu Prisma Schema
+        bankTransaction: true,
       },
     });
 
     return invoices
-      .filter((inv) => {
-        // Busca as transações vinculadas à nota
-        const txs = (inv as any).bankTransaction || [];
-        const totalPaid = txs.reduce(
-          (sum: number, t: any) => sum + Number(t.amount),
-          0,
-        );
+      .filter((inv: InvoiceWithBankTransaction) => {
+        const totalPaid = inv.bankTransaction
+          ? Number(inv.bankTransaction.amount)
+          : 0;
 
-        // Retorna apenas se houver diferença entre a nota e o banco
         return Math.abs(totalPaid - Number(inv.amount)) > 0.01;
       })
       .map((inv) => ({

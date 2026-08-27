@@ -8,7 +8,7 @@ import {
   ProjectionItem,
 } from '../cash-flow-projection/cash-flow-projection.service.js';
 import { AnomalyDetectionService } from '../anomaly-detection/anomaly-detection.service.js';
-import { CashFlowProjection } from '@prisma/client'; // Import para tipagem do Banco
+import type { EnrichedAnomaly } from '../anomaly-detection/anomaly-detection.service.js';
 
 @Injectable()
 export class RuleEngineService {
@@ -132,7 +132,7 @@ export class RuleEngineService {
 
     // Filtramos apenas as de desvio alto (deviationScore > 3) para não poluir com notificações INFO
     const criticalAnomalies = anomalies.filter(
-      (a: any) => a.deviationScore > 3,
+      (anomaly: EnrichedAnomaly) => anomaly.deviationScore > 3,
     );
 
     if (criticalAnomalies.length > 0) {

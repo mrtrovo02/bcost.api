@@ -2,7 +2,10 @@
 
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../database/prisma.service.js';
-import { AnomalyDetectionService } from './anomaly-detection/anomaly-detection.service.js';
+import {
+  AnomalyDetectionService,
+  type EnrichedAnomaly,
+} from './anomaly-detection/anomaly-detection.service.js';
 import {
   CashFlowProjectionService,
   ProjectionItem,
@@ -32,6 +35,8 @@ export interface FinancialHealth {
   };
   message: string;
 }
+
+type FinancialHealthFactors = FinancialHealth['factors'];
 
 @Injectable()
 export class InsightsService {
@@ -74,13 +79,13 @@ export class InsightsService {
     this.logger.log(`🤖 Auditoria estatística em execução: ${companyId}`);
     const rawData = await this.anomalyService.detectAnomalies(companyId);
 
-    return rawData.map((item: any) => ({
+    return rawData.map((item: EnrichedAnomaly) => ({
       id: String(item.id || item.invoice?.id || 'unknown'),
       description: String(
         item.description || 'Transação atípica detectada pelo motor bCost',
       ),
       amount: Number(item.amount || 0),
-      date: new Date(item.date || item.occurredAt || new Date()),
+      date: item.occurredAt,
       deviationScore: Number(item.deviationScore || 1.0),
     }));
   }
@@ -201,7 +206,7 @@ export class InsightsService {
       update: {
         revenue: new Prisma.Decimal(revenueData._sum.amount?.toNumber() || 0),
         netProfit: new Prisma.Decimal(health.score),
-        fatorRData: health.factors as any,
+        fatorRData: this.toSnapshotJson(health.factors),
         integrityHash,
       },
       create: {
@@ -213,9 +218,19 @@ export class InsightsService {
         netProfit: new Prisma.Decimal(health.score),
         taxPayable: new Prisma.Decimal(0),
         integrityHash,
-        fatorRData: health.factors as any,
+        fatorRData: this.toSnapshotJson(health.factors),
       },
     });
+  }
+
+  private toSnapshotJson(
+    factors: FinancialHealthFactors,
+  ): Prisma.InputJsonObject {
+    return {
+      liquidity: factors.liquidity,
+      stability: factors.stability,
+      predictability: factors.predictability,
+    };
   }
 
   /**

@@ -3,13 +3,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 import { addDays, format, subMonths, isSameDay } from 'date-fns';
-import { Prisma, ObligationStatus } from '@prisma/client';
+import {
+  InvoiceStatus,
+  ObligationStatus,
+  Prisma,
+  TransactionType,
+} from '@prisma/client';
+import type { BankTransaction } from '@prisma/client';
 
 export type ProjectionItem = {
   date: string;
   projectedIncome: number;
   projectedExpense: number;
   projectedBalance: number;
+};
+
+type DailyHistoricalTotal = {
+  date: string;
+  income: number;
+  expense: number;
+};
+
+type PendingInvoiceProjectionRow = {
+  amount: Prisma.Decimal;
+  issuedAt: Date;
+};
+
+type TaxObligationProjectionRow = {
+  amount: Prisma.Decimal;
+  dueDate: Date;
 };
 
 @Injectable()
@@ -47,8 +69,7 @@ export class CashFlowProjectionService {
       this.prisma.invoice.findMany({
         where: {
           companyId,
-          // 🚀 Ajustado para capturar PENDING (conforme nosso Seed)
-          status: { in: ['PENDING', 'NORMAL'] as any },
+          status: { in: [InvoiceStatus.PENDING, InvoiceStatus.NORMAL] },
           issuedAt: { lte: horizonDate },
         },
         select: { amount: true, issuedAt: true },
@@ -56,7 +77,7 @@ export class CashFlowProjectionService {
       this.prisma.taxObligation.findMany({
         where: {
           companyId,
-          status: 'PENDING' as any,
+          status: ObligationStatus.PENDING,
           dueDate: { lte: horizonDate },
         },
         select: { amount: true, dueDate: true },
@@ -86,7 +107,9 @@ export class CashFlowProjectionService {
     return projection;
   }
 
-  private aggregateByDay(transactions: any[]) {
+  private aggregateByDay(
+    transactions: BankTransaction[],
+  ): DailyHistoricalTotal[] {
     const map = new Map<string, { income: number; expense: number }>();
 
     for (const t of transactions) {
@@ -94,8 +117,7 @@ export class CashFlowProjectionService {
       const current = map.get(day) || { income: 0, expense: 0 };
       const amount = Math.abs(Number(t.amount));
 
-      // Aceita tanto o padrão de Invoice quanto o de transação bancária
-      if (t.type === 'CREDIT' || t.type === 'REVENUE') {
+      if (t.type === TransactionType.CREDIT) {
         current.income += amount;
       } else {
         current.expense += amount;
@@ -109,11 +131,11 @@ export class CashFlowProjectionService {
   }
 
   private forecast(
-    historical: any[],
+    historical: DailyHistoricalTotal[],
     days: number,
     initialBalance: number,
-    pendingInvoices: any[],
-    taxObligations: any[],
+    pendingInvoices: PendingInvoiceProjectionRow[],
+    taxObligations: TaxObligationProjectionRow[],
   ): ProjectionItem[] {
     const recent = historical.slice(-60);
 
@@ -167,7 +189,7 @@ export class CashFlowProjectionService {
     return projection;
   }
 
-  private calculateTrend(data: any[]): number {
+  private calculateTrend(data: DailyHistoricalTotal[]): number {
     if (data.length < 2) return 0;
 
     const n = data.length;
