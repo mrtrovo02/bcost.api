@@ -12,6 +12,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { NotificationService } from '../../notifications/notification.service.js';
 import { CertificateStatus } from '@prisma/client';
+import type { DigitalCertificate } from '@prisma/client';
 
 /**
  * Interface Enterprise para documentos capturados.
@@ -286,7 +287,7 @@ export class DfeService implements OnModuleInit {
 
   private async fetchFromGovernmentGateway(
     companyId: string,
-    certificate: any,
+    certificate: DigitalCertificate,
   ): Promise<CapturedDocument[]> {
     this.logger.debug(
       `[Gateway] Handshake SSL via Certificado ID: ${certificate.id}`,

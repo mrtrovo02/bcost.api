@@ -5,7 +5,7 @@ import { PrismaService } from '../../../database/prisma.service.js';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { FinancialLedgerService } from '../../financial/services/financial-ledger.service.js';
-import { FinancialEventType } from '@prisma/client';
+import { FinancialEventType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TaxComplianceService {
@@ -35,11 +35,9 @@ export class TaxComplianceService {
   }
 
   async processTaxes(invoiceId: string, companyId: string) {
-    // Usamos o 'extended' para garantir que o isolamento de tenant funcione
-    return this.prisma.extended.$transaction(async (tx: any) => {
-      // 1. Busca a Invoice - Removido 'items' que não existe no seu schema
-      const invoice = await tx.invoice.findUnique({
-        where: { id: invoiceId },
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const invoice = await tx.invoice.findFirst({
+        where: { id: invoiceId, companyId },
       });
 
       if (!invoice)

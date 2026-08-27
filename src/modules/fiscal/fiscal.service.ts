@@ -56,6 +56,13 @@ type FiscalPerformancePoint = {
   isSnapshot: boolean;
 };
 
+type YearlyPerformanceRow = {
+  month: number;
+  faturamento: number;
+  imposto: number;
+  isSnapshot: boolean;
+};
+
 type SimplesAnnex = 'III' | 'V';
 export type FiscalExportFormat = 'DOMINIO' | 'QUESTOR' | 'ALTERDATA';
 
@@ -411,7 +418,7 @@ export class FiscalService implements OnModuleInit {
 
     const yearly = await this.getYearlyPerformance(companyId, year);
 
-    return yearly.map((item: any): FiscalPerformancePoint => {
+    return yearly.map((item): FiscalPerformancePoint => {
       const monthNumber = Number(item.month);
       const faturamento = this.toNumber(item.faturamento);
       const impostoComBcost = this.toNumber(item.imposto);
@@ -746,7 +753,10 @@ export class FiscalService implements OnModuleInit {
   // Performance anual
   // ---------------------------------------------------------------------------
 
-  async getYearlyPerformance(companyId: string, year: number) {
+  async getYearlyPerformance(
+    companyId: string,
+    year: number,
+  ): Promise<YearlyPerformanceRow[]> {
     const snapshots = await this.prisma.financialSnapshot.findMany({
       where: { companyId, year },
       orderBy: { month: 'asc' },

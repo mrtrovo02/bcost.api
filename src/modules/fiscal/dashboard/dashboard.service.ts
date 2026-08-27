@@ -159,7 +159,6 @@ export class DashboardService {
         },
       };
     } catch (error: unknown) {
-      // FIX: error: any → error: unknown com narrowing correto
       if (error instanceof NotFoundException) throw error;
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(

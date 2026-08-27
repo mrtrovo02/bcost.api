@@ -154,7 +154,6 @@ export class FiscalSeedService {
         return { status: 'success', months: records.length };
       });
     } catch (error: unknown) {
-      // FIX: error: any → error: unknown com narrowing
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(`[Seed Failure] Erro crítico na transação: ${message}`);
       throw error;

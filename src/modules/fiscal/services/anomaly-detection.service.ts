@@ -3,6 +3,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service.js';
 import { FinancialEventType } from '@prisma/client';
+import type { FinancialEvent } from '@prisma/client';
 import { AlertService } from '../../notifications/services/alert.service.js';
 
 @Injectable()
@@ -32,7 +33,7 @@ export class AnomalyDetectionService {
 
     if (history.length < 3) return; // Base de dados insuficiente para análise
 
-    const amounts = history.map((h: any) => Number(h.amount));
+    const amounts = (history as FinancialEvent[]).map((h) => Number(h.amount));
     const mean = amounts.reduce((a, b) => a + b, 0) / amounts.length;
 
     // 2. Cálculo de Desvio Padrão Simples
