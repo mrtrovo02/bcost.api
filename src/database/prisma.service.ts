@@ -60,6 +60,29 @@ const SOFT_DELETE_MODELS = new Set<string>([
   'AccountingEntry',
 ]);
 
+type MutablePrismaArgs = Record<string, unknown> & {
+  where?: Record<string, unknown>;
+  data?: Record<string, unknown> | Array<Record<string, unknown>>;
+};
+
+type SoftDeleteDelegate = {
+  update(args: {
+    where?: Record<string, unknown>;
+    data: { deletedAt: Date };
+  }): Promise<unknown>;
+  updateMany(args: {
+    where?: Record<string, unknown>;
+    data: { deletedAt: Date };
+  }): Promise<unknown>;
+};
+
+type PrismaDelegateRegistry = Record<string, unknown>;
+
+type PrismaEventEmitter = {
+  $on(event: 'query', cb: (e: Prisma.QueryEvent) => void): void;
+  $on(event: 'error', cb: (e: Prisma.LogEvent) => void): void;
+};
+
 @Injectable()
 export class PrismaService
   extends PrismaClient
@@ -103,6 +126,24 @@ export class PrismaService
 
   get isConnected(): boolean {
     return this._connected;
+  }
+
+  private getSoftDeleteDelegate(model: string): SoftDeleteDelegate | null {
+    const registry = this as unknown as PrismaDelegateRegistry;
+    const delegate = registry[model];
+
+    if (!delegate || typeof delegate !== 'object') return null;
+
+    const candidate = delegate as Partial<SoftDeleteDelegate>;
+
+    if (
+      typeof candidate.update !== 'function' ||
+      typeof candidate.updateMany !== 'function'
+    ) {
+      return null;
+    }
+
+    return candidate as SoftDeleteDelegate;
   }
 
   async onModuleInit(): Promise<void> {
@@ -179,7 +220,7 @@ export class PrismaService
         $allModels: {
           async $allOperations({ model, operation, args, query }) {
             const tenantId = TenantContext.getTenantId();
-            const operationArgs = args as Record<string, unknown>;
+            const operationArgs = args as MutablePrismaArgs;
 
             // 1. Multi-tenancy Isolation (Injeção de Tenant)
             if (tenantId && COMPANY_SCOPED_MODELS.has(model)) {
@@ -250,9 +291,13 @@ export class PrismaService
             ) {
               try {
                 const action = operation === 'delete' ? 'update' : 'updateMany';
-                return await (prismaService as Record<string, any>)[model][
-                  action
-                ]({
+                const delegate = prismaService.getSoftDeleteDelegate(model);
+
+                if (!delegate) {
+                  throw new Error(`Delegate ${model} não suporta soft-delete.`);
+                }
+
+                return await delegate[action]({
                   where: operationArgs.where,
                   data: { deletedAt: new Date() },
                 });
@@ -280,23 +325,19 @@ export class PrismaService
   }
 
   private registerEventListeners(): void {
-    (this as unknown as { $on(event: string, cb: (e: any) => void): void }).$on(
-      'query',
-      (e: Prisma.QueryEvent) => {
-        if (e.duration > 500) {
-          this.logger.warn(
-            `🐌 Slow Query (${e.duration}ms): ${e.query.substring(0, 200)}...`,
-          );
-        }
-      },
-    );
+    const eventEmitter = this as unknown as PrismaEventEmitter;
 
-    (this as unknown as { $on(event: string, cb: (e: any) => void): void }).$on(
-      'error',
-      (e: Prisma.LogEvent) => {
-        this.logger.error(`❌ Evento de erro no Prisma: ${e.message}`);
-      },
-    );
+    eventEmitter.$on('query', (e: Prisma.QueryEvent) => {
+      if (e.duration > 500) {
+        this.logger.warn(
+          `🐌 Slow Query (${e.duration}ms): ${e.query.substring(0, 200)}...`,
+        );
+      }
+    });
+
+    eventEmitter.$on('error', (e: Prisma.LogEvent) => {
+      this.logger.error(`❌ Evento de erro no Prisma: ${e.message}`);
+    });
   }
 
   async isHealthy(): Promise<boolean> {

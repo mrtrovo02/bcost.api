@@ -3,6 +3,45 @@
 import { PrismaClient } from '@prisma/client';
 import { contextStorage } from '../common/context/context.storage.js';
 
+type MutablePrismaArgs = Record<string, unknown> & {
+  where?: Record<string, unknown>;
+  data?: Record<string, unknown> | Array<Record<string, unknown>>;
+};
+
+type SoftDeleteDelegate = {
+  update(args: {
+    where?: Record<string, unknown>;
+    data: { deletedAt: Date };
+  }): Promise<unknown>;
+  updateMany(args: {
+    where?: Record<string, unknown>;
+    data: { deletedAt: Date };
+  }): Promise<unknown>;
+};
+
+type PrismaDelegateRegistry = Record<string, unknown>;
+
+function getSoftDeleteDelegate(
+  client: PrismaClient,
+  model: string,
+): SoftDeleteDelegate | null {
+  const registry = client as unknown as PrismaDelegateRegistry;
+  const delegate = registry[model];
+
+  if (!delegate || typeof delegate !== 'object') return null;
+
+  const candidate = delegate as Partial<SoftDeleteDelegate>;
+
+  if (
+    typeof candidate.update !== 'function' ||
+    typeof candidate.updateMany !== 'function'
+  ) {
+    return null;
+  }
+
+  return candidate as SoftDeleteDelegate;
+}
+
 /**
  * Prisma Extension Corrigida: Multi-tenancy & Soft-Delete.
  * Tipagem adaptada para evitar erros de propriedade inexistente em operações de escrita.
@@ -15,8 +54,7 @@ export const prismaExtension = (client: PrismaClient) => {
           const context = contextStorage.getStore();
           const companyId = context?.companyId;
 
-          // Forçamos o cast para garantir que possamos manipular 'where' sem erros de compilação
-          const currentArgs = args as any;
+          const currentArgs = args as MutablePrismaArgs;
 
           // --- LÓGICA DE SOFT-DELETE ---
           // Só aplica onde faz sentido (leituras e contagens)
@@ -57,14 +95,26 @@ export const prismaExtension = (client: PrismaClient) => {
           // --- OPERAÇÃO DE DELETE (INTERCEPTOR) ---
           // Transforma exclusão física em Soft-Delete (Update)
           if (operation === 'delete') {
-            return (client as any)[model].update({
+            const delegate = getSoftDeleteDelegate(client, model);
+
+            if (!delegate) {
+              return query(currentArgs);
+            }
+
+            return delegate.update({
               where: currentArgs.where,
               data: { deletedAt: new Date() },
             });
           }
 
           if (operation === 'deleteMany') {
-            return (client as any)[model].updateMany({
+            const delegate = getSoftDeleteDelegate(client, model);
+
+            if (!delegate) {
+              return query(currentArgs);
+            }
+
+            return delegate.updateMany({
               where: currentArgs.where,
               data: { deletedAt: new Date() },
             });
