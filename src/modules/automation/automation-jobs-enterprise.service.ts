@@ -284,15 +284,7 @@ export class AutomationJobsEnterpriseService {
     metadata?: Record<string, unknown>;
     payload?: Record<string, unknown>;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = this.auditLogModel;
     const userId = this.getUserId(params.user);
-
-    if (!auditLog) {
-      return {
-        recorded: false,
-        error: 'Modelo auditLog indisponível.',
-      };
-    }
 
     const auditPayload = this.toJsonObject({
       ...(params.metadata || {}),
@@ -343,7 +335,7 @@ export class AutomationJobsEnterpriseService {
 
     for (const candidate of candidates) {
       try {
-        await auditLog.create({
+        await this.auditLogModel.create({
           data: candidate.data,
         });
 

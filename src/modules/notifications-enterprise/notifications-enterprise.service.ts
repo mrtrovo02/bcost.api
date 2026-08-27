@@ -414,15 +414,7 @@ export class NotificationsEnterpriseService {
     payload?: Record<string, unknown>;
     statusCode?: number;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = this.auditLogModel;
     const userId = this.getUserId(params.user);
-
-    if (!auditLog?.create) {
-      return {
-        recorded: false,
-        error: 'auditLog indisponível no PrismaService.',
-      };
-    }
 
     const payload = this.toJsonObject({
       ...(params.payload || {}),
@@ -472,7 +464,7 @@ export class NotificationsEnterpriseService {
 
     for (const attempt of attempts) {
       try {
-        await auditLog.create({ data: attempt.data });
+        await this.auditLogModel.create({ data: attempt.data });
         return { recorded: true };
       } catch (error) {
         errors.push(
