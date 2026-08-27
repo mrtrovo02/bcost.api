@@ -76,6 +76,10 @@ export interface ReadinessResponse {
   timestamp: string;
 }
 
+type PgStatUserTableHealthRow = {
+  idx_scan: bigint | number;
+};
+
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
@@ -249,7 +253,7 @@ export class HealthService {
    * Útil para o FactorREngineService verificar se a tabela de Financeiro está rápida.
    */
   async checkTableHealth(tableName: string): Promise<boolean> {
-    const result = await this.prisma.$queryRaw<any[]>`
+    const result = await this.prisma.$queryRaw<PgStatUserTableHealthRow[]>`
       SELECT idx_scan FROM pg_stat_user_tables WHERE relname = ${tableName}
     `;
     return result.length > 0;

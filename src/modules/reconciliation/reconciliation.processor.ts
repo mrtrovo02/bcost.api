@@ -3,7 +3,10 @@
 import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { ReconciliationService } from './reconciliation.service.js';
+import {
+  AutoMatchResult,
+  ReconciliationService,
+} from './reconciliation.service.js';
 
 @Processor('reconciliation-queue')
 export class ReconciliationProcessor extends WorkerHost {
@@ -16,7 +19,7 @@ export class ReconciliationProcessor extends WorkerHost {
   /**
    * O Worker executa este método fora da thread principal do HTTP.
    */
-  async process(job: Job<{ companyId: string }>): Promise<any> {
+  async process(job: Job<{ companyId: string }>): Promise<AutoMatchResult> {
     const { companyId } = job.data;
     this.logger.log(
       `[Queue] Iniciando job #${job.id} para Empresa: ${companyId}`,

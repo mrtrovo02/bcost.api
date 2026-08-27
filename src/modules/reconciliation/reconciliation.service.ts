@@ -23,6 +23,12 @@ export interface ManualMatchOptions {
   force?: boolean;
 }
 
+export interface AutoMatchResult {
+  totalProcessed: number;
+  autoReconciled: number;
+  accuracy: number;
+}
+
 @Injectable()
 export class ReconciliationService {
   private readonly logger = new Logger(ReconciliationService.name);
@@ -115,7 +121,7 @@ export class ReconciliationService {
     );
   }
 
-  async runAutoMatch(companyId: string) {
+  async runAutoMatch(companyId: string): Promise<AutoMatchResult> {
     this.logger.log(
       `[Auto-Match] Iniciando processamento para Company=${companyId}`,
     );
