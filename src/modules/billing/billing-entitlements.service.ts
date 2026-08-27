@@ -371,15 +371,7 @@ export class BillingEntitlementsService {
     source?: string;
     payload?: Record<string, unknown>;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = this.prisma.auditLog;
     const userId = this.getUserId(params.user);
-
-    if (!auditLog?.create) {
-      return {
-        recorded: false,
-        error: 'auditLog indisponível no PrismaService.',
-      };
-    }
 
     const payload = this.toJsonObject({
       ...(params.payload ?? {}),
@@ -430,7 +422,7 @@ export class BillingEntitlementsService {
 
     for (const candidate of candidates) {
       try {
-        await auditLog.create({
+        await this.prisma.auditLog.create({
           data: candidate.data,
         });
 

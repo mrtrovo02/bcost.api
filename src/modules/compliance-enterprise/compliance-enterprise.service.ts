@@ -272,15 +272,7 @@ export class ComplianceEnterpriseService {
     payload?: Record<string, unknown>;
     statusCode?: number;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = this.auditLogModel;
     const userId = this.getUserId(params.user);
-
-    if (!auditLog?.create) {
-      return {
-        recorded: false,
-        error: 'auditLog indisponível no PrismaService.',
-      };
-    }
 
     const payload = this.toJsonObject({
       ...(params.payload || {}),
@@ -330,7 +322,7 @@ export class ComplianceEnterpriseService {
 
     for (const attempt of attempts) {
       try {
-        await auditLog.create({
+        await this.auditLogModel.create({
           data: attempt.data,
         });
 

@@ -652,15 +652,6 @@ export class RevenueService {
     payload?: Record<string, unknown>;
     statusCode?: number | null;
   }): Promise<{ recorded: boolean; error?: string }> {
-    const auditLog = this.prisma.auditLog;
-
-    if (!auditLog?.create) {
-      return {
-        recorded: false,
-        error: 'auditLog indisponível no PrismaService.',
-      };
-    }
-
     const payload = this.toJsonObject({
       ...(params.payload ?? {}),
       severity: params.severity ?? 'INFO',
@@ -700,7 +691,7 @@ export class RevenueService {
 
     for (const data of candidates) {
       try {
-        await auditLog.create({ data });
+        await this.prisma.auditLog.create({ data });
 
         return {
           recorded: true,
