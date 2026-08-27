@@ -9,7 +9,9 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditIntelligenceEnterpriseService } from '../audit-intelligence-enterprise/audit-intelligence-enterprise.service.js';
+import { AuditIntelligenceQueryDto } from '../audit-intelligence-enterprise/dto/audit-intelligence-query.dto.js';
 import { FinanceOperationsEnterpriseService } from '../finance-operations-enterprise/finance-operations-enterprise.service.js';
+import { FinanceOperationsQueryDto } from '../finance-operations-enterprise/dto/finance-operations-query.dto.js';
 import { CommandCenterQueryDto } from './dto/command-center-query.dto.js';
 
 type AuthUser = {
@@ -50,6 +52,125 @@ type ExecutiveRisk = {
   evidence?: Record<string, unknown>;
 };
 
+type CommandCenterCacheQuery = Pick<
+  CommandCenterQueryDto,
+  'limit' | 'includeAudit' | 'includeHealth' | 'includeSamples'
+>;
+
+type PrismaReadableModel = {
+  count(args?: { where?: Record<string, unknown> }): Promise<number>;
+  findMany(args?: {
+    where?: Record<string, unknown>;
+    orderBy?: Record<string, string> | Array<Record<string, string>>;
+    take?: number;
+    skip?: number;
+  }): Promise<unknown[]>;
+};
+
+type PrismaModelRegistry = Record<string, unknown>;
+
+type AuditQualitySignal = {
+  qualityScore?: number;
+  qualityStatus?: string;
+  recordsAnalyzed?: number;
+  activeSignals?: number;
+  historicalNoise?: number;
+  serverErrors?: number;
+  clientErrors?: number;
+  criticalEvents?: number;
+  warningEvents?: number;
+};
+
+type AuditEvidenceSummary = {
+  byModule?: unknown[];
+  byAction?: unknown[];
+  byEndpoint?: unknown[];
+  latestSummary?: unknown[];
+};
+
+type AuditFindingSignal = {
+  id?: string | null;
+  severity?: string | null;
+  title?: string | null;
+  count?: number;
+  evidenceSummary?: AuditEvidenceSummary;
+};
+
+type AuditRecommendationSignal = {
+  id?: string | null;
+  priority?: string | null;
+  title?: string | null;
+  action?: string | null;
+};
+
+type AuditIntelligenceExecutivePayload = {
+  quality?: AuditQualitySignal | null;
+  findings?: AuditFindingSignal[];
+  recommendations?: AuditRecommendationSignal[];
+  cache?: unknown;
+  performance?: unknown;
+};
+
+type AuditIntelligenceSignal = {
+  available: boolean;
+  payload: AuditIntelligenceExecutivePayload | null;
+  quality: AuditQualitySignal | null;
+  findings: AuditFindingSignal[];
+  recommendations: AuditRecommendationSignal[];
+  route: string;
+  apiBase: string;
+  error?: string;
+};
+
+type FinanceOperationsAmountSummary = {
+  count?: number;
+  openCount?: number;
+  settledCount?: number;
+  openAmount?: number;
+  overdueAmount?: number;
+  overdueCount?: number;
+};
+
+type FinanceOperationsCashflowSummary = {
+  cashIn?: number;
+  cashOut?: number;
+  netCash?: number;
+  receivableOpen?: number;
+  payableOpen?: number;
+  projectedNet?: number;
+  riskStatus?: string;
+};
+
+type FinanceOperationsExecutiveSummary = {
+  financeScore?: number;
+  financeStatus?: string;
+  totalOverdueAmount?: number;
+  totalOverdueCount?: number;
+  receivables?: FinanceOperationsAmountSummary;
+  payables?: FinanceOperationsAmountSummary;
+  cashflow?: FinanceOperationsCashflowSummary;
+};
+
+type FinanceOperationsPayload = {
+  executiveSummary?: FinanceOperationsExecutiveSummary | null;
+  cache?: unknown;
+  performance?: unknown;
+};
+
+type FinanceOperationsSignal = {
+  available: boolean;
+  payload: FinanceOperationsPayload | null;
+  executiveSummary: FinanceOperationsExecutiveSummary | null;
+  route: string;
+  apiBase: string;
+  error?: string;
+};
+
+type ExecutiveSummaryPayload = Record<string, unknown> & {
+  executiveScore?: number;
+  executiveStatus?: 'HEALTHY' | 'ATTENTION' | 'CRITICAL' | string;
+};
+
 @Injectable()
 export class CommandCenterEnterpriseService {
   private readonly logger = new Logger(CommandCenterEnterpriseService.name);
@@ -73,7 +194,7 @@ export class CommandCenterEnterpriseService {
   private buildCommandCenterCacheKey(
     scope: string,
     companyId: string,
-    query: any,
+    query: CommandCenterCacheQuery,
   ) {
     return [
       `command-center-${scope}`,
@@ -133,81 +254,22 @@ export class CommandCenterEnterpriseService {
   }
 
   private async ensureCompany(companyId: string) {
-    const companyModel = (this.prisma as any).company;
+    const company = await this.prisma.company.findFirst({
+      where: {
+        id: companyId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        name: true,
+        cnpj: true,
+        createdAt: true,
+      },
+    });
 
-    if (!companyModel?.findFirst && !companyModel?.findUnique) {
-      throw new NotFoundException('Modelo Prisma company não encontrado.');
+    if (company) {
+      return this.normalize(company);
     }
-
-    const attempts: Array<{
-      label: string;
-      run: () => Promise<unknown>;
-    }> = [
-      {
-        label: 'findFirst-id-only',
-        run: () =>
-          companyModel.findFirst({
-            where: {
-              id: companyId,
-            },
-          }),
-      },
-      {
-        label: 'findUnique-id',
-        run: () =>
-          companyModel.findUnique({
-            where: {
-              id: companyId,
-            },
-          }),
-      },
-      {
-        label: 'findFirst-id-not-deleted',
-        run: () =>
-          companyModel.findFirst({
-            where: {
-              id: companyId,
-              deletedAt: null,
-            },
-          }),
-      },
-      {
-        label: 'findFirst-minimal-select',
-        run: () =>
-          companyModel.findFirst({
-            where: {
-              id: companyId,
-            },
-            select: {
-              id: true,
-              name: true,
-              createdAt: true,
-            },
-          }),
-      },
-    ];
-
-    const errors: string[] = [];
-
-    for (const attempt of attempts) {
-      try {
-        const company = await attempt.run();
-
-        if (company) {
-          return this.normalize(company);
-        }
-      } catch (error) {
-        errors.push(
-          `[${attempt.label}] ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-      }
-    }
-
-    this.logger.warn(
-      `[CommandCenterEnterprise] Empresa não localizada ou consulta incompatível: ${errors.join(' | ')}`,
-    );
 
     throw new NotFoundException(`Empresa não encontrada: ${companyId}`);
   }
@@ -234,10 +296,22 @@ export class CommandCenterEnterpriseService {
     return value;
   }
 
-  private getModel(prismaKey: string): any | null {
-    const model = (this.prisma as any)[prismaKey];
+  private isReadableModel(model: unknown): model is PrismaReadableModel {
+    if (!model || typeof model !== 'object') return false;
 
-    if (!model?.findMany || !model?.count) {
+    const candidate = model as Record<string, unknown>;
+
+    return (
+      typeof candidate.findMany === 'function' &&
+      typeof candidate.count === 'function'
+    );
+  }
+
+  private getModel(prismaKey: string): PrismaReadableModel | null {
+    const registry = this.prisma as unknown as PrismaModelRegistry;
+    const model = registry[prismaKey];
+
+    if (!this.isReadableModel(model)) {
       return null;
     }
 
@@ -601,17 +675,21 @@ export class CommandCenterEnterpriseService {
     return 'UNAVAILABLE';
   }
 
-  private async getAuditIntelligenceSignal(companyId: string, user?: AuthUser) {
+  private async getAuditIntelligenceSignal(
+    companyId: string,
+    user?: AuthUser,
+  ): Promise<AuditIntelligenceSignal> {
     try {
+      const query: AuditIntelligenceQueryDto = {
+        lookback: 300,
+        limit: 10,
+        includeRecommendations: 'true',
+      };
       const payload = (await this.auditIntelligenceService.executive(
         companyId,
-        {
-          lookback: 300,
-          limit: 10,
-          includeRecommendations: 'true',
-        } as any,
+        query,
         user,
-      )) as any;
+      )) as AuditIntelligenceExecutivePayload;
 
       return {
         available: true,
@@ -644,7 +722,9 @@ export class CommandCenterEnterpriseService {
     }
   }
 
-  private buildAuditIntelligenceMetric(auditSignal: any): ModelMetric {
+  private buildAuditIntelligenceMetric(
+    auditSignal: AuditIntelligenceSignal,
+  ): ModelMetric {
     if (!auditSignal?.available || !auditSignal?.quality) {
       return {
         slug: 'audit-intelligence',
@@ -681,7 +761,7 @@ export class CommandCenterEnterpriseService {
     };
   }
 
-  private slimAuditIntelligenceFindings(findings: any[]) {
+  private slimAuditIntelligenceFindings(findings: AuditFindingSignal[]) {
     if (!Array.isArray(findings)) return [];
 
     return findings.slice(0, 5).map((finding) => ({
@@ -708,7 +788,9 @@ export class CommandCenterEnterpriseService {
     }));
   }
 
-  private slimAuditIntelligenceRecommendations(recommendations: any[]) {
+  private slimAuditIntelligenceRecommendations(
+    recommendations: AuditRecommendationSignal[],
+  ) {
     if (!Array.isArray(recommendations)) return [];
 
     return recommendations.slice(0, 5).map((recommendation) => ({
@@ -754,7 +836,9 @@ export class CommandCenterEnterpriseService {
     );
   }
 
-  private buildAuditIntelligenceRisk(auditSignal: any): ExecutiveRisk | null {
+  private buildAuditIntelligenceRisk(
+    auditSignal: AuditIntelligenceSignal,
+  ): ExecutiveRisk | null {
     if (!auditSignal?.available || !auditSignal?.quality) {
       return {
         slug: 'audit-intelligence',
@@ -812,8 +896,8 @@ export class CommandCenterEnterpriseService {
   }
 
   private enrichExecutiveSummaryWithAuditIntelligence(
-    executiveSummary: any,
-    auditSignal: any,
+    executiveSummary: ExecutiveSummaryPayload,
+    auditSignal: AuditIntelligenceSignal,
   ) {
     if (!auditSignal?.available || !auditSignal?.quality) {
       return {
@@ -871,16 +955,20 @@ export class CommandCenterEnterpriseService {
     return 'UNAVAILABLE';
   }
 
-  private async getFinanceOperationsSignal(companyId: string, user?: AuthUser) {
+  private async getFinanceOperationsSignal(
+    companyId: string,
+    user?: AuthUser,
+  ): Promise<FinanceOperationsSignal> {
     try {
+      const query: FinanceOperationsQueryDto = {
+        limit: 50,
+        includeRaw: 'false',
+      };
       const payload = (await this.financeOperationsService.summary(
         companyId,
-        {
-          limit: 50,
-          includeRaw: 'false',
-        } as any,
+        query,
         user,
-      )) as any;
+      )) as FinanceOperationsPayload;
 
       return {
         available: true,
@@ -907,7 +995,9 @@ export class CommandCenterEnterpriseService {
     }
   }
 
-  private buildFinanceOperationsMetric(financeSignal: any): ModelMetric {
+  private buildFinanceOperationsMetric(
+    financeSignal: FinanceOperationsSignal,
+  ): ModelMetric {
     if (!financeSignal?.available || !financeSignal?.executiveSummary) {
       return {
         slug: 'finance-operations',
@@ -953,7 +1043,9 @@ export class CommandCenterEnterpriseService {
     };
   }
 
-  private buildFinanceOperationsRisk(financeSignal: any): ExecutiveRisk | null {
+  private buildFinanceOperationsRisk(
+    financeSignal: FinanceOperationsSignal,
+  ): ExecutiveRisk | null {
     if (!financeSignal?.available || !financeSignal?.executiveSummary) {
       return {
         slug: 'finance-operations',
@@ -1034,8 +1126,8 @@ export class CommandCenterEnterpriseService {
   }
 
   private enrichExecutiveSummaryWithFinanceOperations(
-    executiveSummary: any,
-    financeSignal: any,
+    executiveSummary: ExecutiveSummaryPayload,
+    financeSignal: FinanceOperationsSignal,
   ) {
     if (!financeSignal?.available || !financeSignal?.executiveSummary) {
       return {
