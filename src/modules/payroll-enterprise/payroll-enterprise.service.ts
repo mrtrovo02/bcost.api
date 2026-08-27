@@ -300,15 +300,7 @@ export class PayrollEnterpriseService {
     payload?: Record<string, unknown>;
     statusCode?: number;
   }) {
-    const auditLog = this.auditLogModel;
     const userId = this.getUserId(params.user);
-
-    if (!auditLog?.create) {
-      return {
-        recorded: false,
-        error: 'auditLog indisponível.',
-      };
-    }
 
     const payload = this.toJsonObject({
       ...(params.payload || {}),
@@ -359,7 +351,7 @@ export class PayrollEnterpriseService {
 
     for (const candidate of candidates) {
       try {
-        await auditLog.create({ data: candidate.data });
+        await this.auditLogModel.create({ data: candidate.data });
         return { recorded: true };
       } catch (error) {
         errors.push(
@@ -682,10 +674,6 @@ export class PayrollEnterpriseService {
     payroll: Pick<PayrollRecord, 'id' | 'month' | 'year'>,
     amount: number,
   ) {
-    if (!this.financialEventModel?.create) {
-      return { recorded: false, error: 'financialEvent indisponível.' };
-    }
-
     try {
       const event = await this.financialEventModel.create({
         data: {
@@ -719,10 +707,6 @@ export class PayrollEnterpriseService {
     payroll: Pick<PayrollRecord, 'id' | 'month' | 'year'>,
     amount: number,
   ) {
-    if (!this.accountingEntryModel?.create) {
-      return { recorded: false, error: 'accountingEntry indisponível.' };
-    }
-
     try {
       const entry = await this.accountingEntryModel.create({
         data: {
