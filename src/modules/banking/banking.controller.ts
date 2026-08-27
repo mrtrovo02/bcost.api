@@ -18,6 +18,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Prisma } from '@prisma/client';
+import type { BankAccount, BankTransaction } from '@prisma/client';
 
 import { BankingService } from './banking.service.js';
 import { ReconciliationService } from './reconciliation.service.js';
@@ -27,6 +28,55 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+
+type BankingTransactionResponse = {
+  id: string;
+  companyId: string;
+  bankAccountId: string;
+  accountId: string;
+  description: string;
+  amount: number;
+  type: BankTransaction['type'];
+  direction: 'IN' | 'OUT';
+  status: 'POSTED';
+  category: string | null;
+  document: string | null;
+  externalId: string | null;
+  reconciled: boolean;
+  reconciliationId: string | null;
+  date: Date;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+  raw: Prisma.JsonValue | undefined;
+};
+
+type BankingAccountResponse = {
+  id: string;
+  companyId: string;
+  bankName: string;
+  bankCode: string | null;
+  agency: string | null;
+  accountNumber: string | null;
+  type: 'CHECKING';
+  status: 'ACTIVE' | 'DELETED';
+  balance: number;
+  currency: 'BRL';
+  lastSyncAt: Date | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+};
+
+type BankingSummaryResponse = {
+  companyId: string;
+  balance: number;
+  totalCredits: number;
+  totalDebits: number;
+  totalTransactions: number;
+  reconciledTransactions: number;
+  pendingTransactions: number;
+  reconciliationRate: number;
+  generatedAt: string;
+};
 
 /**
  * 🏦 BankingController - API de Operações Bancárias bCost
@@ -108,89 +158,48 @@ export class BankingController {
     return Math.min(parsed, 500);
   }
 
-  private getPrismaModelByCandidates(candidates: string[]) {
-    const prismaAny = this.prisma as any;
-
-    for (const candidate of candidates) {
-      if (prismaAny?.[candidate]?.findMany) {
-        return prismaAny[candidate];
-      }
-
-      if (prismaAny?.extended?.[candidate]?.findMany) {
-        return prismaAny.extended[candidate];
-      }
-    }
-
-    return null;
-  }
-
-  private normalizeTransaction(tx: any) {
-    const amount = this.toNumber(
-      tx.amount ??
-        tx.value ??
-        tx.total ??
-        tx.transactionAmount ??
-        tx.valor ??
-        0,
-    );
-
-    const date =
-      tx.date ??
-      tx.transactionDate ??
-      tx.postedAt ??
-      tx.paidAt ??
-      tx.createdAt ??
-      new Date();
+  private normalizeTransaction(
+    tx: BankTransaction,
+  ): BankingTransactionResponse {
+    const amount = this.toNumber(tx.amount);
 
     return {
       id: tx.id,
       companyId: tx.companyId,
-      bankAccountId: tx.bankAccountId ?? tx.accountId ?? null,
-      accountId: tx.accountId ?? tx.bankAccountId ?? null,
-      description:
-        tx.description ??
-        tx.memo ??
-        tx.title ??
-        tx.name ??
-        tx.history ??
-        'Transação bancária',
+      bankAccountId: tx.bankAccountId,
+      accountId: tx.bankAccountId,
+      description: tx.description,
       amount,
-      type: tx.type ?? tx.transactionType ?? (amount >= 0 ? 'CREDIT' : 'DEBIT'),
-      direction: amount >= 0 ? 'IN' : 'OUT',
-      status: tx.status ?? 'POSTED',
-      category: tx.category ?? tx.categoryName ?? null,
-      document: tx.document ?? tx.documentNumber ?? tx.cpfCnpj ?? null,
-      externalId:
-        tx.externalId ?? tx.providerId ?? tx.ofxId ?? tx.fitId ?? null,
-      reconciled: Boolean(tx.reconciled ?? tx.isReconciled ?? false),
-      reconciliationId: tx.reconciliationId ?? null,
-      date,
-      createdAt: tx.createdAt ?? null,
-      updatedAt: tx.updatedAt ?? null,
-      raw: tx.raw ?? undefined,
+      type: tx.type,
+      direction: tx.type === 'CREDIT' ? 'IN' : 'OUT',
+      status: 'POSTED',
+      category: null,
+      document: null,
+      externalId: null,
+      reconciled: tx.reconciled,
+      reconciliationId: tx.invoiceId ?? tx.taxObligationId ?? null,
+      date: tx.occurredAt,
+      createdAt: tx.createdAt,
+      updatedAt: null,
+      raw: tx.metadata ?? undefined,
     };
   }
 
-  private normalizeAccount(account: any) {
+  private normalizeAccount(account: BankAccount): BankingAccountResponse {
     return {
       id: account.id,
       companyId: account.companyId,
-      bankName:
-        account.bankName ??
-        account.bank ??
-        account.provider ??
-        'Conta bancária',
-      bankCode: account.bankCode ?? account.code ?? null,
+      bankName: account.bankName,
+      bankCode: null,
       agency: account.agency ?? null,
-      accountNumber:
-        account.accountNumber ?? account.number ?? account.account ?? null,
-      type: account.type ?? account.accountType ?? 'CHECKING',
-      status: account.status ?? 'ACTIVE',
-      balance: this.toNumber(account.balance ?? account.currentBalance ?? 0),
-      currency: account.currency ?? 'BRL',
-      lastSyncAt: account.lastSyncAt ?? null,
-      createdAt: account.createdAt ?? null,
-      updatedAt: account.updatedAt ?? null,
+      accountNumber: account.account ?? null,
+      type: 'CHECKING',
+      status: account.deletedAt ? 'DELETED' : 'ACTIVE',
+      balance: this.toNumber(account.balanceCache),
+      currency: 'BRL',
+      lastSyncAt: null,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
     };
   }
 
@@ -199,22 +208,10 @@ export class BankingController {
     from?: Date;
     to?: Date;
     limit?: number;
-  }) {
+  }): Promise<BankingTransactionResponse[]> {
     const { companyId, from, to, limit = 100 } = params;
 
-    const model = this.getPrismaModelByCandidates([
-      'bankTransaction',
-      'bankingTransaction',
-      'financialTransaction',
-      'transaction',
-      'cashTransaction',
-    ]);
-
-    if (!model) {
-      return [];
-    }
-
-    const baseWhere: Record<string, unknown> = {
+    const baseWhere: Prisma.BankTransactionWhereInput = {
       companyId,
     };
 
@@ -226,51 +223,21 @@ export class BankingController {
           }
         : undefined;
 
-    const whereWithDate = dateFilter
+    const where: Prisma.BankTransactionWhereInput = dateFilter
       ? {
           companyId,
-          OR: [
-            { date: dateFilter },
-            { transactionDate: dateFilter },
-            { postedAt: dateFilter },
-            { paidAt: dateFilter },
-            { createdAt: dateFilter },
-          ],
+          occurredAt: dateFilter,
         }
       : baseWhere;
 
-    const orderCandidates = [
-      [{ date: 'desc' }, { createdAt: 'desc' }],
-      [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
-      [{ postedAt: 'desc' }, { createdAt: 'desc' }],
-      { createdAt: 'desc' },
-    ];
-
-    for (const orderBy of orderCandidates) {
-      try {
-        const rows = await model.findMany({
-          where: whereWithDate,
-          orderBy,
-          take: limit,
-        });
-
-        return Array.isArray(rows)
-          ? rows.map((tx) => this.normalizeTransaction(tx))
-          : [];
-      } catch {
-        // tenta próximo formato de orderBy/campo
-      }
-    }
-
     try {
-      const rows = await model.findMany({
-        where: baseWhere,
+      const rows = await this.prisma.bankTransaction.findMany({
+        where,
+        orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
         take: limit,
       });
 
-      return Array.isArray(rows)
-        ? rows.map((tx) => this.normalizeTransaction(tx))
-        : [];
+      return rows.map((tx) => this.normalizeTransaction(tx));
     } catch (error) {
       this.logger.warn(
         `[Banking] Não foi possível listar transações para company=${companyId}: ${
@@ -282,58 +249,39 @@ export class BankingController {
     }
   }
 
-  private async findAccounts(companyId: string) {
-    const model = this.getPrismaModelByCandidates([
-      'bankAccount',
-      'bankingAccount',
-      'financialAccount',
-      'account',
-    ]);
-
-    if (!model) {
-      return [];
-    }
-
+  private async findAccounts(
+    companyId: string,
+  ): Promise<BankingAccountResponse[]> {
     try {
-      const rows = await model.findMany({
+      const rows = await this.prisma.bankAccount.findMany({
         where: { companyId },
         orderBy: { createdAt: 'desc' },
         take: 100,
       });
 
-      return Array.isArray(rows)
-        ? rows.map((account) => this.normalizeAccount(account))
-        : [];
-    } catch {
-      try {
-        const rows = await model.findMany({
-          where: { companyId },
-          take: 100,
-        });
+      return rows.map((account) => this.normalizeAccount(account));
+    } catch (error) {
+      this.logger.warn(
+        `[Banking] Não foi possível listar contas para company=${companyId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
 
-        return Array.isArray(rows)
-          ? rows.map((account) => this.normalizeAccount(account))
-          : [];
-      } catch (error) {
-        this.logger.warn(
-          `[Banking] Não foi possível listar contas para company=${companyId}: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-
-        return [];
-      }
+      return [];
     }
   }
 
-  private buildSummary(companyId: string, transactions: any[]) {
+  private buildSummary(
+    companyId: string,
+    transactions: BankingTransactionResponse[],
+  ): BankingSummaryResponse {
     const totalCredits = transactions
-      .filter((tx) => Number(tx.amount) > 0)
+      .filter((tx) => tx.type === 'CREDIT')
       .reduce((acc, tx) => acc + Number(tx.amount), 0);
 
     const totalDebits = transactions
-      .filter((tx) => Number(tx.amount) < 0)
-      .reduce((acc, tx) => acc + Math.abs(Number(tx.amount)), 0);
+      .filter((tx) => tx.type === 'DEBIT')
+      .reduce((acc, tx) => acc + Number(tx.amount), 0);
 
     const reconciled = transactions.filter((tx) => tx.reconciled).length;
     const pending = transactions.length - reconciled;
