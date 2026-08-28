@@ -1,6 +1,13 @@
 'use strict';
 
-import { Controller, Get, UseInterceptors, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseInterceptors,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
 import {
   HealthCheckService,
   HealthCheck,
@@ -8,8 +15,8 @@ import {
 } from '@nestjs/terminus';
 import { PrismaService } from '../../database/prisma.service.js';
 import { HealthService } from './health.service.js';
+import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 import { CompanyCacheInterceptor } from '../../common/interceptors/company-cache.interceptor.js';
-// import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 /**
  * HealthController
@@ -68,9 +75,12 @@ export class HealthController {
    * de um mesmo contador não toquem no banco de dados desnecessariamente.
    */
   @Get('db-performance/:companyId?')
+  @UseGuards(ApiKeyGuard)
   @UseInterceptors(CompanyCacheInterceptor)
-  // @UseGuards(JwtAuthGuard)
-  async getDbPerformance(@Param('companyId') companyId?: string) {
+  async getDbPerformance(
+    @Param('companyId', new ParseUUIDPipe({ optional: true }))
+    companyId?: string,
+  ) {
     /**
      * O erro 'Expected 0 arguments, but got 1' foi resolvido
      * ao atualizarmos a assinatura no HealthService.
