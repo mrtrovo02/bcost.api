@@ -29,6 +29,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor.js
 
 // --- Guards / Middleware ---
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from './auth/guards/roles.guard.js';
 import { TenantMiddleware } from './common/middlewares/tenant.middleware.js';
 import { TenantContextGuard } from './common/guards/tenant-context.guard.js';
 import { CompanyAccessGuard } from './common/guards/company-access.guard.js';
@@ -223,6 +224,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: CompanyAccessGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
 
     // 🧪 PIPES GLOBAIS DE VALIDAÇÃO
     { provide: APP_PIPE, useClass: ZodValidationPipe },
