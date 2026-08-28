@@ -1,7 +1,20 @@
-import { Controller, Post, Get, Body, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  Query,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { FiscalSimulationService } from './fiscal-simulation.service.js';
 import { FiscalSimulationRepository } from './fiscal-simulation.repository.js';
 
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('fiscal-simulation')
 export class FiscalSimulationController {
   constructor(
@@ -25,7 +38,7 @@ export class FiscalSimulationController {
 
   @Get('company/:companyId')
   public async getHistoryByCompany(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {

@@ -11,6 +11,7 @@ import {
   Param,
   Delete,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -149,7 +150,7 @@ export class ReconciliationController {
       },
     },
   })
-  async getSummary(@Param('companyId') companyId: string) {
+  async getSummary(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
     return await this.reconciliationService.getSummary(companyId);
   }
 
@@ -205,7 +206,9 @@ export class ReconciliationController {
     },
   })
   @ApiUnauthorizedResponse({ description: 'Não autorizado.' })
-  async triggerAutoMatch(@Param('companyId') companyId: string) {
+  async triggerAutoMatch(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+  ) {
     // Adiciona o job à fila BullMQ
     const job = await this.reconQueue.add(
       'auto-match-job',
@@ -250,7 +253,7 @@ export class ReconciliationController {
   @ApiUnauthorizedResponse({ description: 'Não autorizado.' })
   async undoMatch(
     @GetUser('id') userId: string,
-    @Param('bankTransactionId') bankTransactionId: string,
+    @Param('bankTransactionId', new ParseUUIDPipe()) bankTransactionId: string,
   ) {
     return await this.reconciliationService.undoMatch(
       bankTransactionId,
