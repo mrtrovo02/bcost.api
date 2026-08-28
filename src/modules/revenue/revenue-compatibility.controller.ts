@@ -1,6 +1,14 @@
 'use strict';
 
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 
@@ -47,11 +55,11 @@ export class TaxDataQueryDto {
 }
 
 @Controller()
-@UseGuards(TenantContextGuard, CompanyAccessGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 export class RevenueCompatibilityController {
   @Get('revenue/compatibility/stats/:companyId')
   async getRevenueStats(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<RevenueStatsResponse> {
     return {
       success: true,
@@ -67,7 +75,7 @@ export class RevenueCompatibilityController {
 
   @Get('revenue/compatibility/billing-entitlements/:companyId')
   async getBillingEntitlements(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<BillingEntitlementsResponse> {
     return {
       success: true,

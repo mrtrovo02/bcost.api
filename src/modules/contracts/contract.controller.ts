@@ -1,13 +1,29 @@
 'use strict';
 
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ContractService } from './contract.service.js';
 import { CreateContractDto } from './dto/create-contract.dto.js';
 
 @ApiTags('Contracts')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('contracts')
 export class ContractController {
   constructor(
@@ -50,15 +66,27 @@ export class ContractController {
 
   @Get()
   @ApiOperation({ summary: 'Listar contratos por empresa' })
-  findAll(@Query('companyId') companyId: string) {
+  findAll(@Query('companyId', new ParseUUIDPipe()) companyId: string) {
     return this.contractService.findByCompany(companyId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter contrato por ID' })
-  findOne(@Param('id') id: string) {
-    return this.prisma.contract.findUnique({
-      where: { id },
+  findOne(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const companyId =
+      req.companyId || req.user.companyId || req.user.activeCompanyId;
+
+    if (!companyId) {
+      throw new BadRequestException(
+        'Empresa ativa é obrigatória para consultar contrato.',
+      );
+    }
+
+    return this.prisma.contract.findFirst({
+      where: { id, companyId },
       include: { customer: true },
     });
   }
