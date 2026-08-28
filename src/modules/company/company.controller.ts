@@ -9,6 +9,7 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -52,7 +53,10 @@ export class CompanyController {
   @ApiParam({ name: 'id', description: 'ID da empresa', example: 'uuid' })
   @ApiResponse({ status: 200, description: 'Empresa encontrada.' })
   @ApiResponse({ status: 404, description: 'Empresa não encontrada.' })
-  findOne(@Param('id') id: string, @GetUser('id') userId: string) {
+  findOne(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @GetUser('id') userId: string,
+  ) {
     return this.companyService.findOne(id, userId);
   }
 
@@ -63,7 +67,7 @@ export class CompanyController {
   @ApiResponse({ status: 403, description: 'Usuário sem permissão de gestão.' })
   @ApiResponse({ status: 404, description: 'Empresa não encontrada.' })
   update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateCompanyDto,
     @GetUser('id') userId: string,
   ) {
@@ -76,7 +80,10 @@ export class CompanyController {
   @ApiParam({ name: 'id', description: 'ID da empresa', example: 'uuid' })
   @ApiResponse({ status: 204, description: 'Empresa removida.' })
   @ApiResponse({ status: 404, description: 'Empresa não encontrada.' })
-  remove(@Param('id') id: string, @GetUser('id') userId: string) {
+  remove(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @GetUser('id') userId: string,
+  ) {
     return this.companyService.delete(id, userId);
   }
 }
