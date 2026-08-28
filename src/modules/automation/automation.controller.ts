@@ -20,6 +20,7 @@ import {
 } from '@nestjs/swagger';
 import { AutomationJobService } from './automation-job.service.js';
 import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
+import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
 
 /**
  * AutomationController: Interface de controle para processos em lote do bCost.
@@ -40,6 +41,7 @@ export class AutomationController {
    * Retorna 202 (Accepted) pois a execução ocorre em background (async).
    */
   @Post('trigger-global-audit')
+  @UseGuards(ApiKeyGuard)
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary: 'Disparar Auditoria Fiscal Global',
@@ -78,6 +80,7 @@ export class AutomationController {
    * Essencial para o Dashboard administrativo bCost.
    */
   @Get('metrics')
+  @UseGuards(ApiKeyGuard)
   @ApiOperation({ summary: 'Consultar métricas de saúde dos Jobs' })
   @ApiQuery({
     name: 'group',
