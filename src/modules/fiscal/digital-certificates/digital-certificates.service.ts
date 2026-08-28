@@ -21,23 +21,29 @@ export class DigitalCertificatesService {
     });
   }
 
-  async findAll(companyId?: string) {
+  async findAll(companyId: string) {
     return this.prisma.digitalCertificate.findMany({
-      where: companyId ? { companyId } : {},
+      where: { companyId },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async findOne(id: string) {
-    const cert = await this.prisma.digitalCertificate.findUnique({
-      where: { id },
+  async findOne(id: string, companyId: string) {
+    const cert = await this.prisma.digitalCertificate.findFirst({
+      where: { id, companyId },
     });
 
     if (!cert) throw new NotFoundException('Certificate not found');
     return cert;
   }
 
-  async update(id: string, dto: UpdateDigitalCertificateDto) {
+  async update(
+    id: string,
+    companyId: string,
+    dto: UpdateDigitalCertificateDto,
+  ) {
+    await this.findOne(id, companyId);
+
     return this.prisma.digitalCertificate.update({
       where: { id },
       data: {
@@ -48,7 +54,9 @@ export class DigitalCertificatesService {
     });
   }
 
-  async remove(id: string) {
+  async remove(id: string, companyId: string) {
+    await this.findOne(id, companyId);
+
     return this.prisma.digitalCertificate.delete({
       where: { id },
     });

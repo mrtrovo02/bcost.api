@@ -9,6 +9,8 @@ import {
   UseInterceptors,
   HttpCode,
   HttpStatus,
+  ParseUUIDPipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -20,7 +22,10 @@ import {
 } from '@nestjs/swagger';
 
 import { InsightsService } from './insights.service.js';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../common/guards/company-access.guard.js';
 import { CompanyCacheInterceptor } from '../common/interceptors/company-cache.interceptor.js';
+import { TenantContextGuard } from '../common/guards/tenant-context.guard.js';
 import { ProjectionItem } from './cash-flow-projection/cash-flow-projection.service.js';
 
 // DTOs para tipagem estrita e documentação OpenAPI
@@ -37,6 +42,7 @@ import {
  */
 @ApiTags('Insights - Inteligência Preditiva')
 @ApiBearerAuth()
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('insights')
 export class InsightsController {
   constructor(private readonly insightsService: InsightsService) {}
@@ -56,7 +62,9 @@ export class InsightsController {
     status: 200,
     description: 'Diagnóstico 360º processado com sucesso.',
   })
-  async getExecutiveSummary(@Param('companyId') companyId: string) {
+  async getExecutiveSummary(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+  ) {
     return await this.insightsService.getExecutiveSummary(companyId);
   }
 
@@ -92,7 +100,7 @@ export class InsightsController {
   @ApiParam({ name: 'companyId', description: 'UUID da empresa' })
   @ApiResponse({ status: 200, type: [AnomalyReportDto] })
   async getAnomalies(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<AnomalyReportDto[]> {
     return await this.insightsService.detectAnomalies(companyId);
   }
@@ -109,7 +117,7 @@ export class InsightsController {
     description: 'Time-series de projeção financeira.',
   })
   async getCashFlow(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<ProjectionItem[]> {
     return await this.insightsService.getCashFlowInsights(companyId);
   }
@@ -123,7 +131,7 @@ export class InsightsController {
   @ApiParam({ name: 'companyId', description: 'UUID da empresa' })
   @ApiResponse({ status: 200, type: FinancialHealthDto })
   async getFinancialHealth(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
   ): Promise<FinancialHealthDto> {
     return await this.insightsService.getFinancialHealth(companyId);
   }
@@ -144,7 +152,7 @@ export class InsightsController {
   })
   @ApiResponse({ status: 200, description: 'Contexto semântico para o LLM.' })
   async semanticSearch(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query('q') query: string,
   ) {
     return await this.insightsService.getSemanticContext(companyId, query);
@@ -170,7 +178,7 @@ export class InsightsController {
   })
   @ApiResponse({ status: 200, description: 'Série histórica recuperada.' })
   async getHistoricalTrends(
-    @Param('companyId') companyId: string,
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Query('limit') limit?: number,
   ) {
     return await this.insightsService.getHistoricalTrends(
@@ -190,7 +198,9 @@ export class InsightsController {
   })
   @ApiParam({ name: 'companyId', description: 'UUID da empresa' })
   @ApiResponse({ status: 200, description: 'Diagnóstico fiscal processado.' })
-  async getTaxCompliance(@Param('companyId') companyId: string) {
+  async getTaxCompliance(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+  ) {
     return await this.insightsService.getTaxComplianceStatus(companyId);
   }
 
@@ -209,7 +219,9 @@ export class InsightsController {
     status: 200,
     description: 'Insights recalculados com sucesso.',
   })
-  async refreshInsights(@Param('companyId') companyId: string) {
+  async refreshInsights(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+  ) {
     return await this.insightsService.refreshCompanyInsights(companyId);
   }
 }
