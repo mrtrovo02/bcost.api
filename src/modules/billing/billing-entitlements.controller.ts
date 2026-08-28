@@ -11,6 +11,8 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { CompanyRole } from '@prisma/client';
+import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
@@ -52,6 +54,7 @@ export class BillingEntitlementsController {
   }
 
   @Patch('plan/:companyId')
+  @Roles(CompanyRole.OWNER)
   updatePlan(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
     @Body() body: UpdateCompanyPlanDto,

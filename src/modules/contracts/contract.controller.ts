@@ -12,7 +12,9 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { CompanyRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
@@ -32,6 +34,7 @@ export class ContractController {
   ) {}
 
   @Post()
+  @Roles(CompanyRole.OWNER, CompanyRole.ACCOUNTANT, CompanyRole.MANAGER)
   @ApiOperation({ summary: 'Criar contrato recorrente' })
   async create(@Body() dto: CreateContractDto) {
     let customerId = dto.customerId;
