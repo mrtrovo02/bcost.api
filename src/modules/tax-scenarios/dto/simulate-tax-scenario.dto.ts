@@ -7,13 +7,14 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
 
 export class SimulateTaxScenarioDto {
   @IsOptional()
-  @IsString()
+  @IsUUID()
   companyId?: string;
 
   @IsIn([
