@@ -170,20 +170,22 @@ export class PaymentsService {
       }));
 
     try {
-      await this.applyWebhookEvent(event);
+      const wasApplied = await this.applyWebhookEvent(event);
 
       await this.prisma.paymentWebhookEvent.update({
         where: { id: webhookEvent.id },
         data: {
           companyId: event.companyId ?? webhookEvent.companyId,
-          status: WebhookDeliveryStatus.PROCESSED,
+          status: wasApplied
+            ? WebhookDeliveryStatus.PROCESSED
+            : WebhookDeliveryStatus.IGNORED,
           processedAt: new Date(),
           errorMessage: null,
         },
       });
 
       return {
-        status: 'OK',
+        status: wasApplied ? 'OK' : 'OK_IGNORED',
         providerEventId: event.providerEventId,
         eventType: event.eventType,
         generatedAt: new Date().toISOString(),
@@ -278,9 +280,11 @@ export class PaymentsService {
 
   private async applyWebhookEvent(
     event: PaymentProviderWebhookEvent,
-  ): Promise<void> {
+  ): Promise<boolean> {
+    let wasApplied = false;
+
     if (event.checkoutSessionId && event.checkoutStatus) {
-      await this.prisma.checkoutSession.updateMany({
+      const checkoutUpdate = await this.prisma.checkoutSession.updateMany({
         where: {
           provider: PaymentProvider.STRIPE,
           providerCheckoutSessionId: event.checkoutSessionId,
@@ -293,11 +297,15 @@ export class PaymentsService {
               : undefined,
         },
       });
+      wasApplied = wasApplied || checkoutUpdate.count > 0;
     }
 
     if (event.subscription) {
       await this.upsertSubscription(event.subscription);
+      wasApplied = true;
     }
+
+    return wasApplied;
   }
 
   private async upsertSubscription(

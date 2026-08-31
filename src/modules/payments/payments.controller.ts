@@ -1,6 +1,7 @@
 'use strict';
 
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -24,7 +25,6 @@ import { PaymentsService } from './payments.service.js';
 
 type RawBodyRequest = AuthenticatedRequest & {
   rawBody?: Buffer;
-  body?: unknown;
 };
 
 @ApiTags('Payments')
@@ -62,7 +62,12 @@ export class PaymentsController {
     @Req() req: RawBodyRequest,
     @Headers('stripe-signature') signature?: string,
   ) {
-    const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-    return this.payments.processStripeWebhook(rawBody, signature);
+    if (!req.rawBody) {
+      throw new BadRequestException(
+        'Payload bruto do webhook indisponivel para validacao da assinatura.',
+      );
+    }
+
+    return this.payments.processStripeWebhook(req.rawBody, signature);
   }
 }
