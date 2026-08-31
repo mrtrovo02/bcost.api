@@ -78,12 +78,15 @@ type RoadmapAutomationBoundary = NonNullable<
 
 type EnterpriseCatalogPersistence = 'PRISMA' | 'ROADMAP';
 
+type EnterpriseMarketReadiness = 'SELLABLE' | 'ROADMAP_LOCKED';
+
 type EnterpriseCatalogItem = {
   slug: string;
   model: string;
   label: string;
   persistence: EnterpriseCatalogPersistence;
   endpoint: string;
+  marketReadiness: EnterpriseMarketReadiness;
   area?: string;
   priority?: RoadmapModuleConfig['priority'];
   canonicalOwner?: string;
@@ -720,6 +723,7 @@ export class EnterpriseModulesService {
       label: config.label,
       persistence: 'PRISMA',
       endpoint: `/enterprise/modules/${config.slug}/:companyId`,
+      marketReadiness: 'SELLABLE',
       canonicalOwner: 'enterprise-modules',
       automationBoundary: 'SOFTWARE_ONLY',
       operationalGuardrails: [
@@ -741,6 +745,7 @@ export class EnterpriseModulesService {
       label: config.label,
       persistence: 'ROADMAP',
       endpoint: config.endpoint,
+      marketReadiness: 'ROADMAP_LOCKED',
       area: config.area,
       priority: config.priority,
       canonicalOwner:
@@ -807,6 +812,7 @@ export class EnterpriseModulesService {
         area: config.area,
         priority: config.priority,
         endpoint: config.endpoint,
+        marketReadiness: 'ROADMAP_LOCKED',
         canonicalOwner,
         automationBoundary,
         operationalGuardrails,

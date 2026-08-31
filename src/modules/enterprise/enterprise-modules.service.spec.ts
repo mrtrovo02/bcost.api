@@ -188,6 +188,7 @@ describe('EnterpriseModulesService', () => {
           slug: 'company-formation',
           model: 'CompanyFormation',
           persistence: 'ROADMAP',
+          marketReadiness: 'ROADMAP_LOCKED',
           endpoint: '/accounting-platform/setup/readiness',
           canonicalOwner: 'accounting-platform',
           automationBoundary: 'CRC_VALIDATED',
@@ -196,6 +197,7 @@ describe('EnterpriseModulesService', () => {
           slug: 'companies',
           model: 'Company',
           persistence: 'PRISMA',
+          marketReadiness: 'SELLABLE',
           endpoint: '/enterprise/modules/companies/:companyId',
           canonicalOwner: 'enterprise-modules',
           automationBoundary: 'SOFTWARE_ONLY',
@@ -213,6 +215,7 @@ describe('EnterpriseModulesService', () => {
 
     for (const item of roadmapItems) {
       expect(item.endpoint).toMatch(/^\/.+/);
+      expect(item.marketReadiness).toBe('ROADMAP_LOCKED');
       expect(item.area).toEqual(expect.any(String));
       expect(item.priority).toMatch(/^(CRITICAL|HIGH|MEDIUM|LOW)$/);
       expect(item.canonicalOwner).toEqual(expect.any(String));
@@ -220,6 +223,21 @@ describe('EnterpriseModulesService', () => {
         /^(SOFTWARE_ONLY|ASSISTED_AUTOMATION|CRC_VALIDATED|HUMAN_LED)$/,
       );
       expect(item.operationalGuardrails?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('marks persisted catalog modules as sellable market items', () => {
+    const service = createService();
+    const catalog = service.listCatalog();
+    const persistedItems = catalog.filter((item) => item.persistence === 'PRISMA');
+
+    expect(persistedItems.length).toBeGreaterThan(0);
+
+    for (const item of persistedItems) {
+      expect(item.marketReadiness).toBe('SELLABLE');
+      expect(item.endpoint).toBe(`/enterprise/modules/${item.slug}/:companyId`);
+      expect(item.canonicalOwner).toBe('enterprise-modules');
+      expect(item.automationBoundary).toBe('SOFTWARE_ONLY');
     }
   });
 });
