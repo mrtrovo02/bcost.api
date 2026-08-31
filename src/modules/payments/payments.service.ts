@@ -405,15 +405,46 @@ export class PaymentsService {
   }
 
   private resolveSuccessUrl(value?: string): string {
-    return (
-      value ?? `${this.requireFrontendUrl()}/dashboard/settings?billing=success`
+    return this.resolveCheckoutUrl(
+      value,
+      '/dashboard/settings?billing=success',
+      'successUrl',
     );
   }
 
   private resolveCancelUrl(value?: string): string {
-    return (
-      value ?? `${this.requireFrontendUrl()}/dashboard/settings?billing=cancel`
+    return this.resolveCheckoutUrl(
+      value,
+      '/dashboard/settings?billing=cancel',
+      'cancelUrl',
     );
+  }
+
+  private resolveCheckoutUrl(
+    value: string | undefined,
+    defaultPath: string,
+    label: string,
+  ): string {
+    const frontendBaseUrl = this.requireFrontendUrl();
+    const frontendUrl = new URL(frontendBaseUrl);
+    const resolved = value ? new URL(value) : new URL(defaultPath, frontendUrl);
+
+    if (resolved.origin !== frontendUrl.origin) {
+      throw new BadRequestException(
+        `${label} deve pertencer ao domínio oficial do frontend.`,
+      );
+    }
+
+    if (
+      process.env.NODE_ENV === 'production' &&
+      resolved.protocol !== 'https:'
+    ) {
+      throw new BadRequestException(
+        `${label} deve usar HTTPS em ambiente de produção.`,
+      );
+    }
+
+    return resolved.toString();
   }
 
   private requireFrontendUrl(): string {
