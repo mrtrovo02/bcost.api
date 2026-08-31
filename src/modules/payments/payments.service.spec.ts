@@ -190,14 +190,24 @@ describe('PaymentsService', () => {
       }),
     ]);
 
-    const result = await service.listWebhookEvents('company-001');
+    const result = await service.listWebhookEvents('company-001', {
+      status: WebhookDeliveryStatus.FAILED,
+      limit: 25,
+    });
 
     expect(result.events).toHaveLength(1);
+    expect(result.filters).toEqual({
+      status: WebhookDeliveryStatus.FAILED,
+      limit: 25,
+    });
     expect(result.events[0]?.providerEventId).toBe('evt_audit');
     expect(prismaMock.paymentWebhookEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { companyId: 'company-001' },
-        take: 50,
+        where: {
+          companyId: 'company-001',
+          status: WebhookDeliveryStatus.FAILED,
+        },
+        take: 25,
         select: expect.not.objectContaining({ payload: true }),
       }),
     );

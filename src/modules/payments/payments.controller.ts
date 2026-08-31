@@ -9,6 +9,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -21,6 +22,7 @@ import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js'
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto.js';
+import { ListWebhookEventsQueryDto } from './dto/list-webhook-events-query.dto.js';
 import { PaymentsService } from './payments.service.js';
 
 type RawBodyRequest = AuthenticatedRequest & {
@@ -59,8 +61,11 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
   @Roles(CompanyRole.OWNER)
   @ApiOperation({ summary: 'Listar trilha operacional de webhooks de pagamento' })
-  webhookEvents(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
-    return this.payments.listWebhookEvents(companyId);
+  webhookEvents(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Query() query: ListWebhookEventsQueryDto,
+  ) {
+    return this.payments.listWebhookEvents(companyId, query);
   }
 
   @Post('webhooks/stripe')

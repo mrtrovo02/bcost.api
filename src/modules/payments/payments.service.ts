@@ -17,6 +17,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import type { AuthUser } from '../billing/billing-entitlements.service.js';
 import { BillingEntitlementsService } from '../billing/billing-entitlements.service.js';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto.js';
+import { ListWebhookEventsQueryDto } from './dto/list-webhook-events-query.dto.js';
 import {
   CheckoutSessionResult,
   PaymentProviderWebhookEvent,
@@ -147,16 +148,22 @@ export class PaymentsService {
     };
   }
 
-  async listWebhookEvents(companyId: string) {
+  async listWebhookEvents(
+    companyId: string,
+    query: ListWebhookEventsQueryDto = {},
+  ) {
+    const where: Prisma.PaymentWebhookEventWhereInput = {
+      companyId,
+      ...(query.status ? { status: query.status } : {}),
+    };
+
     const events: PaymentWebhookEventAuditItem[] =
       await this.prisma.paymentWebhookEvent.findMany({
-        where: {
-          companyId,
-        },
+        where,
         orderBy: {
           createdAt: 'desc',
         },
-        take: 50,
+        take: query.limit ?? 50,
         select: {
           id: true,
           provider: true,
@@ -173,6 +180,10 @@ export class PaymentsService {
     return {
       status: 'OK',
       companyId,
+      filters: {
+        status: query.status ?? null,
+        limit: query.limit ?? 50,
+      },
       events,
       generatedAt: new Date().toISOString(),
     };

@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { WebhookDeliveryStatus } from '@prisma/client';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { PaymentsController } from './payments.controller.js';
 import { PaymentsService } from './payments.service.js';
@@ -66,20 +67,29 @@ describe('PaymentsController', () => {
     );
   });
 
-  it('lista eventos de webhook por empresa sem exigir payload do gateway', async () => {
+  it('lista eventos de webhook por empresa repassando filtros operacionais', async () => {
+    const query = {
+      status: WebhookDeliveryStatus.FAILED,
+      limit: 10,
+    };
     paymentsMock.listWebhookEvents.mockResolvedValueOnce({
       status: 'OK',
       companyId: 'company-001',
+      filters: query,
       events: [],
     });
 
-    await expect(controller.webhookEvents('company-001')).resolves.toEqual({
+    await expect(controller.webhookEvents('company-001', query)).resolves.toEqual({
       status: 'OK',
       companyId: 'company-001',
+      filters: query,
       events: [],
     });
 
-    expect(paymentsMock.listWebhookEvents).toHaveBeenCalledWith('company-001');
+    expect(paymentsMock.listWebhookEvents).toHaveBeenCalledWith(
+      'company-001',
+      query,
+    );
   });
 
   it('rejeita webhook Stripe sem rawBody para preservar validacao criptografica', () => {
