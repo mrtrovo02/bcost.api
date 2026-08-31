@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { RequiresFeature } from '../billing/decorators/requires-feature.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
@@ -26,6 +27,7 @@ import { UpdateBankTransactionEnterpriseDto } from './dto/update-bank-transactio
 import { BankingEnterpriseService } from './banking-enterprise.service.js';
 
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+@RequiresFeature('banking.reconciliation')
 @Controller('banking/enterprise')
 export class BankingEnterpriseController {
   constructor(private readonly service: BankingEnterpriseService) {}

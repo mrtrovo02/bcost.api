@@ -13,6 +13,7 @@ import {
 import { ContractService } from '../contracts/contract.service.js';
 import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
+import { RequiresFeature } from '../billing/decorators/requires-feature.decorator.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
@@ -21,6 +22,7 @@ import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js'
 @ApiBearerAuth()
 @Controller('billing')
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+@RequiresFeature('revenue.billing')
 export class BillingController {
   constructor(private readonly contractService: ContractService) {}
 

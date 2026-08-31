@@ -16,6 +16,7 @@ import { CompanyRole } from '@prisma/client';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { RequiresFeature } from '../billing/decorators/requires-feature.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
@@ -26,6 +27,7 @@ import { CreateContractDto } from './dto/create-contract.dto.js';
 @ApiTags('Contracts')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+@RequiresFeature('revenue.billing')
 @Controller('contracts')
 export class ContractController {
   constructor(
