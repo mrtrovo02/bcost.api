@@ -37,6 +37,18 @@ type CompanyBillingContact = {
   }>;
 };
 
+type PaymentWebhookEventAuditItem = {
+  id: string;
+  provider: PaymentProvider;
+  providerEventId: string;
+  eventType: string;
+  status: WebhookDeliveryStatus;
+  processedAt: Date | null;
+  errorMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 @Injectable()
 export class PaymentsService {
   constructor(
@@ -131,6 +143,37 @@ export class PaymentsService {
       companyId,
       subscription,
       entitlements,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async listWebhookEvents(companyId: string) {
+    const events: PaymentWebhookEventAuditItem[] =
+      await this.prisma.paymentWebhookEvent.findMany({
+        where: {
+          companyId,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: 50,
+        select: {
+          id: true,
+          provider: true,
+          providerEventId: true,
+          eventType: true,
+          status: true,
+          processedAt: true,
+          errorMessage: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+    return {
+      status: 'OK',
+      companyId,
+      events,
       generatedAt: new Date().toISOString(),
     };
   }

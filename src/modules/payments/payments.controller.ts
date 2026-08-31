@@ -55,6 +55,14 @@ export class PaymentsController {
     return this.payments.getSubscription(companyId, req.user);
   }
 
+  @Get('webhook-events/:companyId')
+  @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+  @Roles(CompanyRole.OWNER)
+  @ApiOperation({ summary: 'Listar trilha operacional de webhooks de pagamento' })
+  webhookEvents(@Param('companyId', new ParseUUIDPipe()) companyId: string) {
+    return this.payments.listWebhookEvents(companyId);
+  }
+
   @Post('webhooks/stripe')
   @Public()
   @ApiOperation({ summary: 'Receber webhook assinado do Stripe' })
