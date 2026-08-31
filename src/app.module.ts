@@ -55,6 +55,8 @@ import { AccountingPlatformModule } from './modules/accounting-platform/accounti
 import { PublicSettingsModule } from './modules/public-settings/public-settings.module.js';
 import { EnterpriseModulesModule } from './modules/enterprise/enterprise-modules.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
+import { PaymentsModule } from './modules/payments/payments.module.js';
+import { FeatureEntitlementGuard } from './modules/billing/guards/feature-entitlement.guard.js';
 import { DigitalCertificatesEnterpriseModule } from './modules/digital-certificates/digital-certificates-enterprise.module.js';
 import { ObligationsEnterpriseModule } from './modules/obligations/obligations-enterprise.module.js';
 import { AccountingEnterpriseModule } from './modules/accounting/accounting-enterprise.module.js';
@@ -91,9 +93,17 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
         REDIS_PASSWORD: Joi.string().allow('').default(''),
 
         JWT_SECRET: Joi.string().min(32).required(),
+        FISCAL_API_KEY: Joi.string().allow('').optional(),
 
         ALLOW_SETUP_ADMIN: Joi.string().valid('true', 'false').default('false'),
         SETUP_ADMIN_PASSWORD: Joi.string().optional(),
+
+        FRONTEND_BASE_URL: Joi.string().uri().optional(),
+        PUBLIC_APP_URL: Joi.string().uri().optional(),
+        STRIPE_SECRET_KEY: Joi.string().allow('').optional(),
+        STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+        STRIPE_PRICE_PRO: Joi.string().allow('').optional(),
+        STRIPE_PRICE_ENTERPRISE: Joi.string().allow('').optional(),
 
         ENABLE_SWAGGER: Joi.string().valid('true', 'false').default('false'),
         CORS_ORIGINS: Joi.string().allow('').default(''),
@@ -196,6 +206,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
     PublicSettingsModule,
     EnterpriseModulesModule,
     BillingModule,
+    PaymentsModule,
     DigitalCertificatesEnterpriseModule,
     ObligationsEnterpriseModule,
     AccountingEnterpriseModule,
@@ -225,6 +236,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: CompanyAccessGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: FeatureEntitlementGuard },
 
     // 🧪 PIPES GLOBAIS DE VALIDAÇÃO
     { provide: APP_PIPE, useClass: ZodValidationPipe },

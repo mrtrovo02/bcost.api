@@ -45,49 +45,53 @@ model UserSession {
 }
 
 model Company {
-  id                  String                @id @default(uuid())
-  cnpj                String                @unique
-  name                String
-  taxRegime           TaxRegime             @default(SIMPLES_NACIONAL)
-  anexo               Int                   @default(3)
-  cnae                String?
-  cnae2               String?
-  municipalCode       String?
-  active              Boolean               @default(true)
-  planLevel           String                @default("FREE")
-  lastSyncAt          DateTime?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  deletedAt           DateTime?
-  version             Int                   @default(1)
-  settings            Json?                 @default("{}")
-  logs                AuditLog[]
-  automationJobs      AutomationJob[]
-  balanceLocks        BalanceLock[]
-  bankAccounts        BankAccount[]
-  bankTransactions    BankTransaction[]
-  businessRules       BusinessRule[]
-  cashFlowProjections CashFlowProjection[]
-  users               CompanyUser[]
-  complianceChecks    ComplianceCheck[]
-  contracts           Contract[]
-  customers           Customer[]
-  certificates        DigitalCertificate[]
-  financialEvents     FinancialEvent[]
-  financialSnapshots  FinancialSnapshot[]
+  id                   String                @id @default(uuid())
+  cnpj                 String                @unique
+  name                 String
+  taxRegime            TaxRegime             @default(SIMPLES_NACIONAL)
+  anexo                Int                   @default(3)
+  cnae                 String?
+  cnae2                String?
+  municipalCode        String?
+  active               Boolean               @default(true)
+  planLevel            String                @default("FREE")
+  lastSyncAt           DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  deletedAt            DateTime?
+  version              Int                   @default(1)
+  settings             Json?                 @default("{}")
+  logs                 AuditLog[]
+  automationJobs       AutomationJob[]
+  balanceLocks         BalanceLock[]
+  bankAccounts         BankAccount[]
+  bankTransactions     BankTransaction[]
+  businessRules        BusinessRule[]
+  cashFlowProjections  CashFlowProjection[]
+  users                CompanyUser[]
+  complianceChecks     ComplianceCheck[]
+  contracts            Contract[]
+  customers            Customer[]
+  certificates         DigitalCertificate[]
+  financialEvents      FinancialEvent[]
+  financialSnapshots   FinancialSnapshot[]
   fiscalSimulationLogs FiscalSimulationLog[]
-  employees           Employee[]
-  accountingEntries   AccountingEntry[]
-  fiscalObligations   FiscalObligation[]
-  accountPlans        AccountPlan[]
-  invoices            Invoice[]
-  notifications       NotificationLog[]
-  payrolls            Payroll[]
-  taxCalculations     TaxCalculation[]
-  taxDestinationRules TaxDestinationRule[]
-  taxObligations      TaxObligation[]
-  taxReformRates      TaxReformRate[]
-  webhooks            WebhookConfig[]
+  employees            Employee[]
+  accountingEntries    AccountingEntry[]
+  fiscalObligations    FiscalObligation[]
+  accountPlans         AccountPlan[]
+  invoices             Invoice[]
+  notifications        NotificationLog[]
+  paymentCustomers     PaymentCustomer[]
+  subscriptions        Subscription[]
+  checkoutSessions     CheckoutSession[]
+  paymentWebhookEvents PaymentWebhookEvent[]
+  payrolls             Payroll[]
+  taxCalculations      TaxCalculation[]
+  taxDestinationRules  TaxDestinationRule[]
+  taxObligations       TaxObligation[]
+  taxReformRates       TaxReformRate[]
+  webhooks             WebhookConfig[]
 
   @@index([cnpj])
   @@index([active])
@@ -111,36 +115,36 @@ model CompanyUser {
 }
 
 model Invoice {
-  id                          String                @id @default(uuid())
+  id                          String                 @id @default(uuid())
   companyId                   String
   customerId                  String
   type                        InvoiceType
-  status                      InvoiceStatus         @default(NORMAL)
-  nfeStatus                   NFeStatus             @default(DRAFT)
-  amount                      Decimal               @db.Decimal(18, 2)
-  taxAmount                   Decimal?              @db.Decimal(18, 2)
+  status                      InvoiceStatus          @default(NORMAL)
+  nfeStatus                   NFeStatus              @default(DRAFT)
+  amount                      Decimal                @db.Decimal(18, 2)
+  taxAmount                   Decimal?               @db.Decimal(18, 2)
   issuedAt                    DateTime
-  accessKey                   String?               @unique
+  accessKey                   String?                @unique
   number                      String?
-  serie                       String?               @default("1")
+  serie                       String?                @default("1")
   xmlUrl                      String?
-  reconciled                  Boolean               @default(false)
-  version                     Int                   @default(1)
+  reconciled                  Boolean                @default(false)
+  version                     Int                    @default(1)
   vectorData                  Unsupported("vector")?
-  createdAt                   DateTime              @default(now())
-  updatedAt                   DateTime              @updatedAt
+  createdAt                   DateTime               @default(now())
+  updatedAt                   DateTime               @updatedAt
   deletedAt                   DateTime?
-  finNFe                      String                @default("1") @db.VarChar(1)
-  issuePurpose                NFeIssuePurpose       @default(NORMAL)
-  cstCode                     String?               @db.VarChar(3)
-  cClassTribCode              String?               @db.VarChar(6)
-  destinationStateIbge        String?               @db.VarChar(2)
-  destinationMunicipalityIbge String?               @db.VarChar(7)
-  hasLegacyTaxes              Boolean               @default(true)
+  finNFe                      String                 @default("1") @db.VarChar(1)
+  issuePurpose                NFeIssuePurpose        @default(NORMAL)
+  cstCode                     String?                @db.VarChar(3)
+  cClassTribCode              String?                @db.VarChar(6)
+  destinationStateIbge        String?                @db.VarChar(2)
+  destinationMunicipalityIbge String?                @db.VarChar(7)
+  hasLegacyTaxes              Boolean                @default(true)
   taxReformPayload            Json?
-  bankTransaction             BankTransaction?      @relation("InvoiceBankTransaction")
-  company                     Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer                    Customer              @relation(fields: [customerId], references: [id])
+  bankTransaction             BankTransaction?       @relation("InvoiceBankTransaction")
+  company                     Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer                    Customer               @relation(fields: [customerId], references: [id])
   sefazEvents                 InvoiceSefazEvent[]
 
   @@unique([companyId, accessKey])
@@ -269,23 +273,23 @@ model FiscalSimulationLog {
 }
 
 model BankTransaction {
-  id              String           @id @default(uuid())
+  id              String          @id @default(uuid())
   companyId       String
   bankAccountId   String
-  reconciled      Boolean          @default(false)
-  invoiceId       String?          @unique
-  taxObligationId String?          @unique
+  reconciled      Boolean         @default(false)
+  invoiceId       String?         @unique
+  taxObligationId String?         @unique
   type            TransactionType
-  amount          Decimal          @db.Decimal(18, 2)
+  amount          Decimal         @db.Decimal(18, 2)
   description     String
   occurredAt      DateTime
   metadata        Json?
-  createdAt       DateTime         @default(now())
-  version         Int              @default(1)
-  bankAccount     BankAccount      @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
-  company         Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  invoice         Invoice?         @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
-  taxObligation   TaxObligation?   @relation("TaxObligationBankTransaction", fields: [taxObligationId], references: [id])
+  createdAt       DateTime        @default(now())
+  version         Int             @default(1)
+  bankAccount     BankAccount     @relation(fields: [bankAccountId], references: [id], onDelete: Cascade)
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice         Invoice?        @relation("InvoiceBankTransaction", fields: [invoiceId], references: [id])
+  taxObligation   TaxObligation?  @relation("TaxObligationBankTransaction", fields: [taxObligationId], references: [id])
 
   @@index([companyId, occurredAt])
   @@index([bankAccountId, reconciled])
@@ -445,15 +449,15 @@ model Employee {
 }
 
 model Payroll {
-  id              String   @id @default(uuid())
+  id              String         @id @default(uuid())
   companyId       String
   month           Int
   year            Int
-  salariesAmount  Decimal  @default(0) @db.Decimal(18, 2)
-  proLaboreAmount Decimal  @default(0) @db.Decimal(18, 2)
-  totalAmount     Decimal  @db.Decimal(18, 2)
-  createdAt       DateTime @default(now())
-  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  salariesAmount  Decimal        @default(0) @db.Decimal(18, 2)
+  proLaboreAmount Decimal        @default(0) @db.Decimal(18, 2)
+  totalAmount     Decimal        @db.Decimal(18, 2)
+  createdAt       DateTime       @default(now())
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   entries         PayrollEntry[]
 
   @@unique([companyId, month, year])
@@ -715,6 +719,92 @@ model WebhookConfig {
   @@map("webhook_configs")
 }
 
+model PaymentCustomer {
+  id                 String            @id @default(uuid())
+  companyId          String
+  provider           PaymentProvider
+  providerCustomerId String
+  email              String?
+  name               String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  company            Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  subscriptions      Subscription[]
+  checkoutSessions   CheckoutSession[]
+
+  @@unique([companyId, provider])
+  @@unique([provider, providerCustomerId])
+  @@index([companyId])
+  @@map("payment_customers")
+}
+
+model Subscription {
+  id                     String             @id @default(uuid())
+  companyId              String
+  paymentCustomerId      String?
+  provider               PaymentProvider
+  providerSubscriptionId String             @unique
+  providerCustomerId     String?
+  planLevel              String
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  canceledAt             DateTime?
+  trialEndsAt            DateTime?
+  metadata               Json?              @default("{}")
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  company                Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  paymentCustomer        PaymentCustomer?   @relation(fields: [paymentCustomerId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([provider, providerCustomerId])
+  @@map("subscriptions")
+}
+
+model CheckoutSession {
+  id                        String                @id @default(uuid())
+  companyId                 String
+  paymentCustomerId         String?
+  provider                  PaymentProvider
+  providerCheckoutSessionId String                @unique
+  planLevel                 String
+  status                    CheckoutSessionStatus @default(CREATED)
+  checkoutUrl               String
+  expiresAt                 DateTime?
+  completedAt               DateTime?
+  metadata                  Json?                 @default("{}")
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  company                   Company               @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  paymentCustomer           PaymentCustomer?      @relation(fields: [paymentCustomerId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, status])
+  @@index([provider, planLevel])
+  @@map("checkout_sessions")
+}
+
+model PaymentWebhookEvent {
+  id              String                @id @default(uuid())
+  companyId       String?
+  provider        PaymentProvider
+  providerEventId String
+  eventType       String
+  status          WebhookDeliveryStatus @default(RECEIVED)
+  payload         Json
+  processedAt     DateTime?
+  errorMessage    String?
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  company         Company?              @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([companyId, eventType])
+  @@index([provider, status])
+  @@map("payment_webhook_events")
+}
+
 enum TaxRegime {
   SIMPLES_NACIONAL
   LUCRO_PRESUMIDO
@@ -742,6 +832,37 @@ enum CompanyRole {
   ACCOUNTANT
   MANAGER
   VIEWER
+}
+
+enum PaymentProvider {
+  STRIPE
+  PAGARME
+  MERCADO_PAGO
+}
+
+enum SubscriptionStatus {
+  INCOMPLETE
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  UNPAID
+  CANCELED
+  PAUSED
+}
+
+enum CheckoutSessionStatus {
+  CREATED
+  OPEN
+  COMPLETE
+  EXPIRED
+  FAILED
+}
+
+enum WebhookDeliveryStatus {
+  RECEIVED
+  PROCESSED
+  IGNORED
+  FAILED
 }
 
 enum TransactionType {

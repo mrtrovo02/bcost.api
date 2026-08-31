@@ -14,6 +14,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { RequiresFeature } from '../billing/decorators/requires-feature.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
@@ -36,6 +37,7 @@ import { DigitalCertificatesEnterpriseService } from './digital-certificates-ent
  * sem conflito no Fastify.
  */
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+@RequiresFeature('digital.certificates')
 @Controller('digital-certificates/enterprise')
 export class DigitalCertificatesEnterpriseController {
   constructor(private readonly service: DigitalCertificatesEnterpriseService) {}

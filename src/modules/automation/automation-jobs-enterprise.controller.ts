@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { RequiresFeature } from '../billing/decorators/requires-feature.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
@@ -21,6 +22,7 @@ import { AutomationJobsQueryDto } from './dto/automation-jobs-query.dto.js';
 @ApiTags('Automation Jobs Enterprise')
 @ApiBearerAuth('JWT')
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+@RequiresFeature('automation.jobs')
 @Controller('automation/jobs')
 export class AutomationJobsEnterpriseController {
   constructor(private readonly service: AutomationJobsEnterpriseService) {}
@@ -50,6 +52,7 @@ export class AutomationJobsEnterpriseController {
   }
 
   @Post(':jobId/retry')
+  @RequiresFeature('automation.retry')
   @ApiOperation({
     summary: 'ENTERPRISE: Solicita retry de um job de automação',
   })
