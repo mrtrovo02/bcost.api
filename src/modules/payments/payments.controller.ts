@@ -21,6 +21,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
+import { CreateBillingPortalSessionDto } from './dto/create-billing-portal-session.dto.js';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto.js';
 import { ListWebhookEventsQueryDto } from './dto/list-webhook-events-query.dto.js';
 import { PaymentsService } from './payments.service.js';
@@ -55,6 +56,17 @@ export class PaymentsController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.payments.getSubscription(companyId, req.user);
+  }
+
+  @Post('portal/:companyId')
+  @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+  @Roles(CompanyRole.OWNER)
+  @ApiOperation({ summary: 'Criar sessão do portal de cobrança da assinatura' })
+  createPortal(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+    @Body() body: CreateBillingPortalSessionDto,
+  ) {
+    return this.payments.createBillingPortalSession(companyId, body);
   }
 
   @Get('webhook-events/:companyId')

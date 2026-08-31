@@ -17,6 +17,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import type { AuthUser } from '../billing/billing-entitlements.service.js';
 import { BillingEntitlementsService } from '../billing/billing-entitlements.service.js';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto.js';
+import { CreateBillingPortalSessionDto } from './dto/create-billing-portal-session.dto.js';
 import { ListWebhookEventsQueryDto } from './dto/list-webhook-events-query.dto.js';
 import {
   CheckoutSessionResult,
@@ -144,6 +145,43 @@ export class PaymentsService {
       companyId,
       subscription,
       entitlements,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  async createBillingPortalSession(
+    companyId: string,
+    dto: CreateBillingPortalSessionDto,
+  ) {
+    const paymentCustomer = await this.prisma.paymentCustomer.findUnique({
+      where: {
+        companyId_provider: {
+          companyId,
+          provider: PaymentProvider.STRIPE,
+        },
+      },
+    });
+
+    if (!paymentCustomer) {
+      throw new NotFoundException(
+        'Cliente de pagamento não encontrado para esta empresa.',
+      );
+    }
+
+    const provider = this.providerFactory.getProvider('STRIPE');
+    const result = await provider.createBillingPortalSession({
+      providerCustomerId: paymentCustomer.providerCustomerId,
+      returnUrl: this.resolveReturnUrl(dto.returnUrl),
+    });
+
+    return {
+      status: 'OK',
+      provider: PaymentProvider.STRIPE,
+      companyId,
+      portalSession: {
+        providerPortalSessionId: result.providerPortalSessionId,
+        portalUrl: result.portalUrl,
+      },
       generatedAt: new Date().toISOString(),
     };
   }
@@ -479,6 +517,14 @@ export class PaymentsService {
       value,
       '/dashboard/settings?billing=cancel',
       'cancelUrl',
+    );
+  }
+
+  private resolveReturnUrl(value?: string): string {
+    return this.resolveCheckoutUrl(
+      value,
+      '/dashboard/settings?billing=portal',
+      'returnUrl',
     );
   }
 

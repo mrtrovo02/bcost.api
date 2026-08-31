@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import {
   PaymentProvider,
+  type PaymentCustomer,
   WebhookDeliveryStatus,
   type PaymentWebhookEvent as PrismaPaymentWebhookEvent,
 } from '@prisma/client';
@@ -25,9 +26,14 @@ type CheckoutSessionDelegateMock = {
   updateMany: jest.Mock<Promise<{ count: number }>, [unknown]>;
 };
 
+type PaymentCustomerDelegateMock = {
+  findUnique: jest.Mock<Promise<PaymentCustomer | null>, [unknown]>;
+};
+
 type PrismaMock = {
   paymentWebhookEvent: PaymentWebhookEventDelegateMock;
   checkoutSession: CheckoutSessionDelegateMock;
+  paymentCustomer: PaymentCustomerDelegateMock;
 };
 
 type ProviderFactoryMock = {
@@ -36,6 +42,10 @@ type ProviderFactoryMock = {
 
 type BillingEntitlementsMock = {
   getEntitlements: jest.Mock<Promise<unknown>, [string, AuthUser?]>;
+};
+
+type ConfigServiceMock = {
+  get: jest.Mock<string | undefined, [string]>;
 };
 
 function createWebhookRecord(
@@ -59,11 +69,30 @@ function createWebhookRecord(
   };
 }
 
+function createPaymentCustomer(
+  overrides: Partial<PaymentCustomer> = {},
+): PaymentCustomer {
+  const now = new Date('2026-08-31T12:00:00.000Z');
+
+  return {
+    id: 'payment-customer-id',
+    companyId: 'company-001',
+    provider: PaymentProvider.STRIPE,
+    providerCustomerId: 'cus_123',
+    email: 'amandacontabil@bcost.com.br',
+    name: 'Amanda Contabil',
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
 describe('PaymentsService', () => {
   let service: PaymentsService;
   let prismaMock: PrismaMock;
   let providerFactoryMock: ProviderFactoryMock;
   let billingEntitlementsMock: BillingEntitlementsMock;
+  let configMock: ConfigServiceMock;
   let providerMock: PaymentProviderAdapter;
 
   beforeEach(() => {
@@ -77,11 +106,15 @@ describe('PaymentsService', () => {
       checkoutSession: {
         updateMany: jest.fn(),
       },
+      paymentCustomer: {
+        findUnique: jest.fn(),
+      },
     };
 
     providerMock = {
       provider: 'STRIPE',
       createCheckoutSession: jest.fn(),
+      createBillingPortalSession: jest.fn(),
       constructWebhookEvent: jest.fn(),
     };
 
@@ -93,9 +126,15 @@ describe('PaymentsService', () => {
       getEntitlements: jest.fn(),
     };
 
+    configMock = {
+      get: jest.fn((key: string) =>
+        key === 'FRONTEND_BASE_URL' ? 'https://app.bcost.com.br' : undefined,
+      ),
+    };
+
     service = new PaymentsService(
       prismaMock as unknown as PrismaService,
-      {} as ConfigService,
+      configMock as unknown as ConfigService,
       providerFactoryMock as unknown as PaymentProviderFactory,
       billingEntitlementsMock as unknown as BillingEntitlementsService,
     );
@@ -133,6 +172,27 @@ describe('PaymentsService', () => {
     expect(result.status).toBe('OK_IDEMPOTENT');
     expect(prismaMock.paymentWebhookEvent.create).not.toHaveBeenCalled();
     expect(prismaMock.paymentWebhookEvent.update).not.toHaveBeenCalled();
+  });
+
+  it('cria sessao de portal de cobranca para cliente Stripe existente', async () => {
+    prismaMock.paymentCustomer.findUnique.mockResolvedValueOnce(
+      createPaymentCustomer(),
+    );
+    jest.mocked(providerMock.createBillingPortalSession).mockResolvedValueOnce({
+      provider: 'STRIPE',
+      providerPortalSessionId: 'bps_123',
+      portalUrl: 'https://billing.stripe.com/p/session/bps_123',
+    });
+
+    const result = await service.createBillingPortalSession('company-001', {
+      returnUrl: 'https://app.bcost.com.br/dashboard/settings?billing=portal',
+    });
+
+    expect(result.portalSession.providerPortalSessionId).toBe('bps_123');
+    expect(providerMock.createBillingPortalSession).toHaveBeenCalledWith({
+      providerCustomerId: 'cus_123',
+      returnUrl: 'https://app.bcost.com.br/dashboard/settings?billing=portal',
+    });
   });
 
   it('marca webhook sem efeito operacional como IGNORED', async () => {

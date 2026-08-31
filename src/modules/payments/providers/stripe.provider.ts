@@ -11,6 +11,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import {
   CheckoutSessionRequest,
   CheckoutSessionResult,
+  BillingPortalSessionRequest,
+  BillingPortalSessionResult,
   MonetizablePlanLevel,
   PaymentProviderAdapter,
   PaymentProviderWebhookEvent,
@@ -94,6 +96,44 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
         typeof body.expires_at === 'number'
           ? new Date(body.expires_at * 1000)
           : null,
+    };
+  }
+
+  async createBillingPortalSession(
+    input: BillingPortalSessionRequest,
+  ): Promise<BillingPortalSessionResult> {
+    const secretKey = this.requireSecretKey();
+    const form = new URLSearchParams();
+
+    form.set('customer', input.providerCustomerId);
+    form.set('return_url', input.returnUrl);
+
+    const response = await fetch(`${this.apiBaseUrl}/billing_portal/sessions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: form,
+    });
+
+    const body = (await response.json()) as StripeApiResponse;
+
+    if (!response.ok) {
+      const message = this.resolveStripeErrorMessage(body);
+      throw new BadRequestException(`Stripe portal recusado: ${message}`);
+    }
+
+    if (typeof body.id !== 'string' || typeof body.url !== 'string') {
+      throw new ServiceUnavailableException(
+        'Stripe não retornou uma sessão de portal válida.',
+      );
+    }
+
+    return {
+      provider: this.provider,
+      providerPortalSessionId: body.id,
+      portalUrl: body.url,
     };
   }
 

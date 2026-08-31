@@ -24,6 +24,17 @@ export type CheckoutSessionResult = {
   expiresAt?: Date | null;
 };
 
+export type BillingPortalSessionRequest = {
+  providerCustomerId: string;
+  returnUrl: string;
+};
+
+export type BillingPortalSessionResult = {
+  provider: PaymentProviderCode;
+  providerPortalSessionId: string;
+  portalUrl: string;
+};
+
 export type ProviderSubscriptionStatus =
   | 'INCOMPLETE'
   | 'TRIALING'
@@ -65,6 +76,9 @@ export interface PaymentProviderAdapter {
   createCheckoutSession(
     input: CheckoutSessionRequest,
   ): Promise<CheckoutSessionResult>;
+  createBillingPortalSession(
+    input: BillingPortalSessionRequest,
+  ): Promise<BillingPortalSessionResult>;
   constructWebhookEvent(
     rawBody: Buffer,
     signatureHeader?: string,

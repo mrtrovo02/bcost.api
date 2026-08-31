@@ -6,6 +6,7 @@ import { PaymentsService } from './payments.service.js';
 
 type PaymentsServiceMock = {
   createCheckoutSession: jest.Mock;
+  createBillingPortalSession: jest.Mock;
   getSubscription: jest.Mock;
   listWebhookEvents: jest.Mock;
   processStripeWebhook: jest.Mock;
@@ -33,6 +34,7 @@ describe('PaymentsController', () => {
   beforeEach(() => {
     paymentsMock = {
       createCheckoutSession: jest.fn(),
+      createBillingPortalSession: jest.fn(),
       getSubscription: jest.fn(),
       listWebhookEvents: jest.fn(),
       processStripeWebhook: jest.fn(),
@@ -40,6 +42,34 @@ describe('PaymentsController', () => {
 
     controller = new PaymentsController(
       paymentsMock as unknown as PaymentsService,
+    );
+  });
+
+  it('encaminha portal de cobranca com empresa e returnUrl validado pelo service', async () => {
+    const dto = {
+      returnUrl: 'https://app.bcost.com.br/dashboard/settings?billing=portal',
+    };
+    paymentsMock.createBillingPortalSession.mockResolvedValueOnce({
+      status: 'OK',
+      companyId: 'company-001',
+      portalSession: {
+        providerPortalSessionId: 'bps_123',
+        portalUrl: 'https://billing.stripe.com/p/session/bps_123',
+      },
+    });
+
+    await expect(controller.createPortal('company-001', dto)).resolves.toEqual({
+      status: 'OK',
+      companyId: 'company-001',
+      portalSession: {
+        providerPortalSessionId: 'bps_123',
+        portalUrl: 'https://billing.stripe.com/p/session/bps_123',
+      },
+    });
+
+    expect(paymentsMock.createBillingPortalSession).toHaveBeenCalledWith(
+      'company-001',
+      dto,
     );
   });
 
