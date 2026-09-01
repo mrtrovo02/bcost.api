@@ -57,10 +57,11 @@ export class TaxScenariosService {
       this.calculateSimples(
         input,
         annualRevenue,
+        annualExpenses,
         annualPayroll,
         factorRPercentage,
       ),
-      this.calculateLucroPresumido(input, annualRevenue),
+      this.calculateLucroPresumido(input, annualRevenue, annualExpenses, annualPayroll),
     ];
     const viableComparisons = comparisons.filter(
       (item) =>
@@ -239,6 +240,7 @@ export class TaxScenariosService {
   private calculateSimples(
     input: SimulateTaxScenarioDto,
     annualRevenue: number,
+    annualExpenses: number,
     annualPayroll: number,
     factorRPercentage: number,
   ): TaxScenarioCalculation {
@@ -256,7 +258,7 @@ export class TaxScenariosService {
           'Lei Complementar 123/2006, art. 3º, II: limite de receita bruta anual de R$ 4.800.000,00 para EPP.',
         ],
         annualRevenue,
-        annualDeductibleExpenses: 0,
+        annualDeductibleExpenses: annualExpenses,
         annualPayroll,
         taxableBase: annualRevenue,
         estimatedTax: -1,
@@ -303,7 +305,7 @@ export class TaxScenariosService {
         'Lei Complementar 123/2006, Anexos III e V: aplicação conforme atividade e Fator R.',
       ],
       annualRevenue,
-      annualDeductibleExpenses: 0,
+      annualDeductibleExpenses: annualExpenses,
       annualPayroll,
       taxableBase: annualRevenue,
       estimatedTax,
@@ -337,6 +339,8 @@ export class TaxScenariosService {
   private calculateLucroPresumido(
     input: SimulateTaxScenarioDto,
     annualRevenue: number,
+    annualExpenses: number,
+    annualPayroll: number,
   ): TaxScenarioCalculation {
     const presumedMargin = input.activity === 'HEALTHCARE' ? 0.32 : 0.32;
     const irCsll = annualRevenue * presumedMargin * 0.24;
@@ -347,8 +351,8 @@ export class TaxScenariosService {
     return this.buildCalculation({
       model: 'LUCRO_PRESUMIDO',
       annualRevenue,
-      annualDeductibleExpenses: 0,
-      annualPayroll: 0,
+      annualDeductibleExpenses: annualExpenses,
+      annualPayroll,
       taxableBase: this.money(annualRevenue * presumedMargin),
       estimatedTax,
       warnings: [
@@ -495,6 +499,7 @@ export class TaxScenariosService {
         ? this.money(
             input.annualRevenue -
               input.annualDeductibleExpenses -
+              input.annualPayroll -
               input.estimatedTax,
           )
         : 0;
@@ -510,11 +515,11 @@ export class TaxScenariosService {
   }
 
   private progressiveIrpf(annualBase: number): number {
-    if (annualBase <= 27_110.4) return 0;
-    if (annualBase <= 33_919.8) return annualBase * 0.075 - 2_033.28;
-    if (annualBase <= 45_012.6) return annualBase * 0.15 - 4_577.27;
-    if (annualBase <= 55_976.16) return annualBase * 0.225 - 7_953.21;
-    return annualBase * 0.275 - 10_752.02;
+    if (annualBase <= 29_145.6) return 0;
+    if (annualBase <= 33_919.8) return annualBase * 0.075 - 2_185.92;
+    if (annualBase <= 45_012.6) return annualBase * 0.15 - 4_729.92;
+    if (annualBase <= 55_976.16) return annualBase * 0.225 - 8_105.88;
+    return annualBase * 0.275 - 10_904.76;
   }
 
   private resolveSimplesBracket(

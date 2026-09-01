@@ -89,12 +89,20 @@ describe('TaxScenariosService', () => {
       currentModel: 'PF',
     });
     const mei = result.comparisons.find((item) => item.model === 'MEI');
+    const simples = result.comparisons.find(
+      (item) => item.model === 'SIMPLES_NACIONAL',
+    );
+    const lucroPresumido = result.comparisons.find(
+      (item) => item.model === 'LUCRO_PRESUMIDO',
+    );
 
     expect(result.factorR.percentage).toBe(320);
-    expect(result.bestEstimatedModel).not.toBe('MEI');
+    expect(result.bestEstimatedModel).toBe('PF');
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');
+    expect(simples?.netAnnualResult).toBeLessThan(0);
+    expect(lucroPresumido?.netAnnualResult).toBeLessThan(0);
   });
 
   it('gera scenarioId estável para o mesmo input', () => {
