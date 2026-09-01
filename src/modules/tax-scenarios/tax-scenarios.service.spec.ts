@@ -28,7 +28,10 @@ describe('TaxScenariosService', () => {
       'LUCRO_PRESUMIDO',
     ]);
     expect(result.factorR.percentage).toBe(10);
-    expect(result.recommendation.decision).toBe('SIMPLES_WITH_FACTOR_R_REVIEW');
+    expect(result.recommendation.decision).toBe('PF_REVIEW_RECOMMENDED');
+    expect(result.recommendation.rationale.join(' ')).toContain(
+      'abaixo do limiar de 28%',
+    );
     expect(result.guardrails.join(' ')).toContain(
       'Não prometer economia tributária',
     );
@@ -98,6 +101,7 @@ describe('TaxScenariosService', () => {
 
     expect(result.factorR.percentage).toBe(320);
     expect(result.bestEstimatedModel).toBe('PF');
+    expect(result.recommendation.decision).toBe('PF_REVIEW_RECOMMENDED');
     expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
     expect(mei?.estimatedTax).toBe(-1);
     expect(mei?.warnings.join(' ')).toContain('folha informada');

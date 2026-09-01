@@ -420,6 +420,32 @@ export class TaxScenariosService {
       };
     }
 
+    if (bestModel === 'PF') {
+      return {
+        decision: 'PF_REVIEW_RECOMMENDED',
+        title: 'PF permanece melhor na simulação preliminar',
+        rationale: [
+          'Com os valores informados, os regimes PJ elegíveis não superam o resultado líquido estimado da pessoa física.',
+          ...(factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD
+            ? [
+                `Fator R estimado em ${factorRPercentage}%, abaixo do limiar de 28%; Simples para serviços tende a exigir Anexo V até revisão da folha/pró-labore.`,
+              ]
+            : []),
+          'A conclusão depende de RBT12, CNAE, município, retenções, ISS, livro caixa e documentação fiscal real.',
+        ],
+        requiredEvidence: [
+          'Recibos/notas e retenções dos últimos 12 meses',
+          'Despesas dedutíveis com documentação hábil',
+          'CNAE pretendido e município de prestação',
+        ],
+        nextActions: [
+          'Manter recomendação como triagem, sem promessa de economia',
+          'Validar livro caixa e retenções',
+          'Submeter revisão CRC antes de proposta de migração',
+        ],
+      };
+    }
+
     if (factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD) {
       return {
         decision: 'SIMPLES_WITH_FACTOR_R_REVIEW',
