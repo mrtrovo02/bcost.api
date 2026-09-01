@@ -42,6 +42,38 @@ export type TaxScenarioRecommendation = {
   nextActions: string[];
 };
 
+export type TaxComplianceRuleStatus =
+  | 'PASSED'
+  | 'BLOCKED'
+  | 'REQUIRES_REVIEW'
+  | 'INFORMATIONAL';
+
+export type TaxComplianceRuleSeverity =
+  | 'INFO'
+  | 'MEDIUM'
+  | 'HIGH'
+  | 'CRITICAL';
+
+export type TaxComplianceRuleEvaluation = {
+  code: string;
+  status: TaxComplianceRuleStatus;
+  severity: TaxComplianceRuleSeverity;
+  title: string;
+  result: string;
+  legalBasis: string[];
+  evidenceRequired: string[];
+  officialAssessment: boolean;
+};
+
+export type TaxScenarioComplianceTrail = {
+  version: string;
+  calculationMode: 'ESTIMATIVE_TRIAGE';
+  officialAssessment: false;
+  evaluatedAt: string;
+  rules: TaxComplianceRuleEvaluation[];
+  disclaimers: string[];
+};
+
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -66,6 +98,7 @@ export type TaxScenarioSimulationResponse = {
     note: string;
   };
   recommendation: TaxScenarioRecommendation;
+  complianceTrail: TaxScenarioComplianceTrail;
   guardrails: string[];
   generatedAt: string;
 };

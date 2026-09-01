@@ -125,6 +125,39 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('retorna trilha de compliance para impedir uso como apuração oficial automática', () => {
+    const result = service.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'PF',
+    });
+
+    expect(result.complianceTrail.version).toBe(
+      'tax-scenarios-compliance-2026.1',
+    );
+    expect(result.complianceTrail.officialAssessment).toBe(false);
+    expect(result.complianceTrail.calculationMode).toBe('ESTIMATIVE_TRIAGE');
+    expect(result.complianceTrail.rules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'FACTOR_R_SERVICE_REVIEW',
+          status: 'REQUIRES_REVIEW',
+          severity: 'HIGH',
+          officialAssessment: false,
+        }),
+        expect.objectContaining({
+          code: 'OFFICIAL_ASSESSMENT_LOCK',
+          status: 'REQUIRES_REVIEW',
+          severity: 'HIGH',
+          officialAssessment: false,
+        }),
+      ]),
+    );
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,
