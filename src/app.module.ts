@@ -97,6 +97,12 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
 
         ALLOW_SETUP_ADMIN: Joi.string().valid('true', 'false').default('false'),
         SETUP_ADMIN_PASSWORD: Joi.string().optional(),
+        ENABLE_DEMO_FALLBACK: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
+        ALLOW_DEMO_SESSION: Joi.string()
+          .valid('true', 'false')
+          .default('false'),
 
         FRONTEND_BASE_URL: Joi.string().uri().optional(),
         PUBLIC_APP_URL: Joi.string().uri().optional(),
