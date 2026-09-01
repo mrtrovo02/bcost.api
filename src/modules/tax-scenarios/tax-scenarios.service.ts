@@ -11,9 +11,34 @@ import {
 } from './tax-scenarios.types.js';
 
 const MEI_ANNUAL_LIMIT = 81_000;
+const SIMPLES_ANNUAL_LIMIT = 4_800_000;
 const FACTOR_R_THRESHOLD = 28;
 const CBS_INFORMATIVE_2026 = 0.009;
 const IBS_INFORMATIVE_2026 = 0.001;
+
+type SimplesBracket = {
+  upperLimit: number;
+  nominalRate: number;
+  deduction: number;
+};
+
+const SIMPLES_ANNEX_III_BRACKETS: SimplesBracket[] = [
+  { upperLimit: 180_000, nominalRate: 0.06, deduction: 0 },
+  { upperLimit: 360_000, nominalRate: 0.112, deduction: 9_360 },
+  { upperLimit: 720_000, nominalRate: 0.135, deduction: 17_640 },
+  { upperLimit: 1_800_000, nominalRate: 0.16, deduction: 35_640 },
+  { upperLimit: 3_600_000, nominalRate: 0.21, deduction: 125_640 },
+  { upperLimit: 4_800_000, nominalRate: 0.33, deduction: 648_000 },
+];
+
+const SIMPLES_ANNEX_V_BRACKETS: SimplesBracket[] = [
+  { upperLimit: 180_000, nominalRate: 0.155, deduction: 0 },
+  { upperLimit: 360_000, nominalRate: 0.18, deduction: 4_500 },
+  { upperLimit: 720_000, nominalRate: 0.195, deduction: 9_900 },
+  { upperLimit: 1_800_000, nominalRate: 0.205, deduction: 17_100 },
+  { upperLimit: 3_600_000, nominalRate: 0.23, deduction: 62_100 },
+  { upperLimit: 4_800_000, nominalRate: 0.305, deduction: 540_000 },
+];
 
 @Injectable()
 export class TaxScenariosService {
@@ -52,6 +77,7 @@ export class TaxScenariosService {
       best?.model ?? 'PF',
       comparisons,
       factorRPercentage,
+      annualRevenue,
     );
 
     return {
@@ -96,6 +122,11 @@ export class TaxScenariosService {
       },
       recommendation,
       guardrails: [
+        ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
+          ? [
+              'Receita anualizada acima de R$ 4,8 milhões bloqueia recomendação automática de Simples Nacional; exigir RBT12 real e revisão contábil.',
+            ]
+          : []),
         'Não prometer economia tributária sem validar CNAE, município, regime, pró-labore, folha e documentos fiscais.',
         'Abertura, migração ou alteração de empresa exige validação de contador responsável e evidências oficiais.',
         'Simulação PF x PJ não contempla todos os cenários de retenções, ISS fixo, benefícios fiscais, atividades reguladas ou regimes específicos.',
@@ -187,15 +218,60 @@ export class TaxScenariosService {
       'CONSULTING',
       'SERVICE_PROVIDER',
     ].includes(input.activity);
-    const nominalRate = serviceActivity
-      ? factorRPercentage >= FACTOR_R_THRESHOLD
-        ? 0.06
-        : 0.155
-      : 0.06;
-    const estimatedTax = this.money(annualRevenue * nominalRate);
+    if (annualRevenue > SIMPLES_ANNUAL_LIMIT) {
+      return this.buildCalculation({
+        model: 'SIMPLES_NACIONAL',
+        eligibilityStatus: 'INELIGIBLE',
+        legalBasis: [
+          'Lei Complementar 123/2006, art. 3º, II: limite de receita bruta anual de R$ 4.800.000,00 para EPP.',
+        ],
+        annualRevenue,
+        annualDeductibleExpenses: 0,
+        annualPayroll,
+        taxableBase: annualRevenue,
+        estimatedTax: -1,
+        warnings: [
+          'Simples Nacional bloqueado: receita anualizada supera R$ 4.800.000,00. Use Lucro Presumido/Lucro Real ou valide RBT12 real com contador responsável.',
+        ],
+        components: [
+          {
+            code: 'SIMPLES_REVENUE_LIMIT_BLOCKED',
+            label: 'Limite anual do Simples Nacional excedido',
+            amount: 0,
+            basis:
+              'LC 123/2006, art. 3º, II; motor não recomenda Simples quando a receita anualizada ultrapassa R$ 4,8 milhões.',
+          },
+        ],
+      });
+    }
+
+    const annex =
+      serviceActivity && factorRPercentage < FACTOR_R_THRESHOLD
+        ? 'ANEXO_V'
+        : 'ANEXO_III';
+    const bracket = this.resolveSimplesBracket(
+      annualRevenue,
+      annex === 'ANEXO_III'
+        ? SIMPLES_ANNEX_III_BRACKETS
+        : SIMPLES_ANNEX_V_BRACKETS,
+    );
+    const effectiveRate =
+      annualRevenue > 0
+        ? Math.max(
+            0,
+            (annualRevenue * bracket.nominalRate - bracket.deduction) /
+              annualRevenue,
+          )
+        : 0;
+    const estimatedTax = this.money(annualRevenue * effectiveRate);
 
     return this.buildCalculation({
       model: 'SIMPLES_NACIONAL',
+      eligibilityStatus: 'ELIGIBLE',
+      legalBasis: [
+        'Lei Complementar 123/2006, art. 18: alíquota efetiva = (RBT12 x alíquota nominal - parcela a deduzir) / RBT12.',
+        'Lei Complementar 123/2006, Anexos III e V: aplicação conforme atividade e Fator R.',
+      ],
       annualRevenue,
       annualDeductibleExpenses: 0,
       annualPayroll,
@@ -212,16 +288,17 @@ export class TaxScenariosService {
       components: [
         {
           code:
-            factorRPercentage >= FACTOR_R_THRESHOLD
-              ? 'SIMPLES_FACTOR_R_REVIEW'
-              : 'SIMPLES_SERVICE_ESTIMATE',
+            annex === 'ANEXO_III'
+              ? 'SIMPLES_ANNEX_III_EFFECTIVE_RATE'
+              : 'SIMPLES_ANNEX_V_EFFECTIVE_RATE',
           label:
-            factorRPercentage >= FACTOR_R_THRESHOLD
-              ? 'Simples estimado com revisão de Fator R'
-              : 'Simples estimado para serviço',
+            annex === 'ANEXO_III'
+              ? 'Simples Nacional estimado pelo Anexo III'
+              : 'Simples Nacional estimado pelo Anexo V',
           amount: estimatedTax,
-          rate: nominalRate,
-          basis: 'Triagem comercial baseada em receita anualizada e Fator R.',
+          rate: this.round(effectiveRate, 6),
+          basis:
+            'Estimativa com fórmula de alíquota efetiva da LC 123/2006, dependente de RBT12, anexo, alíquota nominal e parcela a deduzir.',
         },
       ],
     });
@@ -278,6 +355,7 @@ export class TaxScenariosService {
     bestModel: TaxScenarioModel,
     comparisons: TaxScenarioCalculation[],
     factorRPercentage: number,
+    annualRevenue: number,
   ): TaxScenarioRecommendation {
     const current = input.currentModel;
     const currentResult = comparisons.find((item) => item.model === current);
@@ -286,6 +364,27 @@ export class TaxScenariosService {
       currentResult && bestResult
         ? this.money(bestResult.netAnnualResult - currentResult.netAnnualResult)
         : 0;
+
+    if (annualRevenue > SIMPLES_ANNUAL_LIMIT) {
+      return {
+        decision: 'ASSISTED_TAX_PLANNING_REQUIRED',
+        title: 'Simples Nacional bloqueado pelo limite de receita',
+        rationale: [
+          'A receita anualizada supera R$ 4.800.000,00, limite geral de EPP para permanência no Simples Nacional.',
+          `Modelo elegível com melhor resultado estimado: ${bestModel}.`,
+        ],
+        requiredEvidence: [
+          'RBT12 oficial dos últimos 12 meses',
+          'CNAE e segregação de receitas',
+          'Município, retenções e ISS aplicável',
+        ],
+        nextActions: [
+          'Bloquear proposta automática de Simples Nacional',
+          'Rodar comparativo Lucro Presumido x Lucro Real',
+          'Submeter revisão de contador responsável',
+        ],
+      };
+    }
 
     if (factorRPercentage > 0 && factorRPercentage < FACTOR_R_THRESHOLD) {
       return {
@@ -386,6 +485,16 @@ export class TaxScenariosService {
     if (annualBase <= 45_012.6) return annualBase * 0.15 - 4_577.27;
     if (annualBase <= 55_976.16) return annualBase * 0.225 - 7_953.21;
     return annualBase * 0.275 - 10_752.02;
+  }
+
+  private resolveSimplesBracket(
+    annualRevenue: number,
+    brackets: SimplesBracket[],
+  ): SimplesBracket {
+    return (
+      brackets.find((bracket) => annualRevenue <= bracket.upperLimit) ??
+      brackets[brackets.length - 1]
+    );
   }
 
   private money(value: number): number {

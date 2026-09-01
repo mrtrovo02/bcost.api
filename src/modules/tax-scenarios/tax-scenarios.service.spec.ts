@@ -53,6 +53,32 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('bloqueia recomendação de Simples Nacional quando receita anualizada ultrapassa R$ 4,8 milhões', () => {
+    const result = service.simulate({
+      activity: 'LEGAL',
+      monthlyRevenue: 520_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 150_000,
+      dependents: 5,
+      currentModel: 'PF',
+    });
+    const simples = result.comparisons.find(
+      (item) => item.model === 'SIMPLES_NACIONAL',
+    );
+
+    expect(result.factorR.percentage).toBe(28.85);
+    expect(result.bestEstimatedModel).not.toBe('SIMPLES_NACIONAL');
+    expect(result.recommendation.title).toBe(
+      'Simples Nacional bloqueado pelo limite de receita',
+    );
+    expect(simples?.eligibilityStatus).toBe('INELIGIBLE');
+    expect(simples?.estimatedTax).toBe(-1);
+    expect(simples?.warnings.join(' ')).toContain('R$ 4.800.000,00');
+    expect(result.guardrails.join(' ')).toContain(
+      'bloqueia recomendação automática de Simples Nacional',
+    );
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,

@@ -10,6 +10,8 @@ export type TaxScenarioModel =
 
 export type TaxScenarioCalculation = {
   model: TaxScenarioModel;
+  eligibilityStatus?: 'ELIGIBLE' | 'INELIGIBLE' | 'REQUIRES_REVIEW';
+  legalBasis?: string[];
   annualRevenue: number;
   annualDeductibleExpenses: number;
   annualPayroll: number;
