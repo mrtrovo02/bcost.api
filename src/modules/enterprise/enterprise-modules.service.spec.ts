@@ -240,4 +240,40 @@ describe('EnterpriseModulesService', () => {
       expect(item.automationBoundary).toBe('SOFTWARE_ONLY');
     }
   });
+
+  it('groups enterprise catalog into commercial lanes without selling roadmap as ready', () => {
+    const service = createService();
+    const catalog = service.listCatalog();
+    const lanes = service.listCommercialLanes();
+    const modulesInLanes = lanes.flatMap((lane) => lane.modules);
+
+    expect(lanes.map((lane) => lane.id)).toEqual([
+      'direct-sale',
+      'assisted-validation',
+      'blocked-roadmap',
+    ]);
+    expect(modulesInLanes.map((item) => item.slug).sort()).toEqual(
+      catalog.map((item) => item.slug).sort(),
+    );
+
+    const directSale = lanes.find((lane) => lane.id === 'direct-sale');
+    const assistedValidation = lanes.find((lane) => lane.id === 'assisted-validation');
+    const blockedRoadmap = lanes.find((lane) => lane.id === 'blocked-roadmap');
+
+    expect(directSale?.modules.length).toBeGreaterThan(0);
+    expect(assistedValidation?.modules.length).toBeGreaterThan(0);
+    expect(blockedRoadmap?.modules.length).toBeGreaterThan(0);
+
+    for (const item of directSale?.modules ?? []) {
+      expect(item.marketReadiness).toBe('SELLABLE');
+      expect(item.persistence).toBe('PRISMA');
+    }
+
+    for (const lane of [assistedValidation, blockedRoadmap]) {
+      for (const item of lane?.modules ?? []) {
+        expect(item.marketReadiness).toBe('ROADMAP_LOCKED');
+        expect(item.persistence).toBe('ROADMAP');
+      }
+    }
+  });
 });

@@ -30,6 +30,14 @@ export class EnterpriseModulesController {
     return this.service.listCatalog();
   }
 
+  @Get('commercial-lanes')
+  @ApiOperation({
+    summary: 'ENTERPRISE: Trilhas comerciais e operacionais dos módulos',
+  })
+  commercialLanes() {
+    return this.service.listCommercialLanes();
+  }
+
   @Get(':slug/:companyId/summary')
   @ApiOperation({
     summary: 'ENTERPRISE: Resumo de um módulo por empresa',

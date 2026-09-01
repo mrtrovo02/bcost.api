@@ -80,6 +80,11 @@ type EnterpriseCatalogPersistence = 'PRISMA' | 'ROADMAP';
 
 type EnterpriseMarketReadiness = 'SELLABLE' | 'ROADMAP_LOCKED';
 
+type EnterpriseCommercialLaneId =
+  | 'direct-sale'
+  | 'assisted-validation'
+  | 'blocked-roadmap';
+
 type EnterpriseCatalogItem = {
   slug: string;
   model: string;
@@ -92,6 +97,17 @@ type EnterpriseCatalogItem = {
   canonicalOwner?: string;
   automationBoundary?: RoadmapAutomationBoundary;
   operationalGuardrails?: string[];
+};
+
+type EnterpriseCommercialLane = {
+  id: EnterpriseCommercialLaneId;
+  title: string;
+  description: string;
+  marketReadiness: EnterpriseMarketReadiness;
+  automationBoundaries: RoadmapAutomationBoundary[];
+  modules: EnterpriseCatalogItem[];
+  primaryAction: string;
+  operationalGate: string;
 };
 
 type EnterpriseModuleRecord = Record<string, unknown>;
@@ -712,6 +728,74 @@ export class EnterpriseModulesService {
     return [...persisted, ...roadmap].sort((a, b) =>
       a.slug.localeCompare(b.slug),
     );
+  }
+
+  listCommercialLanes(): EnterpriseCommercialLane[] {
+    const catalog = this.listCatalog();
+    const assistedBoundaries: RoadmapAutomationBoundary[] = [
+      'ASSISTED_AUTOMATION',
+      'CRC_VALIDATED',
+    ];
+    const blockedBoundaries: RoadmapAutomationBoundary[] = [
+      'SOFTWARE_ONLY',
+      'HUMAN_LED',
+    ];
+
+    return [
+      {
+        id: 'direct-sale',
+        title: 'Venda direta',
+        description:
+          'Módulos persistidos, autenticados e aptos para proposta comercial com cliente real.',
+        marketReadiness: 'SELLABLE',
+        automationBoundaries: ['SOFTWARE_ONLY'],
+        modules: catalog.filter((item) => item.marketReadiness === 'SELLABLE'),
+        primaryAction: 'Abrir módulo',
+        operationalGate:
+          'Exige plano ativo, empresa autorizada, tenant validado e endpoint produtivo.',
+      },
+      {
+        id: 'assisted-validation',
+        title: 'Validação assistida',
+        description:
+          'Módulos de roadmap que podem ser discutidos com escopo, evidência e validação humana.',
+        marketReadiness: 'ROADMAP_LOCKED',
+        automationBoundaries: assistedBoundaries,
+        modules: catalog.filter(
+          (item) =>
+            item.marketReadiness === 'ROADMAP_LOCKED' &&
+            this.hasAutomationBoundary(item, assistedBoundaries),
+        ),
+        primaryAction: 'Validar escopo assistido',
+        operationalGate:
+          'Exige SLA interno, evidência fiscal, aceite explícito e validação de contador responsável.',
+      },
+      {
+        id: 'blocked-roadmap',
+        title: 'Roadmap bloqueado',
+        description:
+          'Serviços que não devem ser vendidos como automação pronta até fechar arquitetura e compliance.',
+        marketReadiness: 'ROADMAP_LOCKED',
+        automationBoundaries: blockedBoundaries,
+        modules: catalog.filter(
+          (item) =>
+            item.marketReadiness === 'ROADMAP_LOCKED' &&
+            this.hasAutomationBoundary(item, blockedBoundaries),
+        ),
+        primaryAction: 'Planejar entrega',
+        operationalGate:
+          'Exige endpoint oficial, integração homologada, teste de compliance e roteiro operacional.',
+      },
+    ];
+  }
+
+  private hasAutomationBoundary(
+    item: EnterpriseCatalogItem,
+    boundaries: RoadmapAutomationBoundary[],
+  ): boolean {
+    return item.automationBoundary
+      ? boundaries.includes(item.automationBoundary)
+      : false;
   }
 
   private buildPersistedCatalogItem(
