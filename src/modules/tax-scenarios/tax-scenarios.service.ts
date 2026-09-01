@@ -395,7 +395,7 @@ export class TaxScenariosService {
     const currentResult = comparisons.find((item) => item.model === current);
     const bestResult = comparisons.find((item) => item.model === bestModel);
     const potentialGain =
-      currentResult && bestResult
+      currentResult && bestResult && this.isSavingsComparable(currentResult)
         ? this.money(bestResult.netAnnualResult - currentResult.netAnnualResult)
         : 0;
 
@@ -538,6 +538,14 @@ export class TaxScenariosService {
       netAnnualResult,
       monthlyNetResult: this.money(netAnnualResult / 12),
     };
+  }
+
+  private isSavingsComparable(calculation: TaxScenarioCalculation): boolean {
+    return (
+      calculation.estimatedTax >= 0 &&
+      calculation.eligibilityStatus !== 'INELIGIBLE' &&
+      calculation.eligibilityStatus !== 'REQUIRES_REVIEW'
+    );
   }
 
   private progressiveIrpf(annualBase: number): number {

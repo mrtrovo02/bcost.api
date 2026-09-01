@@ -109,6 +109,22 @@ describe('TaxScenariosService', () => {
     expect(lucroPresumido?.netAnnualResult).toBeLessThan(0);
   });
 
+  it('não informa ganho anual contra modelo atual inelegível', () => {
+    const result = service.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'MEI',
+    });
+
+    expect(result.bestEstimatedModel).toBe('PF');
+    expect(result.recommendation.rationale.join(' ')).not.toContain(
+      'Ganho anual estimado',
+    );
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,
