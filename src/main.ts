@@ -32,6 +32,7 @@ import {
   resolveCorsOriginsFromConfig,
   shouldEnableSwagger,
 } from './common/config/http-runtime.config.js';
+import { BCOST_ALLOWED_CORS_HEADERS } from './common/config/cors-headers.config.js';
 import {
   contextStorage,
   RequestContextStore,
@@ -339,14 +340,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
       origin: resolveCorsOriginsFromConfig(config, isProd),
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       credentials: true,
-      allowedHeaders: [
-        'Content-Type',
-        'Authorization',
-        'x-bcost-trace-id',
-        'x-company-id',
-        'companyid',
-        'CompanyId',
-      ],
+      allowedHeaders: [...BCOST_ALLOWED_CORS_HEADERS],
       exposedHeaders: [
         'x-bcost-trace-id',
         'x-cache',
