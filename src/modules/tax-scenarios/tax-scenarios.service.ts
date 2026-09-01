@@ -53,7 +53,7 @@ export class TaxScenariosService {
 
     const comparisons = [
       this.calculatePf(input, annualRevenue, annualExpenses),
-      this.calculateMei(annualRevenue),
+      this.calculateMei(annualRevenue, annualPayroll),
       this.calculateSimples(
         input,
         annualRevenue,
@@ -63,7 +63,10 @@ export class TaxScenariosService {
       this.calculateLucroPresumido(input, annualRevenue),
     ];
     const viableComparisons = comparisons.filter(
-      (item) => item.estimatedTax >= 0,
+      (item) =>
+        item.estimatedTax >= 0 &&
+        item.eligibilityStatus !== 'INELIGIBLE' &&
+        item.eligibilityStatus !== 'REQUIRES_REVIEW',
     );
     const best = [...viableComparisons].sort(
       (a, b) => b.netAnnualResult - a.netAnnualResult,
@@ -178,29 +181,56 @@ export class TaxScenariosService {
     });
   }
 
-  private calculateMei(annualRevenue: number): TaxScenarioCalculation {
+  private calculateMei(
+    annualRevenue: number,
+    annualPayroll: number,
+  ): TaxScenarioCalculation {
     const overLimit = annualRevenue > MEI_ANNUAL_LIMIT;
-    const estimatedTax = overLimit ? -1 : this.money(85 * 12);
+    const payrollRequiresReview = annualPayroll > 0;
+    const estimatedTax =
+      overLimit || payrollRequiresReview ? -1 : this.money(85 * 12);
 
     return this.buildCalculation({
       model: 'MEI',
+      eligibilityStatus: overLimit
+        ? 'INELIGIBLE'
+        : payrollRequiresReview
+          ? 'REQUIRES_REVIEW'
+          : 'ELIGIBLE',
+      legalBasis: [
+        'Portal gov.br/Empresas e Negócios: MEI pode faturar até R$ 81.000,00 por ano e contratar no máximo um empregado que receba salário mínimo ou piso da categoria.',
+        'Resolução CGSN nº 140/2018, arts. 100, 101 e 105: ocupações permitidas e limites operacionais do SIMEI.',
+      ],
       annualRevenue,
       annualDeductibleExpenses: 0,
-      annualPayroll: 0,
+      annualPayroll,
       taxableBase: annualRevenue,
       estimatedTax,
-      warnings: overLimit
-        ? [
-            'Faturamento informado supera o limite anual usual do MEI; exige avaliação de desenquadramento.',
-          ]
-        : ['MEI depende de atividade permitida e demais limites legais.'],
+      warnings:
+        overLimit
+          ? [
+              'Faturamento informado supera o limite anual usual do MEI; exige avaliação de desenquadramento.',
+            ]
+          : payrollRequiresReview
+            ? [
+                'MEI bloqueado para recomendação automática: há folha informada e o sistema ainda não validou quantidade de empregados, piso da categoria e ocupação permitida.',
+              ]
+            : ['MEI depende de atividade permitida e demais limites legais.'],
       components: [
         {
-          code: 'MEI_FIXED_MONTHLY_DAS_ESTIMATE',
-          label: 'DAS mensal fixo estimado',
+          code:
+            overLimit || payrollRequiresReview
+              ? 'MEI_ELIGIBILITY_REVIEW_REQUIRED'
+              : 'MEI_FIXED_MONTHLY_DAS_ESTIMATE',
+          label:
+            overLimit || payrollRequiresReview
+              ? 'Elegibilidade MEI exige revisão'
+              : 'DAS mensal fixo estimado',
           amount: Math.max(0, estimatedTax),
           basis:
-            'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
+            overLimit || payrollRequiresReview
+              ? 'Motor bloqueia recomendação automática de MEI quando limite de receita ou folha informada impedem validação segura sem evidências adicionais.'
+              : 'Estimativa orientativa; valor real depende da atividade e legislação vigente.',
         },
       ],
     });

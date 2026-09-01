@@ -79,6 +79,24 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('bloqueia recomendação automática de MEI quando existe folha informada sem validação operacional', () => {
+    const result = service.simulate({
+      activity: 'TECHNOLOGY',
+      monthlyRevenue: 5_000,
+      monthlyDeductibleExpenses: 800,
+      monthlyPayroll: 16_000,
+      dependents: 3,
+      currentModel: 'PF',
+    });
+    const mei = result.comparisons.find((item) => item.model === 'MEI');
+
+    expect(result.factorR.percentage).toBe(320);
+    expect(result.bestEstimatedModel).not.toBe('MEI');
+    expect(mei?.eligibilityStatus).toBe('REQUIRES_REVIEW');
+    expect(mei?.estimatedTax).toBe(-1);
+    expect(mei?.warnings.join(' ')).toContain('folha informada');
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,
