@@ -275,5 +275,22 @@ describe('EnterpriseModulesService', () => {
         expect(item.persistence).toBe('ROADMAP');
       }
     }
+
+    for (const lane of lanes) {
+      expect(lane.summary.total).toBe(lane.modules.length);
+      expect(lane.summary.critical).toBe(
+        lane.modules.filter((item) => item.priority === 'CRITICAL').length,
+      );
+      expect(lane.summary.high).toBe(
+        lane.modules.filter((item) => item.priority === 'HIGH').length,
+      );
+      expect(lane.summary.regulated).toBe(
+        lane.modules.filter((item) =>
+          ['ASSISTED_AUTOMATION', 'CRC_VALIDATED', 'HUMAN_LED'].includes(
+            item.automationBoundary ?? '',
+          ),
+        ).length,
+      );
+    }
   });
 });
