@@ -1056,6 +1056,7 @@ export class TaxScenariosService {
         documentChecklist,
         complianceTrail,
       ),
+      validUntil: this.resolvePreProposalValidityDate(),
       title,
       ctaLabel: this.resolvePreProposalCtaLabel(status, checkoutAllowed),
       nextRoute: this.resolvePreProposalRoute(status, checkoutAllowed),
@@ -1065,12 +1066,23 @@ export class TaxScenariosService {
       documentChecklist,
       blockingReasons: complianceTrail.commercialDecision.blockedRuleCodes,
       reviewReasons: complianceTrail.commercialDecision.reviewRuleCodes,
+      refreshTriggers: [
+        'Alteração de faturamento, folha, pró-labore, dependentes, CNAE, município ou regime atual.',
+        'Recebimento de RBT12 oficial, XMLs, notas, retenções, extratos ou escrituração que divirjam dos valores simulados.',
+        'Publicação de ato legal, nota técnica, tabela ou orientação fiscal que altere alíquotas, limites, anexos ou obrigações aplicáveis.',
+      ],
       legalTerms: [
         'Pré-proposta condicionada à validação documental, CNAE, município, RBT12, retenções, folha/pró-labore e revisão de contador responsável.',
         'A simulação é estimativa de triagem e não representa apuração oficial, parecer tributário definitivo ou promessa de economia.',
         'Contratação, abertura, migração, enquadramento e desenquadramento devem manter evidências arquivadas para trilha de auditoria.',
       ],
     };
+  }
+
+  private resolvePreProposalValidityDate(): string {
+    const validUntil = new Date();
+    validUntil.setUTCDate(validUntil.getUTCDate() + 7);
+    return validUntil.toISOString();
   }
 
   private resolvePreProposalRiskLevel(

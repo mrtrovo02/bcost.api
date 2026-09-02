@@ -140,6 +140,7 @@ export type TaxScenarioPreProposal = {
     | 'BLOCKED_BY_COMPLIANCE';
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   readinessScore: number;
+  validUntil: string;
   title: string;
   ctaLabel: string;
   nextRoute:
@@ -152,6 +153,7 @@ export type TaxScenarioPreProposal = {
   documentChecklist: TaxScenarioPreProposalDocument[];
   blockingReasons: string[];
   reviewReasons: string[];
+  refreshTriggers: string[];
   legalTerms: string[];
 };
 

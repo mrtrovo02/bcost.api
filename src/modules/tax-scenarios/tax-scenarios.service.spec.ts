@@ -247,6 +247,12 @@ describe('TaxScenariosService', () => {
     expect(result.preProposal.legalTerms.join(' ')).toContain(
       'não representa apuração oficial',
     );
+    expect(new Date(result.preProposal.validUntil).getTime()).toBeGreaterThan(
+      Date.now(),
+    );
+    expect(result.preProposal.refreshTriggers.join(' ')).toContain(
+      'Alteração de faturamento',
+    );
   });
 
   it('bloqueia checkout quando o modelo atual possui regra crítica de compliance', () => {
