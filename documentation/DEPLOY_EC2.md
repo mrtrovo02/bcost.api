@@ -24,13 +24,13 @@ Backend:
 cd ~/bcost.api
 git status --short
 git fetch --all --prune
-git checkout fix/fase0-seguranca-ci
-git pull origin fix/fase0-seguranca-ci
+git checkout main
+git pull origin main
 npm ci
 npx prisma generate
 npx prisma migrate deploy
+npm run test:tax-scenarios
 npm run build
-npm run test
 pm2 restart bcost-api --update-env
 pm2 logs bcost-api --lines 80
 ```
@@ -45,6 +45,7 @@ git checkout main
 git pull origin main
 npm ci
 rm -rf .next
+npm run test:tax-scenarios
 npm run build
 pm2 restart bcost-web --update-env
 pm2 logs bcost-web --lines 80
@@ -81,7 +82,7 @@ scp -i ./ssh-nestjs-prod.pem deploy-YYYYMMDDHHMMSS.zip ec2-user@18.118.161.27:/h
 ssh -i ./ssh-nestjs-prod.pem ec2-user@18.118.161.27
 cd /home/ec2-user/bcost
 unzip -o deploy-YYYYMMDDHHMMSS.zip
-cd bcost.api && npm ci && npx prisma migrate deploy && npm run build
-cd ../bcost-web && npm ci && rm -rf .next && npm run build
+cd bcost.api && npm ci && npx prisma migrate deploy && npm run test:tax-scenarios && npm run build
+cd ../bcost-web && npm ci && rm -rf .next && npm run test:tax-scenarios && npm run build
 pm2 restart all
 ```
