@@ -11,6 +11,7 @@ import {
   TaxScenarioComplianceTrail,
   TaxScenarioModel,
   TaxScenarioRecommendation,
+  TaxScenarioServiceQualification,
   TaxScenarioSimulationResponse,
 } from './tax-scenarios.types.js';
 
@@ -103,6 +104,11 @@ export class TaxScenariosService {
       factorRPercentage,
       requiredPayrollForThreshold,
     );
+    const serviceQualification = this.buildServiceQualification(
+      recommendation,
+      complianceTrail,
+      best?.model ?? 'PF',
+    );
 
     return {
       status: 'OK',
@@ -147,6 +153,7 @@ export class TaxScenariosService {
       recommendation,
       complianceTrail,
       calculationAudit,
+      serviceQualification,
       guardrails: [
         ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? [
@@ -921,6 +928,97 @@ export class TaxScenariosService {
       version: 'tax-scenarios-calculation-audit-2026.1',
       generatedAt: new Date().toISOString(),
       lines,
+    };
+  }
+
+  private buildServiceQualification(
+    recommendation: TaxScenarioRecommendation,
+    complianceTrail: TaxScenarioComplianceTrail,
+    bestModel: TaxScenarioModel,
+  ): TaxScenarioServiceQualification {
+    const commercialDecision = complianceTrail.commercialDecision;
+    const missingEvidence = Array.from(
+      new Set(
+        complianceTrail.rules
+          .filter(
+            (rule) =>
+              rule.status === 'BLOCKED' ||
+              rule.status === 'REQUIRES_REVIEW',
+          )
+          .flatMap((rule) => rule.evidenceRequired),
+      ),
+    );
+
+    if (commercialDecision.status === 'BLOCKED_BY_COMPLIANCE') {
+      return {
+        stage: 'BLOCKED',
+        primaryOffer: {
+          sku: 'COMPLIANCE_BLOCKER_REVIEW',
+          title: 'Revisão de bloqueio fiscal antes da proposta',
+          checkoutMode: 'BLOCKED',
+        },
+        allowedActions: [
+          'REQUEST_DOCUMENTS',
+          'SCHEDULE_CRC_REVIEW',
+          'BLOCK_AUTOMATIC_CHECKOUT',
+        ],
+        missingEvidence,
+        salesWarnings: [
+          'Não apresentar economia, migração ou enquadramento enquanto houver regra crítica bloqueada.',
+          ...commercialDecision.reasons,
+        ],
+      };
+    }
+
+    if (bestModel === 'PF') {
+      return {
+        stage: 'NEEDS_DISCOVERY',
+        primaryOffer: {
+          sku: 'PF_TAX_REVIEW',
+          title: 'Revisão fiscal PF e livro caixa',
+          checkoutMode: 'SALES_REVIEW_ONLY',
+        },
+        allowedActions: ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+        missingEvidence,
+        salesWarnings: [
+          'Não vender abertura ou migração PJ com base neste cenário preliminar.',
+          'Oferta indicada: diagnóstico PF, livro caixa, retenções e validação documental.',
+        ],
+      };
+    }
+
+    if (recommendation.decision === 'SIMPLES_WITH_FACTOR_R_REVIEW') {
+      return {
+        stage: 'NEEDS_DISCOVERY',
+        primaryOffer: {
+          sku: 'TAX_REGIME_CRC_REVIEW',
+          title: 'Revisão CRC de Fator R e regime tributário',
+          checkoutMode: 'SALES_REVIEW_ONLY',
+        },
+        allowedActions: ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+        missingEvidence,
+        salesWarnings: [
+          'Não prometer enquadramento no Anexo III antes de validar folha, pró-labore e RBT12.',
+        ],
+      };
+    }
+
+    return {
+      stage: 'QUALIFIED_LEAD',
+      primaryOffer: {
+        sku: 'PJ_MIGRATION_STUDY',
+        title: 'Estudo assistido de abertura ou migração PJ',
+        checkoutMode: commercialDecision.canGenerateProposal
+          ? 'ASSISTED_CHECKOUT'
+          : 'SALES_REVIEW_ONLY',
+      },
+      allowedActions: commercialDecision.canGenerateProposal
+        ? ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW', 'CREATE_ASSISTED_PROPOSAL']
+        : ['REQUEST_DOCUMENTS', 'SCHEDULE_CRC_REVIEW'],
+      missingEvidence,
+      salesWarnings: [
+        'Proposta deve manter cláusula de estimativa e revisão CRC antes de enquadramento definitivo.',
+      ],
     };
   }
 

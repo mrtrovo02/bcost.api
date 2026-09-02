@@ -199,6 +199,53 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('qualifica a oferta comercial sem permitir venda automática quando PF permanece melhor', () => {
+    const result = service.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'PF',
+    });
+
+    expect(result.serviceQualification).toMatchObject({
+      stage: 'NEEDS_DISCOVERY',
+      primaryOffer: {
+        sku: 'PF_TAX_REVIEW',
+        checkoutMode: 'SALES_REVIEW_ONLY',
+      },
+    });
+    expect(result.serviceQualification.allowedActions).toContain(
+      'SCHEDULE_CRC_REVIEW',
+    );
+    expect(result.serviceQualification.salesWarnings.join(' ')).toContain(
+      'Não vender abertura ou migração PJ',
+    );
+  });
+
+  it('bloqueia checkout quando o modelo atual possui regra crítica de compliance', () => {
+    const result = service.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'MEI',
+    });
+
+    expect(result.serviceQualification).toMatchObject({
+      stage: 'BLOCKED',
+      primaryOffer: {
+        sku: 'COMPLIANCE_BLOCKER_REVIEW',
+        checkoutMode: 'BLOCKED',
+      },
+    });
+    expect(result.serviceQualification.allowedActions).toContain(
+      'BLOCK_AUTOMATIC_CHECKOUT',
+    );
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,

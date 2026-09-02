@@ -101,6 +101,30 @@ export type TaxScenarioCalculationAudit = {
   lines: TaxCalculationAuditLine[];
 };
 
+export type TaxScenarioServiceQualification = {
+  stage: 'QUALIFIED_LEAD' | 'NEEDS_DISCOVERY' | 'BLOCKED';
+  primaryOffer: {
+    sku:
+      | 'PF_TAX_REVIEW'
+      | 'TAX_REGIME_CRC_REVIEW'
+      | 'PJ_MIGRATION_STUDY'
+      | 'COMPLIANCE_BLOCKER_REVIEW';
+    title: string;
+    checkoutMode:
+      | 'ASSISTED_CHECKOUT'
+      | 'SALES_REVIEW_ONLY'
+      | 'BLOCKED';
+  };
+  allowedActions: Array<
+    | 'REQUEST_DOCUMENTS'
+    | 'SCHEDULE_CRC_REVIEW'
+    | 'CREATE_ASSISTED_PROPOSAL'
+    | 'BLOCK_AUTOMATIC_CHECKOUT'
+  >;
+  missingEvidence: string[];
+  salesWarnings: string[];
+};
+
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -127,6 +151,7 @@ export type TaxScenarioSimulationResponse = {
   recommendation: TaxScenarioRecommendation;
   complianceTrail: TaxScenarioComplianceTrail;
   calculationAudit: TaxScenarioCalculationAudit;
+  serviceQualification: TaxScenarioServiceQualification;
   guardrails: string[];
   generatedAt: string;
 };
