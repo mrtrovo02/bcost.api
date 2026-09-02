@@ -3,6 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { SimulateTaxScenarioDto } from './dto/simulate-tax-scenario.dto.js';
+import { TAX_SCENARIO_REGRESSION_SUITE } from './tax-scenarios.regression-fixtures.js';
 import {
   TaxCalculationAuditLine,
   TaxComplianceRuleEvaluation,
@@ -119,6 +120,12 @@ export class TaxScenariosService {
 
     return {
       status: 'OK',
+      regressionSuite: {
+        version: TAX_SCENARIO_REGRESSION_SUITE.version,
+        owner: TAX_SCENARIO_REGRESSION_SUITE.owner,
+        coveredRules: TAX_SCENARIO_REGRESSION_SUITE.coveredRules,
+        blockingCriticalities: TAX_SCENARIO_REGRESSION_SUITE.blockingCriticalities,
+      },
       input,
       assumptions: [
         {

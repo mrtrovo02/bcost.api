@@ -159,6 +159,12 @@ export type TaxScenarioPreProposal = {
 
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
+  regressionSuite: {
+    version: string;
+    owner: 'tax-scenarios';
+    coveredRules: string[];
+    blockingCriticalities: string[];
+  };
   input: SimulateTaxScenarioDto;
   assumptions: {
     code: string;

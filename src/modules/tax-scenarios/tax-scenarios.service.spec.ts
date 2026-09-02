@@ -22,6 +22,13 @@ describe('TaxScenariosService', () => {
     });
 
     expect(result.status).toBe('OK');
+    expect(result.regressionSuite).toMatchObject({
+      version: 'tax-scenarios-regression-2026.1',
+      owner: 'tax-scenarios',
+    });
+    expect(result.regressionSuite.coveredRules).toContain(
+      'FACTOR_R_THRESHOLD_28_PERCENT',
+    );
     expect(result.comparisons.map((item) => item.model)).toEqual([
       'PF',
       'MEI',
