@@ -1,6 +1,7 @@
 'use strict';
 
 import { TaxScenariosService } from './tax-scenarios.service.js';
+import { TAX_SCENARIO_REGRESSION_FIXTURES } from './tax-scenarios.regression-fixtures.js';
 
 describe('TaxScenariosService', () => {
   let service: TaxScenariosService;
@@ -299,5 +300,39 @@ describe('TaxScenariosService', () => {
 
     expect(service.scenarioId(input)).toBe(service.scenarioId(input));
     expect(service.scenarioId(input)).toMatch(/^[a-f0-9]{16}$/);
+  });
+
+  describe('fixtures regressivas de QA tributário', () => {
+    it.each(TAX_SCENARIO_REGRESSION_FIXTURES)(
+      'preserva contrato fiscal $id',
+      (fixture) => {
+        const result = service.simulate(fixture.input);
+
+        expect(result.bestEstimatedModel).toBe(fixture.expected.bestEstimatedModel);
+        expect(result.factorR.percentage).toBe(fixture.expected.factorRPercentage);
+        expect(result.factorR.requiredPayrollForThreshold).toBe(
+          fixture.expected.requiredPayrollForThreshold,
+        );
+        expect(result.reformImpact.estimatedCbs).toBe(
+          fixture.expected.cbsInformative2026,
+        );
+        expect(result.reformImpact.estimatedIbs).toBe(
+          fixture.expected.ibsInformative2026,
+        );
+        expect(result.complianceTrail.officialAssessment).toBe(false);
+        expect(result.calculationAudit.lines.length).toBeGreaterThan(0);
+
+        Object.entries(fixture.expected.comparisons).forEach(
+          ([model, expectedComparison]) => {
+            const comparison = result.comparisons.find(
+              (item) => item.model === model,
+            );
+
+            expect(comparison).toBeDefined();
+            expect(comparison).toMatchObject(expectedComparison);
+          },
+        );
+      },
+    );
   });
 });

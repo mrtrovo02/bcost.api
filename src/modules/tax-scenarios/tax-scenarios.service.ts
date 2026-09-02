@@ -504,45 +504,24 @@ export class TaxScenariosService {
       };
     }
 
-    if (bestModel !== 'PF') {
-      return {
-        decision: 'PJ_SIMULATION_RECOMMENDED',
-        title: 'Estrutura PJ merece análise assistida',
-        rationale: [
-          `Modelo com melhor resultado estimado: ${bestModel}.`,
-          potentialGain > 0
-            ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
-            : 'A comparação indica necessidade de detalhamento antes de decisão.',
-        ],
-        requiredEvidence: [
-          'CNAE pretendido',
-          'Município de prestação',
-          'Notas/recibos recentes',
-        ],
-        nextActions: [
-          'Rodar onboarding de abertura/migração',
-          'Validar regime tributário',
-          'Gerar proposta assistida',
-        ],
-      };
-    }
-
     return {
-      decision: 'ASSISTED_TAX_PLANNING_REQUIRED',
-      title: 'Planejamento tributário assistido recomendado',
+      decision: 'PJ_SIMULATION_RECOMMENDED',
+      title: 'Estrutura PJ merece análise assistida',
       rationale: [
-        'O cenário não deve ser convertido automaticamente em decisão operacional.',
-        'A estrutura ideal depende de atividade, município, deduções, retenções e obrigações acessórias.',
+        `Modelo com melhor resultado estimado: ${bestModel}.`,
+        potentialGain > 0
+          ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+          : 'A comparação indica necessidade de detalhamento antes de decisão.',
       ],
       requiredEvidence: [
-        'Receitas por fonte',
-        'Despesas dedutíveis',
-        'Dependentes e retenções',
+        'CNAE pretendido',
+        'Município de prestação',
+        'Notas/recibos recentes',
       ],
       nextActions: [
-        'Solicitar documentos',
-        'Validar base legal',
-        'Emitir parecer contábil',
+        'Rodar onboarding de abertura/migração',
+        'Validar regime tributário',
+        'Gerar proposta assistida',
       ],
     };
   }
