@@ -16,6 +16,7 @@ import { PrismaService } from '../database/prisma.service.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { CompanyRole, TaxRegime } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { TwoFAService } from './2fa.service.js';
 
@@ -85,6 +86,7 @@ interface JwtSignPayload {
   email: string;
   companyId: string | null;
   role: CompanyRole | null;
+  jti: string;
 }
 
 interface MfaSessionPayload {
@@ -426,6 +428,7 @@ export class AuthService {
       email: user.email,
       companyId: membership.companyId,
       role: membership.role,
+      jti: randomUUID(),
     };
 
     const access_token = this.jwtService.sign(payload);
@@ -450,6 +453,7 @@ export class AuthService {
       email: user.email,
       companyId: activeCompanyId,
       role: activeRole,
+      jti: randomUUID(),
     };
 
     const access_token = this.jwtService.sign(jwtPayload);

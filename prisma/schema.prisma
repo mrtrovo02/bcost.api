@@ -27,9 +27,23 @@ model User {
   acknowledgerNotifications NotificationLog[] @relation("notification_acknowledger")
   recipientNotifications    NotificationLog[] @relation("notification_recipient")
   sessions                  UserSession[]
+  blacklistedTokens         TokenBlacklist[]
 
   @@index([email])
   @@map("users")
+}
+
+model TokenBlacklist {
+  id        String   @id @default(uuid())
+  jti       String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([jti])
+  @@map("token_blacklist")
 }
 
 model UserSession {

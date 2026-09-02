@@ -14,6 +14,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service.js';
+import { TokenBlacklistService } from './token-blacklist.service.js';
 
 // ---------------------------------------------------------------------------
 // Interfaces exportadas
@@ -35,6 +36,10 @@ export interface JwtPayload {
   companyId: string | null;
   /** Role do usuário na empresa ativa */
   role: string | null;
+  /** Identificador unico do token para revogacao imediata via logout */
+  jti?: string;
+  /** Expiracao do JWT em epoch seconds */
+  exp?: number;
 }
 
 /**
@@ -74,6 +79,8 @@ export interface AuthenticatedUser {
     role: string;
     taxRegime: string;
   }>;
+  jti: string | null;
+  exp: number | null;
 }
 
 /**
@@ -106,6 +113,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     @Inject(ConfigService)
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly tokenBlacklist: TokenBlacklistService,
   ) {
     // Recuperação segura do segredo configurado no ambiente
     const secret = configService.get<string>('JWT_SECRET');
@@ -134,6 +142,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    * @param payload Objeto decodificado do JWT (sub, email, companyId, role)
    */
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
+    if (await this.tokenBlacklist.isBlacklisted(payload.jti)) {
+      throw new UnauthorizedException(
+        'Sessão revogada: faça login novamente para continuar.',
+      );
+    }
+
     // 1. Verifica existência e status do usuário em tempo real.
     //    Essencial para revogação imediata: mesmo com token válido,
     //    usuário desativado recebe 401 instantaneamente.
@@ -241,6 +255,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       rolesByCompany,
       role,
       companies,
+      jti: payload.jti ?? null,
+      exp: payload.exp ?? null,
     };
   }
 }

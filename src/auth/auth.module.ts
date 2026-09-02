@@ -10,6 +10,7 @@ import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { TwoFAController } from './2fa.controller.js';
 import { TwoFAService } from './2fa.service.js';
+import { TokenBlacklistService } from './token-blacklist.service.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { WsJwtGuard } from './guards/ws-jwt.guard.js';
 import { PrismaModule } from '../database/prisma.module.js';
@@ -84,11 +85,18 @@ function resolveJwtExpiresIn(configService: ConfigService): StringValue {
       },
     }),
   ],
-  providers: [AuthService, TwoFAService, JwtStrategy, WsJwtGuard],
+  providers: [
+    AuthService,
+    TwoFAService,
+    TokenBlacklistService,
+    JwtStrategy,
+    WsJwtGuard,
+  ],
   controllers: [AuthController, TwoFAController],
   exports: [
     AuthService,
     TwoFAService,
+    TokenBlacklistService,
     WsJwtGuard,
     JwtModule,
     PassportModule,

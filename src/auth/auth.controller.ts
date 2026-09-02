@@ -1,12 +1,15 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
+  Headers,
   Post,
   UseGuards,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -20,14 +23,32 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { SwitchCompanyDto } from './dto/switch-company.dto.js';
 import { VerifyMfaDto } from './dto/verify-2fa.dto.js';
+import { LogoutDto } from './dto/logout.dto.js';
+import { TokenBlacklistService } from './token-blacklist.service.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import { GetUser } from '../modules/auth/decorators/get-user.decorator.js';
 import { SkipCompanyCheck } from '../common/decorators/skip-company-check.decorator.js';
 
+interface LogoutUser {
+  id: string;
+  jti?: string | null;
+  exp?: number | null;
+}
+
+interface DecodedLogoutToken {
+  sub?: string;
+  jti?: string;
+  exp?: number;
+}
+
 @ApiTags('Auth') // Agrupa os endpoints de autenticação no Swagger
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly jwtService: JwtService,
+    private readonly tokenBlacklist: TokenBlacklistService,
+  ) {}
 
   /**
    * ROTA DE SETUP: Cria o administrador inicial.
@@ -83,6 +104,50 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revogar sessão JWT atual imediatamente' })
+  @ApiBody({ type: LogoutDto, required: false })
+  @ApiResponse({ status: 200, description: 'Logout efetuado com sucesso.' })
+  @ApiResponse({ status: 400, description: 'Token inválido para revogação.' })
+  async logout(
+    @GetUser() user: LogoutUser,
+    @Headers('authorization') authorization: string | undefined,
+    @Body() dto: LogoutDto = {},
+  ) {
+    const token = dto.token ?? this.extractBearerToken(authorization);
+    const decoded = this.decodeLogoutToken(token);
+    const jti = decoded.jti ?? user.jti;
+    const exp = decoded.exp ?? user.exp;
+
+    if (!jti || !exp) {
+      throw new BadRequestException({
+        message: 'Token sem jti/exp não pode ser revogado.',
+        code: 'AUTH-LOGOUT-TOKEN-INVALID',
+      });
+    }
+
+    if (decoded.sub && decoded.sub !== user.id) {
+      throw new BadRequestException({
+        message: 'Token informado não pertence ao usuário autenticado.',
+        code: 'AUTH-LOGOUT-SUBJECT-MISMATCH',
+      });
+    }
+
+    await this.tokenBlacklist.addToBlacklist(
+      jti,
+      user.id,
+      new Date(exp * 1000),
+    );
+
+    return {
+      message: 'Logged out successfully',
+      revokedAt: new Date().toISOString(),
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('me')
   @ApiBearerAuth() // Indica que esta rota requer token JWT
   @ApiOperation({ summary: 'Obter perfil do usuário autenticado' })
@@ -108,5 +173,31 @@ export class AuthController {
     @Body() dto: SwitchCompanyDto,
   ) {
     return this.authService.switchCompany(userId, dto.companyId);
+  }
+
+  private extractBearerToken(authorization: string | undefined): string | null {
+    const [type, token] = authorization?.split(' ') ?? [];
+
+    return type === 'Bearer' && token ? token : null;
+  }
+
+  private decodeLogoutToken(token: string | null): DecodedLogoutToken {
+    if (!token) {
+      return {};
+    }
+
+    const decoded = this.jwtService.decode(token);
+
+    if (!decoded || typeof decoded === 'string') {
+      return {};
+    }
+
+    const payload = decoded as Record<string, unknown>;
+
+    return {
+      sub: typeof payload.sub === 'string' ? payload.sub : undefined,
+      jti: typeof payload.jti === 'string' ? payload.jti : undefined,
+      exp: typeof payload.exp === 'number' ? payload.exp : undefined,
+    };
   }
 }

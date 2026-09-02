@@ -124,11 +124,14 @@ describe('AuthService MFA flow', () => {
     expect(response.access_token).toBe('access-token');
     expect(response.user.activeCompanyId).toBe('company-mfa-001');
     expect(response.user.companies).toHaveLength(1);
-    expect(mockJwtService.sign).toHaveBeenCalledWith({
-      sub: user.id,
-      email: user.email,
-      companyId: 'company-mfa-001',
-      role: CompanyRole.OWNER,
-    });
+    expect(mockJwtService.sign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sub: user.id,
+        email: user.email,
+        companyId: 'company-mfa-001',
+        role: CompanyRole.OWNER,
+        jti: expect.any(String),
+      }),
+    );
   });
 });
