@@ -19,6 +19,8 @@ function createExecutionContext(request: TestRequest): ExecutionContext {
   return {
     switchToHttp: () => ({
       getRequest: () => request,
+      getResponse: () => ({}),
+      getNext: () => undefined,
     }),
     getHandler: () => undefined,
     getClass: () => undefined,
@@ -63,6 +65,30 @@ describe('JwtAuthGuard', () => {
       activeCompanyId: 'demo-001',
       role: 'OWNER',
     });
+  });
+
+  it('does not accept demo session headers in production when demo fallback is disabled', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_DEMO_SESSION = 'false';
+    process.env.ENABLE_DEMO_FALLBACK = 'false';
+
+    const request: TestRequest = {
+      headers: {
+        authorization: 'Bearer demo-token-local',
+        'x-demo-session': 'true',
+      },
+    };
+    const guard = new JwtAuthGuard(createReflector());
+    const parentPrototype = Object.getPrototypeOf(JwtAuthGuard.prototype) as {
+      canActivate: (context: ExecutionContext) => boolean;
+    };
+    const parentCanActivateSpy = jest
+      .spyOn(parentPrototype, 'canActivate')
+      .mockReturnValueOnce(false);
+
+    expect(guard.canActivate(createExecutionContext(request))).toBe(false);
+    expect(parentCanActivateSpy).toHaveBeenCalledTimes(1);
+    expect(request.user).toBeUndefined();
   });
 
   it('keeps public routes bypassed without requiring demo headers', () => {
