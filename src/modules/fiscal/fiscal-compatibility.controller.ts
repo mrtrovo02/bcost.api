@@ -1,16 +1,16 @@
 'use strict';
 
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
-import { ApiKeyGuard } from '../../common/guards/api-key.guard';
-import { Public } from '../../common/decorators/public.decorator';
 import { CbsIbsEngineService } from './services/cbs-ibs-engine.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 
 @Controller('modules/fiscal')
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 export class FiscalCompatibilityController {
   constructor(private readonly cbsIbsEngine: CbsIbsEngineService) {}
 
-  @Public()
-  @UseGuards(ApiKeyGuard)
   @Get('tax-data')
   async getTaxData(
     @Query('company_id') companyIdFromQuery?: string,
@@ -35,8 +35,6 @@ export class FiscalCompatibilityController {
     };
   }
 
-  @Public()
-  @UseGuards(ApiKeyGuard)
   @Get('tax-data-compat')
   async getTaxDataCompat(
     @Query('company_id') companyIdFromQuery?: string,

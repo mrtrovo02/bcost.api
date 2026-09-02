@@ -19,6 +19,7 @@ import { FinanceOperationsEnterpriseController } from '../finance-operations-ent
 import { ComplianceController as FiscalComplianceController } from '../fiscal/compliance/compliance.controller.js';
 import { DashboardController as FiscalDashboardController } from '../fiscal/dashboard/dashboard.controller.js';
 import { DfeController } from '../fiscal/dfe/dfe.controller.js';
+import { FiscalCompatibilityController } from '../fiscal/fiscal-compatibility.controller.js';
 import { FiscalController } from '../fiscal/fiscal.controller.js';
 import { PayrollController as FiscalPayrollController } from '../fiscal/payroll/payroll.controller.js';
 import { TaxController } from '../fiscal/tax/tax.controller.js';
@@ -51,6 +52,7 @@ const COMPANY_SCOPED_ENTERPRISE_CONTROLLERS = [
   DfeController,
   FinanceOperationsEnterpriseController,
   FiscalComplianceController,
+  FiscalCompatibilityController,
   FiscalDashboardController,
   FiscalController,
   FiscalPayrollController,
