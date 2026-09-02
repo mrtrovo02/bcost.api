@@ -8,6 +8,8 @@ import type { StringValue } from 'ms';
 
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
+import { TwoFAController } from './2fa.controller.js';
+import { TwoFAService } from './2fa.service.js';
 import { JwtStrategy } from './jwt.strategy.js';
 import { WsJwtGuard } from './guards/ws-jwt.guard.js';
 import { PrismaModule } from '../database/prisma.module.js';
@@ -82,8 +84,15 @@ function resolveJwtExpiresIn(configService: ConfigService): StringValue {
       },
     }),
   ],
-  providers: [AuthService, JwtStrategy, WsJwtGuard],
-  controllers: [AuthController],
-  exports: [AuthService, WsJwtGuard, JwtModule, PassportModule, JwtStrategy],
+  providers: [AuthService, TwoFAService, JwtStrategy, WsJwtGuard],
+  controllers: [AuthController, TwoFAController],
+  exports: [
+    AuthService,
+    TwoFAService,
+    WsJwtGuard,
+    JwtModule,
+    PassportModule,
+    JwtStrategy,
+  ],
 })
 export class AuthModule {}

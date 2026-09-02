@@ -17,6 +17,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { CompanyRole, TaxRegime } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
+import { TwoFAService } from './2fa.service.js';
 
 // ---------------------------------------------------------------------------
 // Interfaces de contrato
@@ -53,6 +54,19 @@ export interface LoginResponse {
   };
 }
 
+export interface MfaRequiredResponse {
+  access_token: null;
+  mfaRequired: true;
+  mfaSession: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  };
+}
+
+export type AuthLoginResponse = LoginResponse | MfaRequiredResponse;
+
 export interface SwitchCompanyResponse {
   access_token: string;
   activeCompanyId: string;
@@ -73,6 +87,34 @@ interface JwtSignPayload {
   role: CompanyRole | null;
 }
 
+interface MfaSessionPayload {
+  sub: string;
+  email: string;
+  type: 'mfa_session';
+}
+
+interface LoginCompanyMembership {
+  companyId: string;
+  role: CompanyRole;
+  company: {
+    id: string;
+    name: string;
+    cnpj: string;
+    taxRegime: TaxRegime;
+  };
+}
+
+interface LoginUserRecord {
+  id: string;
+  email: string;
+  password: string;
+  name: string;
+  active: boolean;
+  twoFactor: boolean;
+  twoFactorPending: boolean;
+  companies: LoginCompanyMembership[];
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -81,6 +123,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly twoFaService: TwoFAService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -217,7 +260,7 @@ export class AuthService {
    * 2. Primeira empresa da lista (fallback)
    * 3. null (usuário sem empresa — acesso limitado a rotas @Public)
    */
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string): Promise<AuthLoginResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
       include: {
@@ -255,50 +298,85 @@ export class AuthService {
       });
     }
 
-    // Resolve empresa ativa: OWNER > primeira disponível > null
-    const ownerEntry = user.companies.find(
-      (cu) => cu.role === CompanyRole.OWNER,
-    );
-    const activeEntry = ownerEntry ?? user.companies[0] ?? null;
-
-    const activeCompanyId = activeEntry?.companyId ?? null;
-    const activeRole = activeEntry?.role ?? null;
-
-    // FIX: payload JWT agora inclui companyId e role
-    const jwtPayload: JwtSignPayload = {
-      sub: user.id,
-      email: user.email,
-      companyId: activeCompanyId,
-      role: activeRole,
-    };
-
-    const access_token = this.jwtService.sign(jwtPayload);
-
-    // Mapeamento seguro das empresas para o response
-    const mappedCompanies = user.companies
-      .filter((cu) => cu.company)
-      .map((cu) => ({
-        id: cu.company.id,
-        name: cu.company.name,
-        cnpj: cu.company.cnpj,
-        role: cu.role,
-        taxRegime: cu.company.taxRegime,
-      }));
-
-    this.logger.log(
-      `🔓 Acesso autorizado: ${user.name} [empresas: ${mappedCompanies.length}, ativa: ${activeCompanyId ?? 'nenhuma'}]`,
-    );
-
-    return {
-      access_token,
-      user: {
-        id: user.id,
+    if (user.twoFactor && !user.twoFactorPending) {
+      const mfaPayload: MfaSessionPayload = {
+        sub: user.id,
         email: user.email,
-        name: user.name,
-        activeCompanyId,
-        companies: mappedCompanies,
+        type: 'mfa_session',
+      };
+
+      const mfaSession = this.jwtService.sign(mfaPayload, { expiresIn: '5m' });
+
+      this.logger.log(`🔐 MFA requerido para: ${user.email}`);
+
+      return {
+        access_token: null,
+        mfaRequired: true,
+        mfaSession,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        },
+      };
+    }
+
+    return this.generateLoginResponse(user);
+  }
+
+  async verifyMFA(mfaSession: string, otpCode: string): Promise<LoginResponse> {
+    let mfaPayload: MfaSessionPayload;
+
+    try {
+      mfaPayload = this.jwtService.verify<MfaSessionPayload>(mfaSession);
+    } catch {
+      throw new UnauthorizedException({
+        message: 'Sessão MFA inválida ou expirada.',
+        code: 'AUTH-MFA-SESSION-INVALID',
+      });
+    }
+
+    if (mfaPayload.type !== 'mfa_session') {
+      throw new UnauthorizedException({
+        message: 'Sessão MFA inválida.',
+        code: 'AUTH-MFA-SESSION-TYPE-INVALID',
+      });
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: mfaPayload.sub },
+      include: {
+        companies: {
+          where: {
+            deletedAt: null,
+            company: { deletedAt: null },
+          },
+          include: { company: true },
+          orderBy: { createdAt: 'asc' },
+        },
       },
-    };
+    });
+
+    if (!user || !user.active || !user.twoFactor || user.twoFactorPending) {
+      throw new UnauthorizedException({
+        message: 'MFA não habilitado para a identidade informada.',
+        code: 'AUTH-MFA-NOT-ENABLED',
+      });
+    }
+
+    const verification = await this.twoFaService.verifySecondFactor(
+      user.id,
+      otpCode,
+    );
+
+    if (!verification.valid) {
+      throw new UnauthorizedException({
+        message: 'Código MFA inválido.',
+        code: 'AUTH-MFA-CODE-INVALID',
+      });
+    }
+
+    return this.generateLoginResponse(user);
   }
 
   // ---------------------------------------------------------------------------
@@ -355,6 +433,48 @@ export class AuthService {
     return {
       access_token,
       activeCompanyId: membership.companyId,
+    };
+  }
+
+  private generateLoginResponse(user: LoginUserRecord): LoginResponse {
+    const ownerEntry = user.companies.find(
+      (cu) => cu.role === CompanyRole.OWNER,
+    );
+    const activeEntry = ownerEntry ?? user.companies[0] ?? null;
+
+    const activeCompanyId = activeEntry?.companyId ?? null;
+    const activeRole = activeEntry?.role ?? null;
+
+    const jwtPayload: JwtSignPayload = {
+      sub: user.id,
+      email: user.email,
+      companyId: activeCompanyId,
+      role: activeRole,
+    };
+
+    const access_token = this.jwtService.sign(jwtPayload);
+
+    const mappedCompanies = user.companies.map((cu) => ({
+      id: cu.company.id,
+      name: cu.company.name,
+      cnpj: cu.company.cnpj,
+      role: cu.role,
+      taxRegime: cu.company.taxRegime,
+    }));
+
+    this.logger.log(
+      `🔓 Acesso autorizado: ${user.name} [empresas: ${mappedCompanies.length}, ativa: ${activeCompanyId ?? 'nenhuma'}]`,
+    );
+
+    return {
+      access_token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        activeCompanyId,
+        companies: mappedCompanies,
+      },
     };
   }
 }

@@ -19,6 +19,7 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { SwitchCompanyDto } from './dto/switch-company.dto.js';
+import { VerifyMfaDto } from './dto/verify-2fa.dto.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import { GetUser } from '../modules/auth/decorators/get-user.decorator.js';
 import { SkipCompanyCheck } from '../common/decorators/skip-company-check.decorator.js';
@@ -68,6 +69,17 @@ export class AuthController {
   })
   async login(@Body() dto: LoginDto) {
     return await this.authService.login(dto.email, dto.password);
+  }
+
+  @Public()
+  @Post('verify-mfa')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Validar MFA e emitir token JWT definitivo' })
+  @ApiBody({ type: VerifyMfaDto, description: 'Sessão MFA e código TOTP' })
+  @ApiResponse({ status: 200, description: 'MFA validado com sucesso.' })
+  @ApiResponse({ status: 401, description: 'Sessão ou código MFA inválido.' })
+  async verifyMfa(@Body() dto: VerifyMfaDto) {
+    return this.authService.verifyMFA(dto.mfaSession, dto.otpCode);
   }
 
   @UseGuards(JwtAuthGuard)
