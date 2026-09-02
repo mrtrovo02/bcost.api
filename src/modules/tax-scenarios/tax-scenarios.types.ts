@@ -85,6 +85,22 @@ export type TaxScenarioComplianceTrail = {
   disclaimers: string[];
 };
 
+export type TaxCalculationAuditLine = {
+  code: string;
+  title: string;
+  formula: string;
+  inputs: Record<string, string | number | boolean>;
+  result: string | number;
+  sourceBasis: string[];
+  officialAssessment: false;
+};
+
+export type TaxScenarioCalculationAudit = {
+  version: string;
+  generatedAt: string;
+  lines: TaxCalculationAuditLine[];
+};
+
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -110,6 +126,7 @@ export type TaxScenarioSimulationResponse = {
   };
   recommendation: TaxScenarioRecommendation;
   complianceTrail: TaxScenarioComplianceTrail;
+  calculationAudit: TaxScenarioCalculationAudit;
   guardrails: string[];
   generatedAt: string;
 };

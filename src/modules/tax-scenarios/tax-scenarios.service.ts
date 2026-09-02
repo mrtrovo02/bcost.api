@@ -4,8 +4,10 @@ import { Injectable } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { SimulateTaxScenarioDto } from './dto/simulate-tax-scenario.dto.js';
 import {
+  TaxCalculationAuditLine,
   TaxComplianceRuleEvaluation,
   TaxScenarioCalculation,
+  TaxScenarioCalculationAudit,
   TaxScenarioComplianceTrail,
   TaxScenarioModel,
   TaxScenarioRecommendation,
@@ -92,6 +94,15 @@ export class TaxScenariosService {
       annualPayroll,
       factorRPercentage,
     );
+    const calculationAudit = this.buildCalculationAudit(
+      input,
+      comparisons,
+      annualRevenue,
+      annualExpenses,
+      annualPayroll,
+      factorRPercentage,
+      requiredPayrollForThreshold,
+    );
 
     return {
       status: 'OK',
@@ -135,6 +146,7 @@ export class TaxScenariosService {
       },
       recommendation,
       complianceTrail,
+      calculationAudit,
       guardrails: [
         ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? [
@@ -759,6 +771,157 @@ export class TaxScenariosService {
     }
 
     return true;
+  }
+
+  private buildCalculationAudit(
+    input: SimulateTaxScenarioDto,
+    comparisons: TaxScenarioCalculation[],
+    annualRevenue: number,
+    annualExpenses: number,
+    annualPayroll: number,
+    factorRPercentage: number,
+    requiredPayrollForThreshold: number,
+  ): TaxScenarioCalculationAudit {
+    const findComparison = (model: TaxScenarioModel) =>
+      comparisons.find((comparison) => comparison.model === model);
+    const pf = findComparison('PF');
+    const mei = findComparison('MEI');
+    const simples = findComparison('SIMPLES_NACIONAL');
+    const lucroPresumido = findComparison('LUCRO_PRESUMIDO');
+    const lines: TaxCalculationAuditLine[] = [
+      {
+        code: 'NORMALIZED_ANNUAL_INPUTS',
+        title: 'Entradas anualizadas',
+        formula: 'valor_mensal * 12',
+        inputs: {
+          monthlyRevenue: input.monthlyRevenue,
+          monthlyDeductibleExpenses: input.monthlyDeductibleExpenses,
+          monthlyPayroll: input.monthlyPayroll,
+        },
+        result: `Receita ${annualRevenue}; despesas ${annualExpenses}; folha ${annualPayroll}`,
+        sourceBasis: [
+          'Critério matemático de anualização para triagem; RBT12 oficial deve ser informado para apuração final.',
+        ],
+        officialAssessment: false,
+      },
+      {
+        code: 'FACTOR_R',
+        title: 'Fator R',
+        formula: 'folha_12_meses / receita_bruta_12_meses * 100',
+        inputs: {
+          annualPayroll,
+          annualRevenue,
+          thresholdPercentage: FACTOR_R_THRESHOLD,
+        },
+        result: factorRPercentage,
+        sourceBasis: [
+          'Lei Complementar 123/2006, Anexos III/V e regras de segregação por atividade sujeita ao Fator R.',
+        ],
+        officialAssessment: false,
+      },
+      {
+        code: 'PF_IRPF_ESTIMATE',
+        title: 'IRPF pessoa física estimado',
+        formula:
+          'max(0, receita_anual - despesas_dedutiveis - dependentes * deducao_anual) aplicado à tabela progressiva anualizada',
+        inputs: {
+          taxableBase: pf?.taxableBase ?? 0,
+          dependents: input.dependents,
+          estimatedTax: pf?.estimatedTax ?? 0,
+        },
+        result: pf?.estimatedTax ?? 0,
+        sourceBasis: [
+          'Tabela progressiva mensal do IRPF anualizada para simulação preliminar.',
+          'RIR/2018 e regras de DIRPF/livro caixa dependem de documentação idônea.',
+        ],
+        officialAssessment: false,
+      },
+      {
+        code: 'MEI_ELIGIBILITY_AND_DAS',
+        title: 'MEI elegibilidade e DAS estimado',
+        formula:
+          'receita_anual <= 81.000 e ausência de folha não validada; DAS fixo orientativo quando elegível',
+        inputs: {
+          annualRevenue,
+          annualPayroll,
+          annualLimit: MEI_ANNUAL_LIMIT,
+          eligibilityStatus: mei?.eligibilityStatus ?? 'REQUIRES_REVIEW',
+        },
+        result: mei?.estimatedTax ?? -1,
+        sourceBasis: [
+          'Portal gov.br/Empresas e Negócios: limite anual MEI e contratação de no máximo um empregado.',
+          'Resolução CGSN nº 140/2018.',
+        ],
+        officialAssessment: false,
+      },
+      {
+        code: 'SIMPLES_EFFECTIVE_RATE',
+        title: 'Simples Nacional estimado',
+        formula:
+          '(RBT12 * aliquota_nominal - parcela_a_deduzir) / RBT12; tributo = receita_anual * aliquota_efetiva',
+        inputs: {
+          annualRevenue,
+          annualLimit: SIMPLES_ANNUAL_LIMIT,
+          effectiveRate: simples?.estimatedEffectiveRate ?? 0,
+          eligibilityStatus: simples?.eligibilityStatus ?? 'REQUIRES_REVIEW',
+        },
+        result: simples?.estimatedTax ?? -1,
+        sourceBasis: [
+          'Lei Complementar 123/2006, art. 18 e Anexos III/V.',
+        ],
+        officialAssessment: false,
+      },
+      {
+        code: 'LUCRO_PRESUMIDO_ESTIMATE',
+        title: 'Lucro Presumido estimado',
+        formula:
+          'receita * margem_presumida * IRPJ/CSLL + receita * PIS/COFINS cumulativo + receita * ISS estimado',
+        inputs: {
+          annualRevenue,
+          presumedTaxableBase: lucroPresumido?.taxableBase ?? 0,
+          estimatedTax: lucroPresumido?.estimatedTax ?? 0,
+        },
+        result: lucroPresumido?.estimatedTax ?? 0,
+        sourceBasis: [
+          'Regime de Lucro Presumido exige validação de atividade, adicional de IRPJ, retenções, ISS municipal e demais receitas.',
+        ],
+        officialAssessment: false,
+      },
+      {
+        code: 'CBS_IBS_INFORMATIVE_2026',
+        title: 'CBS/IBS informativo 2026',
+        formula: 'receita_anual * CBS 0,9%; receita_anual * IBS 0,1%',
+        inputs: {
+          annualRevenue,
+          cbsRate: CBS_INFORMATIVE_2026,
+          ibsRate: IBS_INFORMATIVE_2026,
+        },
+        result: `CBS ${this.money(annualRevenue * CBS_INFORMATIVE_2026)}; IBS ${this.money(annualRevenue * IBS_INFORMATIVE_2026)}`,
+        sourceBasis: ['EC 132/2023, art. 125; LC 214/2025.'],
+        officialAssessment: false,
+      },
+      {
+        code: 'PAYROLL_REQUIRED_FOR_FACTOR_R',
+        title: 'Folha necessária para Fator R de 28%',
+        formula: 'max(0, receita_anual * 28% - folha_anual)',
+        inputs: {
+          annualRevenue,
+          annualPayroll,
+          thresholdPercentage: FACTOR_R_THRESHOLD,
+        },
+        result: requiredPayrollForThreshold,
+        sourceBasis: [
+          'Cálculo gerencial para planejamento assistido; não altera regime sem validação de folha e pró-labore.',
+        ],
+        officialAssessment: false,
+      },
+    ];
+
+    return {
+      version: 'tax-scenarios-calculation-audit-2026.1',
+      generatedAt: new Date().toISOString(),
+      lines,
+    };
   }
 
   private buildCalculation(

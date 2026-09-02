@@ -166,6 +166,39 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('retorna memória de cálculo com fórmulas e fontes rastreáveis', () => {
+    const result = service.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 220_000,
+      monthlyDeductibleExpenses: 35_000,
+      monthlyPayroll: 50_000,
+      dependents: 1,
+      currentModel: 'PF',
+    });
+
+    expect(result.calculationAudit.version).toBe(
+      'tax-scenarios-calculation-audit-2026.1',
+    );
+    expect(result.calculationAudit.lines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'FACTOR_R',
+          formula: 'folha_12_meses / receita_bruta_12_meses * 100',
+          result: 22.73,
+          officialAssessment: false,
+        }),
+        expect.objectContaining({
+          code: 'SIMPLES_EFFECTIVE_RATE',
+          officialAssessment: false,
+        }),
+        expect.objectContaining({
+          code: 'CBS_IBS_INFORMATIVE_2026',
+          officialAssessment: false,
+        }),
+      ]),
+    );
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,
