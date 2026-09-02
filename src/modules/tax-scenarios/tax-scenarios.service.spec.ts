@@ -224,11 +224,14 @@ describe('TaxScenariosService', () => {
     );
     expect(result.preProposal).toMatchObject({
       status: 'NEEDS_DISCOVERY',
+      riskLevel: 'HIGH',
       checkoutAllowed: false,
       serviceSku: 'PF_TAX_REVIEW',
       checkoutMode: 'SALES_REVIEW_ONLY',
       nextRoute: '/dashboard/modules/company-formation',
     });
+    expect(result.preProposal.readinessScore).toBeLessThan(80);
+    expect(result.preProposal.reviewReasons).toContain('OFFICIAL_ASSESSMENT_LOCK');
     expect(result.preProposal.documentChecklist).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -268,10 +271,13 @@ describe('TaxScenariosService', () => {
     );
     expect(result.preProposal).toMatchObject({
       status: 'BLOCKED_BY_COMPLIANCE',
+      riskLevel: 'CRITICAL',
       checkoutAllowed: false,
       serviceSku: 'COMPLIANCE_BLOCKER_REVIEW',
       nextRoute: '/dashboard/modules/audit-intelligence',
     });
+    expect(result.preProposal.readinessScore).toBeLessThan(50);
+    expect(result.preProposal.blockingReasons).toContain('MEI_ELIGIBILITY');
     expect(result.preProposal.ctaLabel).toBe('Abrir revisão de compliance');
   });
 

@@ -138,6 +138,8 @@ export type TaxScenarioPreProposal = {
     | 'READY_FOR_ASSISTED_REVIEW'
     | 'NEEDS_DISCOVERY'
     | 'BLOCKED_BY_COMPLIANCE';
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  readinessScore: number;
   title: string;
   ctaLabel: string;
   nextRoute:
@@ -148,6 +150,8 @@ export type TaxScenarioPreProposal = {
   serviceSku: TaxScenarioServiceQualification['primaryOffer']['sku'];
   checkoutMode: TaxScenarioServiceQualification['primaryOffer']['checkoutMode'];
   documentChecklist: TaxScenarioPreProposalDocument[];
+  blockingReasons: string[];
+  reviewReasons: string[];
   legalTerms: string[];
 };
 

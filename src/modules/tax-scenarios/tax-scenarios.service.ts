@@ -1040,6 +1040,8 @@ export class TaxScenariosService {
       complianceTrail.commercialDecision.canGenerateProposal;
     const status = this.resolvePreProposalStatus(serviceQualification);
     const title = this.resolvePreProposalTitle(serviceQualification, status);
+    const riskLevel = this.resolvePreProposalRiskLevel(complianceTrail);
+    const documentChecklist = this.buildPreProposalDocuments(serviceQualification);
 
     return {
       id: this.scenarioId({
@@ -1047,19 +1049,76 @@ export class TaxScenariosService {
         currentModel: input.currentModel ?? 'PF',
       }),
       status,
+      riskLevel,
+      readinessScore: this.calculateReadinessScore(
+        status,
+        riskLevel,
+        documentChecklist,
+        complianceTrail,
+      ),
       title,
       ctaLabel: this.resolvePreProposalCtaLabel(status, checkoutAllowed),
       nextRoute: this.resolvePreProposalRoute(status, checkoutAllowed),
       checkoutAllowed,
       serviceSku: serviceQualification.primaryOffer.sku,
       checkoutMode: serviceQualification.primaryOffer.checkoutMode,
-      documentChecklist: this.buildPreProposalDocuments(serviceQualification),
+      documentChecklist,
+      blockingReasons: complianceTrail.commercialDecision.blockedRuleCodes,
+      reviewReasons: complianceTrail.commercialDecision.reviewRuleCodes,
       legalTerms: [
         'Pré-proposta condicionada à validação documental, CNAE, município, RBT12, retenções, folha/pró-labore e revisão de contador responsável.',
         'A simulação é estimativa de triagem e não representa apuração oficial, parecer tributário definitivo ou promessa de economia.',
         'Contratação, abertura, migração, enquadramento e desenquadramento devem manter evidências arquivadas para trilha de auditoria.',
       ],
     };
+  }
+
+  private resolvePreProposalRiskLevel(
+    complianceTrail: TaxScenarioComplianceTrail,
+  ): TaxScenarioPreProposal['riskLevel'] {
+    const relevantRuleCodes = new Set([
+      ...complianceTrail.commercialDecision.blockedRuleCodes,
+      ...complianceTrail.commercialDecision.reviewRuleCodes,
+    ]);
+    const severities = complianceTrail.rules
+      .filter((rule) => relevantRuleCodes.has(rule.code))
+      .map((rule) => rule.severity);
+
+    if (severities.includes('CRITICAL')) return 'CRITICAL';
+    if (severities.includes('HIGH')) return 'HIGH';
+    if (severities.includes('MEDIUM')) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  private calculateReadinessScore(
+    status: TaxScenarioPreProposal['status'],
+    riskLevel: TaxScenarioPreProposal['riskLevel'],
+    documentChecklist: TaxScenarioPreProposalDocument[],
+    complianceTrail: TaxScenarioComplianceTrail,
+  ): number {
+    const requiredDocuments = documentChecklist.filter((document) => document.required).length;
+    const reviewPenalty = complianceTrail.commercialDecision.reviewRuleCodes.length * 8;
+    const blockingPenalty = complianceTrail.commercialDecision.blockedRuleCodes.length * 25;
+    const riskPenaltyByLevel: Record<TaxScenarioPreProposal['riskLevel'], number> = {
+      LOW: 0,
+      MEDIUM: 8,
+      HIGH: 18,
+      CRITICAL: 35,
+    };
+    const statusPenaltyByStatus: Record<TaxScenarioPreProposal['status'], number> = {
+      READY_FOR_ASSISTED_REVIEW: 0,
+      NEEDS_DISCOVERY: 12,
+      BLOCKED_BY_COMPLIANCE: 30,
+    };
+    const score =
+      100 -
+      requiredDocuments * 2 -
+      reviewPenalty -
+      blockingPenalty -
+      riskPenaltyByLevel[riskLevel] -
+      statusPenaltyByStatus[status];
+
+    return Math.max(0, Math.min(100, Math.round(score)));
   }
 
   private resolvePreProposalStatus(
