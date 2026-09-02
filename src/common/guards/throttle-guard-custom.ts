@@ -1,58 +1,63 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  Inject,
-} from '@nestjs/common';
-import { ThrottlerGuard, THROTTLER_OPTIONS } from '@nestjs/throttler';
+import { ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import {
+  getOptionsToken,
+  getStorageToken,
+  ThrottlerGuard,
+} from '@nestjs/throttler';
 import { THROTTLE_ENDPOINT_LIMIT } from '../decorators/throttle-endpoint.decorator.js';
 
 /**
- * Guard customizado que respeita @ThrottleEndpoint
+ * Guard customizado que respeita @ThrottleEndpoint.
  *
- * Se endpoint tem decorator, usa aquele limit
- * Senão, usa default global (100 req/60s)
+ * Mantém a lógica do guard nativo do NestJS, mas permite sobrescrever
+ * o limite por endpoint quando o decorator está presente.
  */
 @Injectable()
 export class CustomThrottlerGuard extends ThrottlerGuard {
   constructor(
-    @Inject(THROTTLER_OPTIONS) private throttlerOptions: any[],
-    private readonly reflector: Reflector,
+    @Inject(getOptionsToken()) options: any,
+    @Inject(getStorageToken()) storageService: any,
+    reflector: Reflector,
   ) {
-    super(throttlerOptions);
+    super(options, storageService, reflector);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Lê decorator @ThrottleEndpoint se existir
     const endpointLimit = this.reflector.get<{ limit: number; ttl: number }>(
       THROTTLE_ENDPOINT_LIMIT,
       context.getHandler(),
     );
 
-    if (endpointLimit) {
-      // Sobrescreve limite global com limite do endpoint temporariamente
-      const originalLimits = this.throttlerOptions;
-      
-      this.throttlerOptions = [
-        {
-          name: 'default',
-          ttl: endpointLimit.ttl,
-          limit: endpointLimit.limit,
-        },
-      ];
-
-      try {
-        // Executa com novo limite
-        const result = await super.canActivate(context);
-        return result;
-      } finally {
-        // Restaura limits originais
-        this.throttlerOptions = originalLimits;
-      }
+    if (!endpointLimit) {
+      return super.canActivate(context);
     }
 
-    // Sem decorator = usa default
-    return super.canActivate(context);
+    const originalOptions = this.options;
+    const originalThrottlers = this.throttlers;
+    const originalCommonOptions = this.commonOptions;
+
+    try {
+      const customOptions = Array.isArray(this.options)
+        ? [{ name: 'default', ttl: endpointLimit.ttl, limit: endpointLimit.limit }]
+        : {
+            ...this.options,
+            throttlers: [
+              {
+                name: 'default',
+                ttl: endpointLimit.ttl,
+                limit: endpointLimit.limit,
+              },
+            ],
+          };
+
+      (this as any).options = customOptions;
+      await this.onModuleInit();
+      return await super.canActivate(context);
+    } finally {
+      (this as any).options = originalOptions;
+      this.throttlers = originalThrottlers;
+      this.commonOptions = originalCommonOptions;
+    }
   }
 }
