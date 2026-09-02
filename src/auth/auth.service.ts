@@ -137,9 +137,15 @@ export class AuthService {
     const isProd = this.config.get<string>('NODE_ENV') === 'production';
     const allowSetup = this.config.get<string>('ALLOW_SETUP_ADMIN') === 'true';
 
-    if (isProd && !allowSetup) {
+    if (isProd) {
       throw new ForbiddenException(
-        'Operação não permitida em produção. Defina ALLOW_SETUP_ADMIN=true para liberar.',
+        'Admin setup is disabled in production environment. Use a controlled migration, secret manager or one-time operational runbook.',
+      );
+    }
+
+    if (!allowSetup) {
+      throw new ForbiddenException(
+        'Operation not allowed. ALLOW_SETUP_ADMIN is not enabled.',
       );
     }
 

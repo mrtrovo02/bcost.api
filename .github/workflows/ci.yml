@@ -2,7 +2,20 @@ name: CI Professional Workflow
 on: [push, pull_request]
 
 jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Block unsafe setup-admin flag
+        run: |
+          if grep -RIn --exclude-dir=node_modules --exclude-dir=dist --exclude='.env.local.example' 'ALLOW_SETUP_ADMIN=true' .; then
+            echo "ERROR: ALLOW_SETUP_ADMIN=true cannot be versioned for production readiness."
+            exit 1
+          fi
+
   build:
+    needs: security-checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -10,6 +23,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22' # Versão estável em 2026
-      - run: npm install
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run prisma:generate
       - run: npm run lint
       - run: npm run test # Garante que nada quebrou
+      - run: npm run typecheck
+      - run: npm run build
