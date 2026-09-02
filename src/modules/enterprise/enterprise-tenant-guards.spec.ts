@@ -1,5 +1,6 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../auth/guards/roles.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { AccountingEnterpriseController } from '../accounting/accounting-enterprise.controller.js';
@@ -13,6 +14,7 @@ import { BusinessRulesController } from '../business-rules/business-rules.contro
 import { CommandCenterEnterpriseController } from '../command-center-enterprise/command-center-enterprise.controller.js';
 import { ComplianceEnterpriseController } from '../compliance-enterprise/compliance-enterprise.controller.js';
 import { DigitalCertificatesEnterpriseController } from '../digital-certificates/digital-certificates-enterprise.controller.js';
+import { DashboardController } from '../dashboard/dashboard.controller.js';
 import { FinanceOperationsEnterpriseController } from '../finance-operations-enterprise/finance-operations-enterprise.controller.js';
 import { ComplianceController as FiscalComplianceController } from '../fiscal/compliance/compliance.controller.js';
 import { DashboardController as FiscalDashboardController } from '../fiscal/dashboard/dashboard.controller.js';
@@ -72,4 +74,18 @@ describe('company-scoped enterprise controllers', () => {
       expect(guards).toEqual(TENANT_GUARD_CHAIN);
     },
   );
+
+  it('protects executive dashboard with tenant isolation before role checks', () => {
+    const guards = Reflect.getMetadata(
+      GUARDS_METADATA,
+      DashboardController,
+    ) as unknown[];
+
+    expect(guards).toEqual([
+      JwtAuthGuard,
+      TenantContextGuard,
+      CompanyAccessGuard,
+      RolesGuard,
+    ]);
+  });
 });

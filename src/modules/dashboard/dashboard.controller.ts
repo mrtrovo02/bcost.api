@@ -24,11 +24,13 @@ import { RolesGuard } from '../../auth/guards/roles.guard.js';
 import { Roles } from '../../auth/decorators/roles.decorator.js';
 import { CompanyRole } from '@prisma/client';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
 @Controller('dashboard')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard, RolesGuard)
 export class DashboardController {
   private readonly logger = new Logger(DashboardController.name);
 
