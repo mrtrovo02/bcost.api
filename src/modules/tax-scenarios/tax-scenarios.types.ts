@@ -125,6 +125,32 @@ export type TaxScenarioServiceQualification = {
   salesWarnings: string[];
 };
 
+export type TaxScenarioPreProposalDocument = {
+  code: string;
+  label: string;
+  required: boolean;
+  source: 'CUSTOMER' | 'ACCOUNTANT' | 'BCOST_SYSTEM';
+};
+
+export type TaxScenarioPreProposal = {
+  id: string;
+  status:
+    | 'READY_FOR_ASSISTED_REVIEW'
+    | 'NEEDS_DISCOVERY'
+    | 'BLOCKED_BY_COMPLIANCE';
+  title: string;
+  ctaLabel: string;
+  nextRoute:
+    | '/dashboard/modules/audit-intelligence'
+    | '/dashboard/modules/company-formation'
+    | '/dashboard/settings?section=billing';
+  checkoutAllowed: boolean;
+  serviceSku: TaxScenarioServiceQualification['primaryOffer']['sku'];
+  checkoutMode: TaxScenarioServiceQualification['primaryOffer']['checkoutMode'];
+  documentChecklist: TaxScenarioPreProposalDocument[];
+  legalTerms: string[];
+};
+
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
   input: SimulateTaxScenarioDto;
@@ -152,6 +178,7 @@ export type TaxScenarioSimulationResponse = {
   complianceTrail: TaxScenarioComplianceTrail;
   calculationAudit: TaxScenarioCalculationAudit;
   serviceQualification: TaxScenarioServiceQualification;
+  preProposal: TaxScenarioPreProposal;
   guardrails: string[];
   generatedAt: string;
 };

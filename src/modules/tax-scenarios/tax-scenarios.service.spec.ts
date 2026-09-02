@@ -222,6 +222,28 @@ describe('TaxScenariosService', () => {
     expect(result.serviceQualification.salesWarnings.join(' ')).toContain(
       'Não vender abertura ou migração PJ',
     );
+    expect(result.preProposal).toMatchObject({
+      status: 'NEEDS_DISCOVERY',
+      checkoutAllowed: false,
+      serviceSku: 'PF_TAX_REVIEW',
+      checkoutMode: 'SALES_REVIEW_ONLY',
+      nextRoute: '/dashboard/modules/company-formation',
+    });
+    expect(result.preProposal.documentChecklist).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'RBT12_AND_REVENUE_SEGREGATION',
+          required: true,
+        }),
+        expect.objectContaining({
+          code: 'FISCAL_DOCUMENTS_SAMPLE',
+          required: true,
+        }),
+      ]),
+    );
+    expect(result.preProposal.legalTerms.join(' ')).toContain(
+      'não representa apuração oficial',
+    );
   });
 
   it('bloqueia checkout quando o modelo atual possui regra crítica de compliance', () => {
@@ -244,6 +266,13 @@ describe('TaxScenariosService', () => {
     expect(result.serviceQualification.allowedActions).toContain(
       'BLOCK_AUTOMATIC_CHECKOUT',
     );
+    expect(result.preProposal).toMatchObject({
+      status: 'BLOCKED_BY_COMPLIANCE',
+      checkoutAllowed: false,
+      serviceSku: 'COMPLIANCE_BLOCKER_REVIEW',
+      nextRoute: '/dashboard/modules/audit-intelligence',
+    });
+    expect(result.preProposal.ctaLabel).toBe('Abrir revisão de compliance');
   });
 
   it('gera scenarioId estável para o mesmo input', () => {

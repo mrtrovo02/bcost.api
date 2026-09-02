@@ -10,6 +10,8 @@ import {
   TaxScenarioCalculationAudit,
   TaxScenarioComplianceTrail,
   TaxScenarioModel,
+  TaxScenarioPreProposal,
+  TaxScenarioPreProposalDocument,
   TaxScenarioRecommendation,
   TaxScenarioServiceQualification,
   TaxScenarioSimulationResponse,
@@ -109,6 +111,11 @@ export class TaxScenariosService {
       complianceTrail,
       best?.model ?? 'PF',
     );
+    const preProposal = this.buildPreProposal(
+      input,
+      serviceQualification,
+      complianceTrail,
+    );
 
     return {
       status: 'OK',
@@ -154,6 +161,7 @@ export class TaxScenariosService {
       complianceTrail,
       calculationAudit,
       serviceQualification,
+      preProposal,
       guardrails: [
         ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? [
@@ -1019,6 +1027,201 @@ export class TaxScenariosService {
       salesWarnings: [
         'Proposta deve manter cláusula de estimativa e revisão CRC antes de enquadramento definitivo.',
       ],
+    };
+  }
+
+  private buildPreProposal(
+    input: SimulateTaxScenarioDto,
+    serviceQualification: TaxScenarioServiceQualification,
+    complianceTrail: TaxScenarioComplianceTrail,
+  ): TaxScenarioPreProposal {
+    const checkoutAllowed =
+      serviceQualification.primaryOffer.checkoutMode === 'ASSISTED_CHECKOUT' &&
+      complianceTrail.commercialDecision.canGenerateProposal;
+    const status = this.resolvePreProposalStatus(serviceQualification);
+    const title = this.resolvePreProposalTitle(serviceQualification, status);
+
+    return {
+      id: this.scenarioId({
+        ...input,
+        currentModel: input.currentModel ?? 'PF',
+      }),
+      status,
+      title,
+      ctaLabel: this.resolvePreProposalCtaLabel(status, checkoutAllowed),
+      nextRoute: this.resolvePreProposalRoute(status, checkoutAllowed),
+      checkoutAllowed,
+      serviceSku: serviceQualification.primaryOffer.sku,
+      checkoutMode: serviceQualification.primaryOffer.checkoutMode,
+      documentChecklist: this.buildPreProposalDocuments(serviceQualification),
+      legalTerms: [
+        'Pré-proposta condicionada à validação documental, CNAE, município, RBT12, retenções, folha/pró-labore e revisão de contador responsável.',
+        'A simulação é estimativa de triagem e não representa apuração oficial, parecer tributário definitivo ou promessa de economia.',
+        'Contratação, abertura, migração, enquadramento e desenquadramento devem manter evidências arquivadas para trilha de auditoria.',
+      ],
+    };
+  }
+
+  private resolvePreProposalStatus(
+    serviceQualification: TaxScenarioServiceQualification,
+  ): TaxScenarioPreProposal['status'] {
+    if (serviceQualification.stage === 'BLOCKED') {
+      return 'BLOCKED_BY_COMPLIANCE';
+    }
+
+    if (serviceQualification.stage === 'NEEDS_DISCOVERY') {
+      return 'NEEDS_DISCOVERY';
+    }
+
+    return 'READY_FOR_ASSISTED_REVIEW';
+  }
+
+  private resolvePreProposalTitle(
+    serviceQualification: TaxScenarioServiceQualification,
+    status: TaxScenarioPreProposal['status'],
+  ): string {
+    if (status === 'BLOCKED_BY_COMPLIANCE') {
+      return 'Dossiê bloqueado para venda automática';
+    }
+
+    if (status === 'NEEDS_DISCOVERY') {
+      return 'Dossiê para diagnóstico assistido';
+    }
+
+    return `Pré-proposta assistida: ${serviceQualification.primaryOffer.title}`;
+  }
+
+  private resolvePreProposalCtaLabel(
+    status: TaxScenarioPreProposal['status'],
+    checkoutAllowed: boolean,
+  ): string {
+    if (status === 'BLOCKED_BY_COMPLIANCE') {
+      return 'Abrir revisão de compliance';
+    }
+
+    if (checkoutAllowed) {
+      return 'Preparar proposta assistida';
+    }
+
+    return 'Enviar evidências para CRC';
+  }
+
+  private resolvePreProposalRoute(
+    status: TaxScenarioPreProposal['status'],
+    checkoutAllowed: boolean,
+  ): TaxScenarioPreProposal['nextRoute'] {
+    if (status === 'BLOCKED_BY_COMPLIANCE') {
+      return '/dashboard/modules/audit-intelligence';
+    }
+
+    if (checkoutAllowed) {
+      return '/dashboard/settings?section=billing';
+    }
+
+    return '/dashboard/modules/company-formation';
+  }
+
+  private buildPreProposalDocuments(
+    serviceQualification: TaxScenarioServiceQualification,
+  ): TaxScenarioPreProposalDocument[] {
+    const baseDocuments: TaxScenarioPreProposalDocument[] = [
+      {
+        code: 'CNAE_AND_MUNICIPALITY',
+        label: 'CNAE pretendido, município de prestação e descrição real dos serviços',
+        required: true,
+        source: 'CUSTOMER',
+      },
+      {
+        code: 'RBT12_AND_REVENUE_SEGREGATION',
+        label: 'Receita bruta dos últimos 12 meses e segregação por tipo de serviço',
+        required: true,
+        source: 'CUSTOMER',
+      },
+      {
+        code: 'FISCAL_DOCUMENTS_SAMPLE',
+        label: 'Amostra de notas fiscais, recibos, retenções e contratos vigentes',
+        required: true,
+        source: 'CUSTOMER',
+      },
+      {
+        code: 'PAYROLL_AND_PRO_LABORE',
+        label: 'Folha, pró-labore, INSS e vínculos usados no Fator R',
+        required: true,
+        source: 'ACCOUNTANT',
+      },
+    ];
+    const evidenceDocuments = serviceQualification.missingEvidence.map(
+      (evidence) => this.mapEvidenceToDocument(evidence),
+    );
+    const uniqueDocuments = new Map<string, TaxScenarioPreProposalDocument>();
+
+    [...baseDocuments, ...evidenceDocuments].forEach((document) => {
+      uniqueDocuments.set(document.code, document);
+    });
+
+    return Array.from(uniqueDocuments.values());
+  }
+
+  private mapEvidenceToDocument(evidence: string): TaxScenarioPreProposalDocument {
+    const normalizedEvidence = evidence
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toUpperCase();
+
+    if (normalizedEvidence.includes('RBT12')) {
+      return {
+        code: 'OFFICIAL_RBT12',
+        label: 'RBT12 oficial extraído do PGDAS-D ou escrituração equivalente',
+        required: true,
+        source: 'ACCOUNTANT',
+      };
+    }
+
+    if (
+      normalizedEvidence.includes('FOLHA') ||
+      normalizedEvidence.includes('PRO-LABORE') ||
+      normalizedEvidence.includes('PRO LABORE')
+    ) {
+      return {
+        code: 'PAYROLL_FACTOR_R_EVIDENCE',
+        label: 'Comprovantes de folha e pró-labore para validação do Fator R',
+        required: true,
+        source: 'ACCOUNTANT',
+      };
+    }
+
+    if (
+      normalizedEvidence.includes('CNAE') ||
+      normalizedEvidence.includes('ATIVIDADE') ||
+      normalizedEvidence.includes('OCUPACAO')
+    ) {
+      return {
+        code: 'ACTIVITY_ELIGIBILITY_EVIDENCE',
+        label: 'CNAE, ocupação permitida e objeto social compatíveis com a operação',
+        required: true,
+        source: 'CUSTOMER',
+      };
+    }
+
+    if (
+      normalizedEvidence.includes('NOTA') ||
+      normalizedEvidence.includes('XML') ||
+      normalizedEvidence.includes('RECIBO') ||
+      normalizedEvidence.includes('RETENCAO')
+    ) {
+      return {
+        code: 'DOCUMENT_AND_WITHHOLDING_EVIDENCE',
+        label: 'Notas, XMLs, recibos e retenções dos últimos 12 meses',
+        required: true,
+        source: 'CUSTOMER',
+      };
+    }
+
+    return {
+      code: `EVIDENCE_${createHash('sha1').update(evidence).digest('hex').slice(0, 8).toUpperCase()}`,
+      label: evidence,
+      required: true,
+      source: 'CUSTOMER',
     };
   }
 
