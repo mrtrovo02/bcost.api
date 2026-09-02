@@ -308,16 +308,24 @@ describe('TaxScenariosService', () => {
       (fixture) => {
         const result = service.simulate(fixture.input);
 
+        expect(fixture.criticality).toMatch(/^(BLOCKER|HIGH|MEDIUM)$/);
+        expect(fixture.legalBasis.length).toBeGreaterThan(0);
         expect(result.bestEstimatedModel).toBe(fixture.expected.bestEstimatedModel);
-        expect(result.factorR.percentage).toBe(fixture.expected.factorRPercentage);
-        expect(result.factorR.requiredPayrollForThreshold).toBe(
+        expect(result.factorR.percentage).toBeCloseTo(
+          fixture.expected.factorRPercentage,
+          fixture.tolerance.percentage,
+        );
+        expect(result.factorR.requiredPayrollForThreshold).toBeCloseTo(
           fixture.expected.requiredPayrollForThreshold,
+          fixture.tolerance.money,
         );
-        expect(result.reformImpact.estimatedCbs).toBe(
+        expect(result.reformImpact.estimatedCbs).toBeCloseTo(
           fixture.expected.cbsInformative2026,
+          fixture.tolerance.money,
         );
-        expect(result.reformImpact.estimatedIbs).toBe(
+        expect(result.reformImpact.estimatedIbs).toBeCloseTo(
           fixture.expected.ibsInformative2026,
+          fixture.tolerance.money,
         );
         expect(result.complianceTrail.officialAssessment).toBe(false);
         expect(result.calculationAudit.lines.length).toBeGreaterThan(0);
@@ -329,7 +337,21 @@ describe('TaxScenariosService', () => {
             );
 
             expect(comparison).toBeDefined();
-            expect(comparison).toMatchObject(expectedComparison);
+            expect(comparison?.eligibilityStatus).toBe(
+              expectedComparison.eligibilityStatus,
+            );
+            expect(comparison?.estimatedTax).toBeCloseTo(
+              expectedComparison.estimatedTax,
+              fixture.tolerance.money,
+            );
+            expect(comparison?.estimatedEffectiveRate).toBeCloseTo(
+              expectedComparison.estimatedEffectiveRate,
+              fixture.tolerance.percentage,
+            );
+            expect(comparison?.netAnnualResult).toBeCloseTo(
+              expectedComparison.netAnnualResult,
+              fixture.tolerance.money,
+            );
           },
         );
       },

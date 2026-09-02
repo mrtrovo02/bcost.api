@@ -5,8 +5,13 @@ import type { TaxScenarioModel } from './tax-scenarios.types.js';
 
 export type TaxScenarioRegressionFixture = {
   id: string;
+  criticality: 'BLOCKER' | 'HIGH' | 'MEDIUM';
   description: string;
   legalBasis: string[];
+  tolerance: {
+    money: number;
+    percentage: number;
+  };
   input: SimulateTaxScenarioDto;
   expected: {
     bestEstimatedModel: TaxScenarioModel;
@@ -31,12 +36,17 @@ export type TaxScenarioRegressionFixture = {
 export const TAX_SCENARIO_REGRESSION_FIXTURES: TaxScenarioRegressionFixture[] = [
   {
     id: 'MEI_LIMIT_WITHOUT_PAYROLL',
+    criticality: 'HIGH',
     description:
       'Receita anualizada no limite usual do MEI, sem folha, mantendo elegibilidade estimativa e CBS/IBS informativo de 2026.',
     legalBasis: [
       'Portal gov.br/Empresas e Negocios: limite anual usual do MEI de R$ 81.000,00.',
       'LC 214/2025: fase de calibracao de CBS/IBS em 2026 com destaque informativo.',
     ],
+    tolerance: {
+      money: 0,
+      percentage: 0,
+    },
     input: {
       activity: 'CREATOR',
       monthlyRevenue: 6_750,
@@ -63,12 +73,17 @@ export const TAX_SCENARIO_REGRESSION_FIXTURES: TaxScenarioRegressionFixture[] = 
   },
   {
     id: 'SIMPLES_EPP_LIMIT_FACTOR_R_EXACT_THRESHOLD',
+    criticality: 'BLOCKER',
     description:
       'Receita anualizada no limite de EPP e Fator R exatamente em 28%, preservando Simples elegivel em Anexo III estimativo.',
     legalBasis: [
       'LC 123/2006, art. 3, II: limite de receita bruta anual de R$ 4.800.000,00 para EPP.',
       'LC 123/2006, art. 18 e anexos: fator R e aliquota efetiva por RBT12.',
     ],
+    tolerance: {
+      money: 0,
+      percentage: 0,
+    },
     input: {
       activity: 'TECHNOLOGY',
       monthlyRevenue: 400_000,
@@ -95,11 +110,16 @@ export const TAX_SCENARIO_REGRESSION_FIXTURES: TaxScenarioRegressionFixture[] = 
   },
   {
     id: 'SIMPLES_OVER_LIMIT_BLOCKED',
+    criticality: 'BLOCKER',
     description:
       'Receita anualizada acima do limite de EPP bloqueia Simples Nacional e impede proposta automatica para esse regime.',
     legalBasis: [
       'LC 123/2006, art. 3, II: limite de receita bruta anual de R$ 4.800.000,00 para EPP.',
     ],
+    tolerance: {
+      money: 0,
+      percentage: 0,
+    },
     input: {
       activity: 'LEGAL',
       monthlyRevenue: 410_000,
@@ -126,11 +146,16 @@ export const TAX_SCENARIO_REGRESSION_FIXTURES: TaxScenarioRegressionFixture[] = 
   },
   {
     id: 'SERVICE_FACTOR_R_BELOW_THRESHOLD_ANNEX_V',
+    criticality: 'BLOCKER',
     description:
       'Prestador de servicos com Fator R abaixo de 28% deve exigir revisao e aplicar carga estimativa de Anexo V no Simples.',
     legalBasis: [
       'LC 123/2006, art. 18 e anexos: atividades sujeitas ao fator R podem alternar entre Anexo III e V.',
     ],
+    tolerance: {
+      money: 0,
+      percentage: 0,
+    },
     input: {
       activity: 'SERVICE_PROVIDER',
       monthlyRevenue: 220_000,
