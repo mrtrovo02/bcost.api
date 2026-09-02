@@ -33,6 +33,7 @@ import { RolesGuard } from './auth/guards/roles.guard.js';
 import { TenantMiddleware } from './common/middlewares/tenant.middleware.js';
 import { TenantContextGuard } from './common/guards/tenant-context.guard.js';
 import { CompanyAccessGuard } from './common/guards/company-access.guard.js';
+import { CustomThrottlerGuard } from './common/guards/throttle-guard-custom.js';
 
 // --- Feature Modules ---
 import { HealthModule } from './modules/health/health.module.js';
@@ -237,7 +238,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
     },
 
     // 🔒 ORDEM CRÍTICA DE EXECUÇÃO DOS GUARDS GLOBAIS
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: CustomThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: CompanyAccessGuard },

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
 import { TenantContext } from '../tenant/tenant.context.js';
+import { PrismaService } from '../../database/prisma.service.js';
 
 interface TenantContextRequestUser {
   id?: string | null;
@@ -44,7 +45,9 @@ interface TenantContextRequest {
 export class TenantContextGuard implements CanActivate {
   private readonly logger = new Logger(TenantContextGuard.name);
 
-  canActivate(context: ExecutionContext): boolean {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<TenantContextRequest>();
 
     const redactedHeaders = redactSensitiveHeaders(
@@ -86,6 +89,21 @@ export class TenantContextGuard implements CanActivate {
         tenantId: companyId ?? undefined,
         userId: userId ?? undefined,
       });
+    }
+
+    // ✅ ATIVAR RLS NO POSTGRESQL (segunda camada de segurança)
+    // Sem isto, RLS policies não funcionam!
+    if (companyId) {
+      try {
+        await this.prisma.setRlsCompanyContext(companyId);
+      } catch (error) {
+        this.logger.error(
+          `Failed to set RLS context for company ${companyId}`,
+          error,
+        );
+        // Não bloqueia a requisição se RLS falhar
+        // mas loga para debugging
+      }
     }
 
     this.logger.debug(

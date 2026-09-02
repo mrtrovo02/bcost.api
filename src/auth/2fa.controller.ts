@@ -20,6 +20,7 @@ import { CurrentUser } from './decorators/current-user.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { TwoFAService } from './2fa.service.js';
 import { DisableTwoFADto, VerifyTwoFADto } from './dto/verify-2fa.dto.js';
+import { ThrottleEndpoint } from '../common/decorators/throttle-endpoint.decorator.js';
 
 interface AuthenticatedUser {
   id: string;
@@ -46,6 +47,7 @@ export class TwoFAController {
 
   @Post('confirm')
   @HttpCode(HttpStatus.OK)
+  @ThrottleEndpoint({ limit: 5, ttl: 60 })
   @ApiOperation({ summary: 'Confirmar e ativar 2FA usando código TOTP' })
   @ApiResponse({ status: 200, description: '2FA ativado com sucesso.' })
   @ApiResponse({ status: 401, description: 'Código TOTP inválido.' })
@@ -67,6 +69,7 @@ export class TwoFAController {
 
   @Post('disable')
   @HttpCode(HttpStatus.OK)
+  @ThrottleEndpoint({ limit: 5, ttl: 60 })
   @ApiOperation({ summary: 'Desativar 2FA usando TOTP ou backup code válido' })
   @ApiResponse({ status: 200, description: '2FA desativado com sucesso.' })
   @ApiResponse({ status: 401, description: 'Código 2FA inválido.' })

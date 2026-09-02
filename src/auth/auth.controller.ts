@@ -28,6 +28,7 @@ import { TokenBlacklistService } from './token-blacklist.service.js';
 import { Public } from '../common/decorators/public.decorator.js';
 import { GetUser } from '../modules/auth/decorators/get-user.decorator.js';
 import { SkipCompanyCheck } from '../common/decorators/skip-company-check.decorator.js';
+import { ThrottleEndpoint } from '../common/decorators/throttle-endpoint.decorator.js';
 
 interface LogoutUser {
   id: string;
@@ -69,6 +70,7 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
+  @ThrottleEndpoint({ limit: 5, ttl: 3600 })
   @ApiOperation({ summary: 'Registrar um novo usuário' })
   @ApiBody({ type: RegisterDto, description: 'Dados de registro' })
   @ApiResponse({ status: 201, description: 'Usuário registrado com sucesso.' })
@@ -81,6 +83,7 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
+  @ThrottleEndpoint({ limit: 5, ttl: 300 })
   @ApiOperation({ summary: 'Realizar login e obter token JWT' })
   @ApiBody({ type: LoginDto, description: 'Credenciais de acesso' })
   @ApiResponse({ status: 200, description: 'Login realizado com sucesso.' })
@@ -94,6 +97,7 @@ export class AuthController {
 
   @Public()
   @Post('verify-mfa')
+  @ThrottleEndpoint({ limit: 3, ttl: 60 })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Validar MFA e emitir token JWT definitivo' })
   @ApiBody({ type: VerifyMfaDto, description: 'Sessão MFA e código TOTP' })
