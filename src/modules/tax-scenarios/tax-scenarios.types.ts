@@ -70,6 +70,17 @@ export type TaxScenarioComplianceTrail = {
   calculationMode: 'ESTIMATIVE_TRIAGE';
   officialAssessment: false;
   evaluatedAt: string;
+  commercialDecision: {
+    status:
+      | 'AUTO_PROPOSAL_ALLOWED'
+      | 'ASSISTED_REVIEW_REQUIRED'
+      | 'BLOCKED_BY_COMPLIANCE';
+    canGenerateProposal: boolean;
+    requiresCrcReview: boolean;
+    reasons: string[];
+    blockedRuleCodes: string[];
+    reviewRuleCodes: string[];
+  };
   rules: TaxComplianceRuleEvaluation[];
   disclaimers: string[];
 };

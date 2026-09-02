@@ -156,6 +156,14 @@ describe('TaxScenariosService', () => {
         }),
       ]),
     );
+    expect(result.complianceTrail.commercialDecision).toMatchObject({
+      status: 'ASSISTED_REVIEW_REQUIRED',
+      canGenerateProposal: false,
+      requiresCrcReview: true,
+    });
+    expect(result.complianceTrail.commercialDecision.reviewRuleCodes).toContain(
+      'FACTOR_R_SERVICE_REVIEW',
+    );
   });
 
   it('gera scenarioId estável para o mesmo input', () => {

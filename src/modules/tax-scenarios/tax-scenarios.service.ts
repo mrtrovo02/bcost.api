@@ -675,18 +675,90 @@ export class TaxScenariosService {
         officialAssessment: false,
       },
     ];
+    const commercialDecision = this.buildCommercialDecision(
+      rules,
+      input.currentModel,
+      comparisons.find((comparison) => comparison.model === 'PF')
+        ? comparisons
+            .filter((comparison) => this.isSavingsComparable(comparison))
+            .sort((a, b) => b.netAnnualResult - a.netAnnualResult)[0]?.model
+        : undefined,
+    );
 
     return {
       version: 'tax-scenarios-compliance-2026.1',
       calculationMode: 'ESTIMATIVE_TRIAGE',
       officialAssessment: false,
       evaluatedAt: new Date().toISOString(),
+      commercialDecision,
       rules,
       disclaimers: [
         'Este simulador não substitui apuração oficial, PGDAS-D, escrituração contábil/fiscal, DIRPF ou parecer de contador responsável.',
         'A recomendação comercial deve ser bloqueada quando houver status BLOCKED ou REQUIRES_REVIEW sem evidência validada.',
       ],
     };
+  }
+
+  private buildCommercialDecision(
+    rules: TaxComplianceRuleEvaluation[],
+    currentModel?: TaxScenarioModel,
+    bestModel?: TaxScenarioModel,
+  ): TaxScenarioComplianceTrail['commercialDecision'] {
+    const blockedRules = rules.filter(
+      (rule) =>
+        rule.status === 'BLOCKED' &&
+        this.isBlockingRuleRelevantForCommercialDecision(
+          rule.code,
+          currentModel,
+          bestModel,
+        ),
+    );
+    const reviewRules = rules.filter(
+      (rule) => rule.status === 'REQUIRES_REVIEW',
+    );
+    const operationalReviewRules = reviewRules.filter(
+      (rule) => rule.code !== 'OFFICIAL_ASSESSMENT_LOCK',
+    );
+    const status =
+      blockedRules.length > 0
+        ? 'BLOCKED_BY_COMPLIANCE'
+        : operationalReviewRules.length > 0
+          ? 'ASSISTED_REVIEW_REQUIRED'
+          : 'ASSISTED_REVIEW_REQUIRED';
+
+    return {
+      status,
+      canGenerateProposal:
+        status !== 'BLOCKED_BY_COMPLIANCE' &&
+        operationalReviewRules.length === 0,
+      requiresCrcReview: true,
+      reasons: [
+        ...blockedRules.map((rule) => rule.result),
+        ...operationalReviewRules.map((rule) => rule.result),
+        'Toda proposta comercial tributária deve ser revisada por contador responsável antes de contratação.',
+      ],
+      blockedRuleCodes: blockedRules.map((rule) => rule.code),
+      reviewRuleCodes: reviewRules.map((rule) => rule.code),
+    };
+  }
+
+  private isBlockingRuleRelevantForCommercialDecision(
+    ruleCode: string,
+    currentModel?: TaxScenarioModel,
+    bestModel?: TaxScenarioModel,
+  ): boolean {
+    if (ruleCode === 'MEI_ELIGIBILITY') {
+      return currentModel === 'MEI' || bestModel === 'MEI';
+    }
+
+    if (ruleCode === 'SIMPLES_NACIONAL_REVENUE_LIMIT') {
+      return (
+        currentModel === 'SIMPLES_NACIONAL' ||
+        bestModel === 'SIMPLES_NACIONAL'
+      );
+    }
+
+    return true;
   }
 
   private buildCalculation(
