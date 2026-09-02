@@ -127,6 +127,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
 
     // 🛡️ Rate Limiting Global
     ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => [
         {
@@ -140,6 +141,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
     // ⚡ Cache Em Memória
     CacheModule.registerAsync({
       isGlobal: true,
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         ttl: config.get<number>('CACHE_TTL') ?? 600,
@@ -149,6 +151,7 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
 
     // 🐂 Fila de Processamento Assíncrono (BullMQ + Redis)
     BullModule.forRootAsync({
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
