@@ -1,7 +1,7 @@
 'use strict';
 
 import { TaxScenariosService } from './tax-scenarios.service.js';
-import { TAX_SCENARIO_REGRESSION_FIXTURES } from './tax-scenarios.regression-fixtures.js';
+import { TAX_SCENARIO_REGRESSION_SUITE } from './tax-scenarios.regression-fixtures.js';
 
 describe('TaxScenariosService', () => {
   let service: TaxScenariosService;
@@ -303,7 +303,23 @@ describe('TaxScenariosService', () => {
   });
 
   describe('fixtures regressivas de QA tributário', () => {
-    it.each(TAX_SCENARIO_REGRESSION_FIXTURES)(
+    it('declara versão, cobertura e criticidades bloqueantes da suíte', () => {
+      expect(TAX_SCENARIO_REGRESSION_SUITE).toMatchObject({
+        version: 'tax-scenarios-regression-2026.1',
+        owner: 'tax-scenarios',
+        blockingCriticalities: ['BLOCKER', 'HIGH'],
+      });
+      expect(TAX_SCENARIO_REGRESSION_SUITE.coveredRules).toEqual(
+        expect.arrayContaining([
+          'SIMPLES_EPP_REVENUE_LIMIT',
+          'FACTOR_R_THRESHOLD_28_PERCENT',
+          'CBS_IBS_2026_INFORMATIVE_RATES',
+        ]),
+      );
+      expect(TAX_SCENARIO_REGRESSION_SUITE.fixtures.length).toBeGreaterThanOrEqual(4);
+    });
+
+    it.each(TAX_SCENARIO_REGRESSION_SUITE.fixtures)(
       'preserva contrato fiscal $id',
       (fixture) => {
         const result = service.simulate(fixture.input);

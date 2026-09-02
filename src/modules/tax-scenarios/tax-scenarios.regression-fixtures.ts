@@ -33,6 +33,15 @@ export type TaxScenarioRegressionFixture = {
   };
 };
 
+export type TaxScenarioRegressionSuite = {
+  version: string;
+  owner: 'tax-scenarios';
+  purpose: string;
+  blockingCriticalities: Array<TaxScenarioRegressionFixture['criticality']>;
+  coveredRules: string[];
+  fixtures: TaxScenarioRegressionFixture[];
+};
+
 export const TAX_SCENARIO_REGRESSION_FIXTURES: TaxScenarioRegressionFixture[] = [
   {
     id: 'MEI_LIMIT_WITHOUT_PAYROLL',
@@ -181,3 +190,22 @@ export const TAX_SCENARIO_REGRESSION_FIXTURES: TaxScenarioRegressionFixture[] = 
     },
   },
 ];
+
+export const TAX_SCENARIO_REGRESSION_SUITE: TaxScenarioRegressionSuite = {
+  version: 'tax-scenarios-regression-2026.1',
+  owner: 'tax-scenarios',
+  purpose:
+    'Contrato regressivo de QA tributario para simulacao comercial PF x PJ, MEI, Simples Nacional, Fator R e CBS/IBS informativo 2026.',
+  blockingCriticalities: ['BLOCKER', 'HIGH'],
+  coveredRules: [
+    'MEI_ANNUAL_REVENUE_LIMIT',
+    'MEI_PAYROLL_REVIEW',
+    'SIMPLES_EPP_REVENUE_LIMIT',
+    'SIMPLES_EFFECTIVE_RATE_ANNEX_III',
+    'SIMPLES_EFFECTIVE_RATE_ANNEX_V',
+    'FACTOR_R_THRESHOLD_28_PERCENT',
+    'CBS_IBS_2026_INFORMATIVE_RATES',
+    'COMMERCIAL_PROPOSAL_COMPLIANCE_GATE',
+  ],
+  fixtures: TAX_SCENARIO_REGRESSION_FIXTURES,
+};
