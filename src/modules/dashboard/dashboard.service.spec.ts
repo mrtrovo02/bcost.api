@@ -351,6 +351,47 @@ describe('DashboardService (Management Cockpit)', () => {
     });
   });
 
+  it('mantém o overview disponível com fallback controlado quando dependências analíticas falham', async () => {
+    const {
+      service,
+      analyticsServiceMock,
+      insightsServiceMock,
+      cashFlowServiceMock,
+      anomalyServiceMock,
+    } = createService();
+
+    analyticsServiceMock.getFiscalHealthScore.mockRejectedValueOnce(
+      new Error('analytics unavailable'),
+    );
+    analyticsServiceMock.getRevenueHistory.mockRejectedValueOnce(
+      new Error('history unavailable'),
+    );
+    insightsServiceMock.getFinancialHealth.mockRejectedValueOnce(
+      new Error('insights unavailable'),
+    );
+    cashFlowServiceMock.getLatestProjection.mockRejectedValueOnce(
+      new Error('projection unavailable'),
+    );
+    anomalyServiceMock.detectAnomalies.mockRejectedValueOnce(
+      new Error('anomaly engine unavailable'),
+    );
+
+    const result = await service.getCompanyOverview('company-1');
+
+    expect(result.summary).toMatchObject({
+      fiscalScore: 0,
+      financialScore: 0,
+      criticalAnomalies: 0,
+      totalRevenueYTD: 250000,
+      activeAutomations: 2,
+    });
+    expect(result.revenueChart).toEqual([]);
+    expect(result.cashFlowProjection).toEqual([]);
+    expect(result.engineStatus).toMatchObject({
+      status: 'UNAVAILABLE',
+    });
+  });
+
   it('consolida o cockpit gerencial dentro do contexto RLS da empresa', async () => {
     const { service, prismaMock } = createService();
 

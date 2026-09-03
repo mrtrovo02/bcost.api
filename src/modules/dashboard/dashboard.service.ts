@@ -22,6 +22,21 @@ import { InsightsService } from '../../insights/insights.service.js';
 import { CashFlowProjectionService } from '../../insights/cash-flow-projection/cash-flow-projection.service.js';
 import { AnomalyDetectionService } from '../../insights/anomaly-detection/anomaly-detection.service.js';
 
+type DashboardAuditLogEntry = {
+  action: string;
+  createdAt: Date;
+  module: string;
+};
+
+type DashboardFinancialHealth = {
+  score: number;
+  status: string;
+};
+
+type DashboardAnomaly = {
+  deviationScore: number;
+};
+
 @Injectable()
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
@@ -57,14 +72,14 @@ export class DashboardService {
 
     try {
       const [
-        healthScore,
-        revenueHistory,
-        pendingJobs,
-        recentLogs,
-        financialHealth,
-        anomalies,
-        projections,
-      ] = await Promise.all([
+        healthScoreResult,
+        revenueHistoryResult,
+        pendingJobsResult,
+        recentLogsResult,
+        financialHealthResult,
+        anomaliesResult,
+        projectionsResult,
+      ] = await Promise.allSettled([
         this.analyticsService.getFiscalHealthScore(companyId),
         this.analyticsService.getRevenueHistory(companyId),
 
@@ -88,6 +103,37 @@ export class DashboardService {
         this.cashFlowService.getLatestProjection(companyId),
       ]);
 
+      const healthScore = this.settledOr(
+        healthScoreResult,
+        0,
+        'fiscal-health-score',
+      );
+      const revenueHistory = this.settledOr(
+        revenueHistoryResult,
+        [],
+        'revenue-history',
+      );
+      const pendingJobs = this.settledOr(pendingJobsResult, 0, 'pending-jobs');
+      const recentLogs = this.settledOr<DashboardAuditLogEntry[]>(
+        recentLogsResult,
+        [],
+        'recent-audit-logs',
+      );
+      const financialHealth = this.settledOr<DashboardFinancialHealth>(
+        financialHealthResult,
+        { score: 0, status: 'UNAVAILABLE' },
+        'financial-health',
+      );
+      const anomalies = this.settledOr<DashboardAnomaly[]>(
+        anomaliesResult,
+        [],
+        'anomalies',
+      );
+      const projections = this.settledOr(
+        projectionsResult,
+        [],
+        'cash-flow-projections',
+      );
       const currentYear = new Date().getUTCFullYear();
 
       const [ytdRevenue, overdueObligations, unreconciledInvoices] =
@@ -767,5 +813,22 @@ export class DashboardService {
         check: f.checkName,
       })),
     };
+  }
+
+  private settledOr<T>(
+    result: PromiseSettledResult<T>,
+    fallback: T,
+    dependency: string,
+  ): T {
+    if (result.status === 'fulfilled') return result.value;
+
+    const reason =
+      result.reason instanceof Error ? result.reason.message : String(result.reason);
+
+    this.logger.warn(
+      `[Dashboard] Dependência ${dependency} indisponível; usando fallback controlado: ${reason}`,
+    );
+
+    return fallback;
   }
 }
