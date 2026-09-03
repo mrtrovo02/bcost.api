@@ -74,6 +74,7 @@ describe('DashboardService (Management Cockpit)', () => {
         ),
       },
       invoice: {
+        count: jest.fn().mockResolvedValue(0),
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'inv-1',
@@ -110,6 +111,11 @@ describe('DashboardService (Management Cockpit)', () => {
             status: ObligationStatus.PAID,
           },
         ]),
+      },
+      taxCalculation: {
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { totalAmount: new Prisma.Decimal(1234.56) },
+        }),
       },
       fiscalObligation: {
         findMany: jest.fn().mockResolvedValue([
@@ -197,6 +203,14 @@ describe('DashboardService (Management Cockpit)', () => {
       financialSnapshot: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      payroll: {
+        count: jest.fn().mockResolvedValue(1),
+      },
+      withRlsCompanyContext: jest
+        .fn()
+        .mockImplementation(async (_companyId, callback) =>
+          callback(prismaMock),
+        ),
     };
 
     const noop = {} as never;
@@ -259,5 +273,30 @@ describe('DashboardService (Management Cockpit)', () => {
     await expect(
       service.getManagementCockpit('company-inexistente'),
     ).rejects.toThrow(InternalServerErrorException);
+  });
+
+  it('calcula métricas em tempo real dentro do contexto RLS da empresa', async () => {
+    const { service, prismaMock } = createService();
+    prismaMock.invoice.count.mockResolvedValueOnce(8).mockResolvedValueOnce(6);
+    prismaMock.payroll.count.mockResolvedValueOnce(2);
+
+    const result = await service.getRealTimeMetrics('company-1');
+
+    expect(result).toMatchObject({
+      processedInvoices: 8,
+      reconciledInvoices: 6,
+      reconciliationRate: 75,
+      estimatedTaxProvision: 1234.56,
+      payrollRegistered: true,
+      engineStatus: 'STABLE',
+    });
+    expect(prismaMock.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prismaMock.taxCalculation.aggregate).toHaveBeenCalledWith({
+      where: expect.objectContaining({ companyId: 'company-1' }),
+      _sum: { totalAmount: true },
+    });
   });
 });

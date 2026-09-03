@@ -624,27 +624,29 @@ export class DashboardService {
     const currentYear = now.getFullYear();
 
     const [invoicesCount, taxEstimate, payrollCount, reconciledCount] =
-      await Promise.all([
-        this.prisma.invoice.count({
-          where: { companyId, issuedAt: { gte: startOfMonth } },
-        }),
-        this.prisma.taxCalculation.aggregate({
-          where: { companyId, month: currentMonth, year: currentYear },
-          _sum: { totalAmount: true },
-        }),
-        // Folhas lançadas no mês — confirma se o Fator R está alimentado
-        this.prisma.payroll.count({
-          where: { companyId, month: currentMonth, year: currentYear },
-        }),
-        // Taxa de conciliação do mês — KPI de saúde operacional
-        this.prisma.invoice.count({
-          where: {
-            companyId,
-            issuedAt: { gte: startOfMonth },
-            reconciled: true,
-          },
-        }),
-      ]);
+      await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        Promise.all([
+          tx.invoice.count({
+            where: { companyId, issuedAt: { gte: startOfMonth } },
+          }),
+          tx.taxCalculation.aggregate({
+            where: { companyId, month: currentMonth, year: currentYear },
+            _sum: { totalAmount: true },
+          }),
+          // Folhas lançadas no mês — confirma se o Fator R está alimentado
+          tx.payroll.count({
+            where: { companyId, month: currentMonth, year: currentYear },
+          }),
+          // Taxa de conciliação do mês — KPI de saúde operacional
+          tx.invoice.count({
+            where: {
+              companyId,
+              issuedAt: { gte: startOfMonth },
+              reconciled: true,
+            },
+          }),
+        ]),
+      );
 
     const reconciliationRate =
       invoicesCount > 0
