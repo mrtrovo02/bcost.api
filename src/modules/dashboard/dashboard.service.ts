@@ -693,39 +693,44 @@ export class DashboardService {
    * saber o que já está sendo tratado.
    */
   async getComplianceDiagnostic(companyId: string) {
-    const [openIssues, inProgressIssues, resolvedThisMonth] = await Promise.all(
-      [
-        this.prisma.complianceCheck.findMany({
-          where: {
-            companyId,
-            status: ComplianceStatus.OPEN,
-            resolved: false,
-          },
-          orderBy: { severity: 'desc' },
-        }),
-
-        this.prisma.complianceCheck.findMany({
-          where: {
-            companyId,
-            status: ComplianceStatus.IN_PROGRESS,
-            resolved: false,
-          },
-          orderBy: { createdAt: 'desc' },
-          take: 5,
-        }),
-
-        // Resolvidos no mês corrente — mostra progresso para o cliente
-        this.prisma.complianceCheck.count({
-          where: {
-            companyId,
-            status: ComplianceStatus.RESOLVED,
-            resolvedAt: {
-              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    const [openIssues, inProgressIssues, resolvedThisMonth] =
+      await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        Promise.all([
+          tx.complianceCheck.findMany({
+            where: {
+              companyId,
+              status: ComplianceStatus.OPEN,
+              resolved: false,
             },
-          },
-        }),
-      ],
-    );
+            orderBy: { severity: 'desc' },
+          }),
+
+          tx.complianceCheck.findMany({
+            where: {
+              companyId,
+              status: ComplianceStatus.IN_PROGRESS,
+              resolved: false,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          }),
+
+          // Resolvidos no mês corrente — mostra progresso para o cliente
+          tx.complianceCheck.count({
+            where: {
+              companyId,
+              status: ComplianceStatus.RESOLVED,
+              resolvedAt: {
+                gte: new Date(
+                  new Date().getFullYear(),
+                  new Date().getMonth(),
+                  1,
+                ),
+              },
+            },
+          }),
+        ]),
+      );
 
     // Score ponderado por severidade
     const score = openIssues.reduce((acc, curr) => {

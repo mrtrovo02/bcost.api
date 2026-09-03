@@ -47,7 +47,9 @@ jest.mock('@prisma/client', () => {
 
 import {
   AccountType,
+  ComplianceStatus,
   JobStatus,
+  NotificationSeverity,
   ObligationStatus,
   Prisma,
 } from '@prisma/client';
@@ -197,12 +199,14 @@ describe('DashboardService (Management Cockpit)', () => {
         ]),
       },
       complianceCheck: {
+        count: jest.fn().mockResolvedValue(2),
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'check-1',
-            severity: 'CRITICAL',
+            severity: NotificationSeverity.CRITICAL,
             checkName: 'XML pendente',
             description: 'Documento sem validação.',
+            createdAt: new Date(),
           },
         ]),
       },
@@ -437,6 +441,60 @@ describe('DashboardService (Management Cockpit)', () => {
         status: 'ACTIVE',
       },
       select: { id: true, issuer: true, validTo: true },
+    });
+  });
+
+  it('calcula diagnóstico de compliance dentro do contexto RLS da empresa', async () => {
+    const { service, prismaMock } = createService();
+    prismaMock.complianceCheck.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'critical-issue',
+          severity: NotificationSeverity.CRITICAL,
+          checkName: 'XML sem validação',
+          description: 'Documento fiscal precisa de revisão.',
+          createdAt: new Date('2026-01-10T00:00:00.000Z'),
+        },
+        {
+          id: 'warning-issue',
+          severity: NotificationSeverity.WARNING,
+          checkName: 'Certificado próximo do vencimento',
+          description: 'Certificado digital vence no mês.',
+          createdAt: new Date('2026-01-11T00:00:00.000Z'),
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'in-progress-issue',
+          severity: NotificationSeverity.INFO,
+          checkName: 'Conferência em andamento',
+          description: 'Item já está com operação interna.',
+          createdAt: new Date('2026-01-12T00:00:00.000Z'),
+        },
+      ]);
+    prismaMock.complianceCheck.count.mockResolvedValueOnce(3);
+
+    const result = await service.getComplianceDiagnostic('company-1');
+
+    expect(result).toMatchObject({
+      complianceScore: 75,
+      status: 'WARNING',
+      issuesFound: 2,
+      inProgress: 1,
+      resolvedThisMonth: 3,
+      criticalBlockers: 1,
+    });
+    expect(prismaMock.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prismaMock.complianceCheck.findMany).toHaveBeenCalledWith({
+      where: {
+        companyId: 'company-1',
+        status: ComplianceStatus.OPEN,
+        resolved: false,
+      },
+      orderBy: { severity: 'desc' },
     });
   });
 });
