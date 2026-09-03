@@ -52,7 +52,7 @@ export class CreateContractDto {
       customerId,
       description: this.description,
       amount: new Prisma.Decimal(this.amount),
-      billingDay: this.billingDay ?? new Date().getDate(),
+      billingDay: this.billingDay ?? 5,
     };
   }
 }

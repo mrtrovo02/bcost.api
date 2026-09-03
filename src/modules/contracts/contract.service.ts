@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
+import { CreateContractDto } from './dto/create-contract.dto.js';
 import {
   ContractStatus,
   InvoiceType,
@@ -39,6 +40,66 @@ export class ContractService {
    * Valida regras de negócio e vinculação com cliente.
    */
   async create(companyId: string, data: Prisma.ContractUncheckedCreateInput) {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      this.createWithClient(tx, companyId, data),
+    );
+  }
+
+  async createFromDto(dto: CreateContractDto) {
+    return this.prisma.withRlsCompanyContext(dto.companyId, async (tx) => {
+      const customerId = await this.resolveCustomerId(tx, dto);
+
+      return this.createWithClient(
+        tx,
+        dto.companyId,
+        dto.toPrisma(customerId),
+      );
+    });
+  }
+
+  private async resolveCustomerId(
+    tx: Prisma.TransactionClient,
+    dto: CreateContractDto,
+  ): Promise<string> {
+    if (dto.customerId) {
+      return dto.customerId;
+    }
+
+    if (!dto.customerDocument || !dto.customerName) {
+      throw new BadRequestException(
+        'Informe customerId ou os dados mínimos do cliente para criar contrato.',
+      );
+    }
+
+    const customer = await tx.customer.upsert({
+      where: {
+        companyId_document: {
+          companyId: dto.companyId,
+          document: dto.customerDocument,
+        },
+      },
+      create: {
+        companyId: dto.companyId,
+        name: dto.customerName,
+        document: dto.customerDocument,
+        email: dto.customerEmail ?? null,
+      },
+      update: {
+        name: dto.customerName,
+        email: dto.customerEmail ?? null,
+        active: true,
+        deletedAt: null,
+      },
+    });
+
+    return customer.id;
+  }
+
+  private async createWithClient(
+    tx: Prisma.TransactionClient,
+    companyId: string,
+    data: Prisma.ContractUncheckedCreateInput,
+  ) {
     const billingDay = data.billingDay ?? 5;
 
     if (billingDay < 1 || billingDay > 28) {
@@ -47,14 +108,14 @@ export class ContractService {
       );
     }
 
-    const customer = await this.prisma.customer.findFirst({
+    const customer = await tx.customer.findFirst({
       where: { id: data.customerId, companyId },
     });
 
     if (!customer)
       throw new NotFoundException('Cliente não encontrado para esta empresa.');
 
-    return this.prisma.contract.create({
+    return tx.contract.create({
       data: {
         ...data,
         companyId,
@@ -152,10 +213,21 @@ export class ContractService {
   }
 
   async findByCompany(companyId: string) {
-    return this.prisma.contract.findMany({
-      where: { companyId, deletedAt: null },
-      include: { customer: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.contract.findMany({
+        where: { companyId, deletedAt: null },
+        include: { customer: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+  }
+
+  async findOne(companyId: string, contractId: string) {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.contract.findFirst({
+        where: { id: contractId, companyId },
+        include: { customer: true },
+      }),
+    );
   }
 }

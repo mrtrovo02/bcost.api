@@ -20,7 +20,6 @@ import { RequiresFeature } from '../billing/decorators/requires-feature.decorato
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
-import { PrismaService } from '../../database/prisma.service.js';
 import { ContractService } from './contract.service.js';
 import { CreateContractDto } from './dto/create-contract.dto.js';
 
@@ -30,43 +29,13 @@ import { CreateContractDto } from './dto/create-contract.dto.js';
 @RequiresFeature('revenue.billing')
 @Controller('contracts')
 export class ContractController {
-  constructor(
-    private readonly contractService: ContractService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly contractService: ContractService) {}
 
   @Post()
   @Roles(CompanyRole.OWNER, CompanyRole.ACCOUNTANT, CompanyRole.MANAGER)
   @ApiOperation({ summary: 'Criar contrato recorrente' })
   async create(@Body() dto: CreateContractDto) {
-    let customerId = dto.customerId;
-
-    if (!customerId) {
-      const customer = await this.prisma.customer.upsert({
-        where: {
-          companyId_document: {
-            companyId: dto.companyId,
-            document: dto.customerDocument ?? '',
-          },
-        },
-        create: {
-          companyId: dto.companyId,
-          name: dto.customerName ?? 'Cliente sem nome',
-          document: dto.customerDocument ?? '',
-          email: dto.customerEmail ?? null,
-        },
-        update: {
-          name: dto.customerName ?? 'Cliente sem nome',
-          email: dto.customerEmail ?? null,
-          active: true,
-          deletedAt: null,
-        },
-      });
-
-      customerId = customer.id;
-    }
-
-    return this.contractService.create(dto.companyId, dto.toPrisma(customerId));
+    return this.contractService.createFromDto(dto);
   }
 
   @Get()
@@ -90,9 +59,6 @@ export class ContractController {
       );
     }
 
-    return this.prisma.contract.findFirst({
-      where: { id, companyId },
-      include: { customer: true },
-    });
+    return this.contractService.findOne(companyId, id);
   }
 }
