@@ -37,8 +37,13 @@ interface FinancePrismaMock {
     create: jest.Mock<Promise<unknown>, [unknown]>;
   };
   auditLog: {
+    findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
     create: jest.Mock<Promise<unknown>, [unknown]>;
   };
+  withRlsCompanyContext: jest.Mock<
+    Promise<unknown>,
+    [string, (transaction: FinancePrismaMock) => Promise<unknown>]
+  >;
   $transaction: jest.Mock<
     Promise<unknown>,
     [(transaction: FinancePrismaMock) => Promise<unknown>]
@@ -72,6 +77,7 @@ function createPrismaMock(): FinancePrismaMock {
       create: jest.fn<Promise<unknown>, [unknown]>(),
     },
     auditLog: {
+      findMany: jest.fn<Promise<unknown[]>, [unknown]>().mockResolvedValue([]),
       create: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
         id: 'audit-001',
       }),
@@ -80,6 +86,10 @@ function createPrismaMock(): FinancePrismaMock {
       Promise<unknown>,
       [(transaction: FinancePrismaMock) => Promise<unknown>]
     >(async (callback) => callback(prisma)),
+    withRlsCompanyContext: jest.fn<
+      Promise<unknown>,
+      [string, (transaction: FinancePrismaMock) => Promise<unknown>]
+    >(async (_companyId, callback) => callback(prisma)),
   };
 
   return prisma;
@@ -114,6 +124,10 @@ describe('FinanceService tenant isolation', () => {
       availableBalance: 750,
       healthIndex: '4.00',
     });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-001',
+      expect.any(Function),
+    );
     expect(prisma.bankTransaction.aggregate).toHaveBeenCalledWith({
       where: { companyId: 'company-001' },
       _sum: { amount: true },
@@ -142,6 +156,10 @@ describe('FinanceService tenant isolation', () => {
 
     await service.reconcileTaxObligations('company-001', 'user-001');
 
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-001',
+      expect.any(Function),
+    );
     expect(prisma.bankTransaction.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({

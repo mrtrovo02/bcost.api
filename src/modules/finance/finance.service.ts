@@ -59,56 +59,53 @@ export class FinanceService {
     companyId: string,
     userId: string,
   ): Promise<ReconciliationSummary> {
-    const startTime = Date.now();
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      const startTime = Date.now();
 
-    // Define o escopo global para esta execução (segurança Multi-tenant)
-
-    const pendingObligations = await this.prisma.taxObligation.findMany({
-      where: { companyId, status: ObligationStatus.PENDING }, // companyId é injetado automaticamente
-      orderBy: { dueDate: 'asc' },
-    });
-
-    if (pendingObligations.length === 0)
-      return { message: 'Nada a conciliar.' };
-
-    const matchedResults: ReconciliationMatch[] = [];
-
-    for (const obligation of pendingObligations) {
-      const month = obligation.dueDate.getUTCMonth() + 1;
-      const year = obligation.dueDate.getUTCFullYear();
-
-      const isLocked = await this.prisma.balanceLock.findUnique({
-        where: { companyId_month_year: { companyId, month, year } },
+      const pendingObligations = await tx.taxObligation.findMany({
+        where: { companyId, status: ObligationStatus.PENDING },
+        orderBy: { dueDate: 'asc' },
       });
 
-      if (isLocked) {
-        this.logger.warn(
-          `[Finance] Período ${month}/${year} bloqueado para empresa ${companyId}.`,
-        );
-        continue;
-      }
+      if (pendingObligations.length === 0)
+        return { message: 'Nada a conciliar.' };
 
-      const amountToMatch = obligation.amount.mul(-1);
-      const potentialMatch = await this.prisma.bankTransaction.findFirst({
-        where: {
-          companyId,
-          amount: amountToMatch,
-          reconciled: false,
-          occurredAt: {
-            gte: new Date(
-              obligation.dueDate.getTime() - 15 * 24 * 60 * 60 * 1000,
-            ),
-            lte: new Date(
-              obligation.dueDate.getTime() + 5 * 24 * 60 * 60 * 1000,
-            ),
+      const matchedResults: ReconciliationMatch[] = [];
+
+      for (const obligation of pendingObligations) {
+        const month = obligation.dueDate.getUTCMonth() + 1;
+        const year = obligation.dueDate.getUTCFullYear();
+
+        const isLocked = await tx.balanceLock.findUnique({
+          where: { companyId_month_year: { companyId, month, year } },
+        });
+
+        if (isLocked) {
+          this.logger.warn(
+            `[Finance] Período ${month}/${year} bloqueado para empresa ${companyId}.`,
+          );
+          continue;
+        }
+
+        const amountToMatch = obligation.amount.mul(-1);
+        const potentialMatch = await tx.bankTransaction.findFirst({
+          where: {
+            companyId,
+            amount: amountToMatch,
+            reconciled: false,
+            occurredAt: {
+              gte: new Date(
+                obligation.dueDate.getTime() - 15 * 24 * 60 * 60 * 1000,
+              ),
+              lte: new Date(
+                obligation.dueDate.getTime() + 5 * 24 * 60 * 60 * 1000,
+              ),
+            },
           },
-        },
-      });
+        });
 
-      if (potentialMatch) {
-        try {
-          // Transação ACID usando o executor robusto do seu PrismaService
-          const result = await this.prisma.$transaction(async (tx) => {
+        if (potentialMatch) {
+          try {
             await tx.bankTransaction.update({
               where: { id: potentialMatch.id },
               data: { reconciled: true, taxObligationId: obligation.id },
@@ -135,25 +132,25 @@ export class FinanceService {
               },
             });
 
-            return { obligationId: updated.id, status: updated.status };
-          });
-
-          matchedResults.push(result);
-        } catch (e: unknown) {
-          const message = e instanceof Error ? e.message : String(e);
-          this.logger.error(
-            `Falha na transação da obrigação ${obligation.id}: ${message}`,
-          );
+            matchedResults.push({
+              obligationId: updated.id,
+              status: updated.status,
+            });
+          } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            this.logger.error(
+              `Falha na transação da obrigação ${obligation.id}: ${message}`,
+            );
+          }
         }
       }
-    }
 
-    // Limpa o escopo após o processamento
-    return {
-      processed: pendingObligations.length,
-      matched: matchedResults.length,
-      matches: matchedResults,
-    };
+      return {
+        processed: pendingObligations.length,
+        matched: matchedResults.length,
+        matches: matchedResults,
+      };
+    });
   }
 
   /**
@@ -166,14 +163,16 @@ export class FinanceService {
     userId: string,
   ) {
     try {
-      return await this.prisma.balanceLock.create({
-        data: {
-          companyId,
-          month,
-          year,
-          lockedBy: userId,
-        },
-      });
+      return await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        tx.balanceLock.create({
+          data: {
+            companyId,
+            month,
+            year,
+            lockedBy: userId,
+          },
+        }),
+      );
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -191,30 +190,36 @@ export class FinanceService {
    * TRILHA DE AUDITORIA DO MÓDULO
    */
   async getModuleAuditTrail(companyId: string, module: string) {
-    return await this.prisma.auditLog.findMany({
-      where: { companyId, module },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-      include: {
-        user: { select: { name: true, email: true } },
-      },
-    });
+    return await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.auditLog.findMany({
+        where: { companyId, module },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: {
+          user: { select: { name: true, email: true } },
+        },
+      }),
+    );
   }
 
   /**
    * HEALTH SUMMARY
    */
   async getFinancialHealthSummary(companyId: string) {
-    const [balance, pendingTax] = await Promise.all([
-      this.prisma.bankTransaction.aggregate({
-        where: { companyId },
-        _sum: { amount: true },
-      }),
-      this.prisma.taxObligation.aggregate({
-        where: { companyId, status: ObligationStatus.PENDING },
-        _sum: { amount: true },
-      }),
-    ]);
+    const [balance, pendingTax] = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        Promise.all([
+          tx.bankTransaction.aggregate({
+            where: { companyId },
+            _sum: { amount: true },
+          }),
+          tx.taxObligation.aggregate({
+            where: { companyId, status: ObligationStatus.PENDING },
+            _sum: { amount: true },
+          }),
+        ]),
+    );
 
     const cash = Number(balance._sum.amount) || 0;
     const liability = Number(pendingTax._sum.amount) || 0;
