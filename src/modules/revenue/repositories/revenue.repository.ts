@@ -18,19 +18,21 @@ export class RevenueRepository {
     const twelveMonthsAgo = new Date(referenceDate);
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-    return this.prisma.invoice.aggregate({
-      where: {
-        companyId,
-        status: 'NORMAL',
-        issuedAt: {
-          gte: twelveMonthsAgo,
-          lte: referenceDate,
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.invoice.aggregate({
+        where: {
+          companyId,
+          status: 'NORMAL',
+          issuedAt: {
+            gte: twelveMonthsAgo,
+            lte: referenceDate,
+          },
         },
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+        _sum: {
+          amount: true,
+        },
+      }),
+    );
   }
 
   /**
@@ -41,22 +43,24 @@ export class RevenueRepository {
     const twelveMonthsAgo = new Date(referenceDate);
     twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-    return this.prisma.payroll.aggregate({
-      where: {
-        companyId,
-        // Usando createdAt como data de referência conforme seu schema
-        createdAt: {
-          gte: twelveMonthsAgo,
-          lte: referenceDate,
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.payroll.aggregate({
+        where: {
+          companyId,
+          // Usando createdAt como data de referência conforme seu schema
+          createdAt: {
+            gte: twelveMonthsAgo,
+            lte: referenceDate,
+          },
         },
-      },
-      _sum: {
-        // Usando totalAmount conforme seu schema
-        totalAmount: true,
-        salariesAmount: true,
-        proLaboreAmount: true,
-      },
-    });
+        _sum: {
+          // Usando totalAmount conforme seu schema
+          totalAmount: true,
+          salariesAmount: true,
+          proLaboreAmount: true,
+        },
+      }),
+    );
   }
 
   /**
@@ -69,25 +73,27 @@ export class RevenueRepository {
     totalAmount: number;
     fatorR: number;
   }) {
-    return this.prisma.taxCalculation.upsert({
-      where: {
-        companyId_month_year: {
+    return this.prisma.withRlsCompanyContext(data.companyId, async (tx) =>
+      tx.taxCalculation.upsert({
+        where: {
+          companyId_month_year: {
+            companyId: data.companyId,
+            month: data.month,
+            year: data.year,
+          },
+        },
+        update: {
+          totalAmount: data.totalAmount,
+          fatorR: data.fatorR,
+        },
+        create: {
           companyId: data.companyId,
           month: data.month,
           year: data.year,
+          totalAmount: data.totalAmount,
+          fatorR: data.fatorR,
         },
-      },
-      update: {
-        totalAmount: data.totalAmount,
-        fatorR: data.fatorR,
-      },
-      create: {
-        companyId: data.companyId,
-        month: data.month,
-        year: data.year,
-        totalAmount: data.totalAmount,
-        fatorR: data.fatorR,
-      },
-    });
+      }),
+    );
   }
 }
