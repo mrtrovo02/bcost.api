@@ -29,7 +29,7 @@ export class ReconciliationService {
       `[RECONCILE] companyId=${companyId} userId=${userId} transactionId=${data.id}`,
     );
 
-    return await this.prisma.$transaction(async (tx) => {
+    return await this.prisma.withRlsCompanyContext(companyId, async (tx) => {
       const transaction = await tx.bankTransaction.findFirst({
         where: { id: data.id, companyId },
       });
@@ -52,9 +52,11 @@ export class ReconciliationService {
       `[RECONCILE] Auto-match iniciado para companyId=${companyId}`,
     );
 
-    const pending = await this.prisma.bankTransaction.count({
-      where: { companyId, reconciled: false },
-    });
+    const pending = await this.prisma.withRlsCompanyContext(companyId, (tx) =>
+      tx.bankTransaction.count({
+        where: { companyId, reconciled: false },
+      }),
+    );
 
     return {
       companyId,
@@ -74,19 +76,21 @@ export class ReconciliationService {
       `[RECONCILE] Desfazendo conciliação companyId=${companyId} transactionId=${transactionId} userId=${userId}`,
     );
 
-    const transaction = await this.prisma.bankTransaction.findFirst({
-      where: { id: transactionId, companyId },
-    });
+    await this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      const transaction = await tx.bankTransaction.findFirst({
+        where: { id: transactionId, companyId },
+      });
 
-    if (!transaction) {
-      throw new NotFoundException(
-        'Transação bancária não encontrada para esta empresa.',
-      );
-    }
+      if (!transaction) {
+        throw new NotFoundException(
+          'Transação bancária não encontrada para esta empresa.',
+        );
+      }
 
-    await this.prisma.bankTransaction.update({
-      where: { id: transactionId },
-      data: { reconciled: false, taxObligationId: null },
+      await tx.bankTransaction.update({
+        where: { id: transactionId },
+        data: { reconciled: false, invoiceId: null, taxObligationId: null },
+      });
     });
 
     return { transactionId, undone: true, userId };
