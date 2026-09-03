@@ -1,3 +1,4 @@
+import { Prisma, TransactionType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { BankingService } from './banking.service.js';
 
@@ -5,10 +6,19 @@ interface BankingPrismaMock {
   bankTransaction: {
     findFirst: jest.Mock<Promise<unknown>, [unknown]>;
     findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
+    aggregate: jest.Mock<
+      Promise<{ _sum: { amount: Prisma.Decimal | null }; _count: number }>,
+      [unknown]
+    >;
     update: jest.Mock<Promise<unknown>, [unknown]>;
   };
   bankAccount: {
     findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
+    findFirst: jest.Mock<Promise<unknown>, [unknown]>;
+    aggregate: jest.Mock<
+      Promise<{ _sum: { balanceCache: Prisma.Decimal | null } }>,
+      [unknown]
+    >;
   };
   invoice: {
     findFirst: jest.Mock<Promise<unknown>, [unknown]>;
@@ -34,12 +44,36 @@ function createPrismaMock(): BankingPrismaMock {
         taxObligationId: 'obligation-001',
       }),
       findMany: jest.fn<Promise<unknown[]>, [unknown]>().mockResolvedValue([]),
+      aggregate: jest
+        .fn<
+          Promise<{ _sum: { amount: Prisma.Decimal | null }; _count: number }>,
+          [unknown]
+        >()
+        .mockResolvedValue({
+          _sum: { amount: new Prisma.Decimal(0) },
+          _count: 0,
+        }),
       update: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
         id: 'transaction-001',
       }),
     },
     bankAccount: {
       findMany: jest.fn<Promise<unknown[]>, [unknown]>().mockResolvedValue([]),
+      findFirst: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
+        id: 'account-001',
+        bankName: 'Banco Teste',
+        agency: '0001',
+        account: '12345-6',
+        balanceCache: new Prisma.Decimal(100),
+      }),
+      aggregate: jest
+        .fn<
+          Promise<{ _sum: { balanceCache: Prisma.Decimal | null } }>,
+          [unknown]
+        >()
+        .mockResolvedValue({
+          _sum: { balanceCache: new Prisma.Decimal(100) },
+        }),
     },
     invoice: {
       findFirst: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
@@ -171,6 +205,74 @@ describe('BankingService tenant isolation', () => {
       where: { companyId: 'company-001' },
       orderBy: { createdAt: 'desc' },
       take: 100,
+    });
+  });
+
+  it('calcula resumo financeiro dentro do contexto RLS da empresa', async () => {
+    prisma.bankTransaction.aggregate
+      .mockResolvedValueOnce({
+        _sum: { amount: new Prisma.Decimal(1500) },
+        _count: 2,
+      })
+      .mockResolvedValueOnce({
+        _sum: { amount: new Prisma.Decimal(400) },
+        _count: 1,
+      });
+
+    const result = await service.getFinancialSummary('company-001');
+
+    expect(result).toEqual({
+      totalCredit: 1500,
+      totalDebit: 400,
+      ledgerBalance: 1100,
+      cachedBalance: 100,
+      transactions: {
+        credits: 2,
+        debits: 1,
+        total: 3,
+      },
+    });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-001',
+      expect.any(Function),
+    );
+    expect(prisma.bankTransaction.aggregate).toHaveBeenCalledWith({
+      where: {
+        companyId: 'company-001',
+        type: TransactionType.CREDIT,
+      },
+      _sum: { amount: true },
+      _count: true,
+    });
+  });
+
+  it('calcula saldo de conta dentro do contexto RLS da empresa', async () => {
+    prisma.bankTransaction.aggregate
+      .mockResolvedValueOnce({
+        _sum: { amount: new Prisma.Decimal(1000) },
+        _count: 1,
+      })
+      .mockResolvedValueOnce({
+        _sum: { amount: new Prisma.Decimal(300) },
+        _count: 1,
+      });
+
+    const result = await service.getAccountBalance(
+      'company-001',
+      'account-001',
+    );
+
+    expect(result).toEqual({
+      bankAccountId: 'account-001',
+      bankName: 'Banco Teste',
+      agency: '0001',
+      account: '12345-6',
+      ledgerBalance: 700,
+      cachedBalance: 100,
+      drift: 600,
+    });
+    expect(prisma.bankAccount.findFirst).toHaveBeenCalledWith({
+      where: { id: 'account-001', companyId: 'company-001' },
     });
   });
 });

@@ -158,16 +158,18 @@ export class BankingService {
     cursor?: string,
     take = 50,
   ) {
-    return this.prisma.bankTransaction.findMany({
-      where: {
-        companyId,
-        bankAccountId,
-        occurredAt: { gte: from, lte: to },
-      },
-      orderBy: { occurredAt: 'asc' },
-      take,
-      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
-    });
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.bankTransaction.findMany({
+        where: {
+          companyId,
+          bankAccountId,
+          occurredAt: { gte: from, lte: to },
+        },
+        orderBy: { occurredAt: 'asc' },
+        take,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      }),
+    );
   }
 
   async listTransactionsForCompany(params: {
@@ -218,22 +220,24 @@ export class BankingService {
     reconciled?: boolean,
     take = 100,
   ) {
-    return this.prisma.bankTransaction.findMany({
-      where: {
-        companyId,
-        ...(reconciled !== undefined ? { reconciled } : {}),
-        ...(query
-          ? {
-              OR: [
-                { description: { contains: query, mode: 'insensitive' } },
-                { id: { contains: query } },
-              ],
-            }
-          : {}),
-      },
-      orderBy: { occurredAt: 'desc' },
-      take,
-    });
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.bankTransaction.findMany({
+        where: {
+          companyId,
+          ...(reconciled !== undefined ? { reconciled } : {}),
+          ...(query
+            ? {
+                OR: [
+                  { description: { contains: query, mode: 'insensitive' } },
+                  { id: { contains: query } },
+                ],
+              }
+            : {}),
+        },
+        orderBy: { occurredAt: 'desc' },
+        take,
+      }),
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -370,31 +374,34 @@ export class BankingService {
   async getFinancialSummary(companyId: string, from?: Date, to?: Date) {
     const dateFilter = from && to ? { gte: from, lte: to } : undefined;
 
-    const [creditAgg, debitAgg, accountsAgg] = await Promise.all([
-      this.prisma.bankTransaction.aggregate({
-        where: {
-          companyId,
-          type: TransactionType.CREDIT,
-          ...(dateFilter ? { occurredAt: dateFilter } : {}),
-        },
-        _sum: { amount: true },
-        _count: true,
-      }),
-      this.prisma.bankTransaction.aggregate({
-        where: {
-          companyId,
-          type: TransactionType.DEBIT,
-          ...(dateFilter ? { occurredAt: dateFilter } : {}),
-        },
-        _sum: { amount: true },
-        _count: true,
-      }),
-      // Saldo em cache das contas (snapshot rápido para dashboard)
-      this.prisma.bankAccount.aggregate({
-        where: { companyId },
-        _sum: { balanceCache: true },
-      }),
-    ]);
+    const [creditAgg, debitAgg, accountsAgg] =
+      await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        Promise.all([
+          tx.bankTransaction.aggregate({
+            where: {
+              companyId,
+              type: TransactionType.CREDIT,
+              ...(dateFilter ? { occurredAt: dateFilter } : {}),
+            },
+            _sum: { amount: true },
+            _count: true,
+          }),
+          tx.bankTransaction.aggregate({
+            where: {
+              companyId,
+              type: TransactionType.DEBIT,
+              ...(dateFilter ? { occurredAt: dateFilter } : {}),
+            },
+            _sum: { amount: true },
+            _count: true,
+          }),
+          // Saldo em cache das contas (snapshot rápido para dashboard)
+          tx.bankAccount.aggregate({
+            where: { companyId },
+            _sum: { balanceCache: true },
+          }),
+        ]),
+      );
 
     const totalCredit = creditAgg._sum.amount?.toNumber() ?? 0;
     const totalDebit = debitAgg._sum.amount?.toNumber() ?? 0;
@@ -419,36 +426,39 @@ export class BankingService {
    * Mais preciso que o balanceCache para fins contábeis.
    */
   async getAccountBalance(companyId: string, bankAccountId: string) {
-    const account = await this.prisma.bankAccount.findFirst({
-      where: { id: bankAccountId, companyId },
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      const account = await tx.bankAccount.findFirst({
+        where: { id: bankAccountId, companyId },
+      });
+      if (!account)
+        throw new NotFoundException('Conta bancária não encontrada.');
+
+      const [credits, debits] = await Promise.all([
+        tx.bankTransaction.aggregate({
+          where: { companyId, bankAccountId, type: TransactionType.CREDIT },
+          _sum: { amount: true },
+        }),
+        tx.bankTransaction.aggregate({
+          where: { companyId, bankAccountId, type: TransactionType.DEBIT },
+          _sum: { amount: true },
+        }),
+      ]);
+
+      const ledger =
+        (credits._sum.amount?.toNumber() ?? 0) -
+        (debits._sum.amount?.toNumber() ?? 0);
+
+      return {
+        bankAccountId,
+        bankName: account.bankName,
+        agency: account.agency,
+        account: account.account,
+        ledgerBalance: ledger,
+        cachedBalance: account.balanceCache.toNumber(),
+        // Divergência entre cache e ledger — útil para detectar importações perdidas
+        drift: Number((ledger - account.balanceCache.toNumber()).toFixed(2)),
+      };
     });
-    if (!account) throw new NotFoundException('Conta bancária não encontrada.');
-
-    const [credits, debits] = await Promise.all([
-      this.prisma.bankTransaction.aggregate({
-        where: { companyId, bankAccountId, type: TransactionType.CREDIT },
-        _sum: { amount: true },
-      }),
-      this.prisma.bankTransaction.aggregate({
-        where: { companyId, bankAccountId, type: TransactionType.DEBIT },
-        _sum: { amount: true },
-      }),
-    ]);
-
-    const ledger =
-      (credits._sum.amount?.toNumber() ?? 0) -
-      (debits._sum.amount?.toNumber() ?? 0);
-
-    return {
-      bankAccountId,
-      bankName: account.bankName,
-      agency: account.agency,
-      account: account.account,
-      ledgerBalance: ledger,
-      cachedBalance: account.balanceCache.toNumber(),
-      // Divergência entre cache e ledger — útil para detectar importações perdidas
-      drift: Number((ledger - account.balanceCache.toNumber()).toFixed(2)),
-    };
   }
 
   // ---------------------------------------------------------------------------
