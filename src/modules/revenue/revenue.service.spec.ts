@@ -1,4 +1,9 @@
-import { ContractStatus, InvoiceStatus, Prisma } from '@prisma/client';
+import {
+  ContractStatus,
+  InvoiceStatus,
+  InvoiceType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RevenueService } from './revenue.service.js';
 
@@ -7,13 +12,19 @@ describe('RevenueService compatibility endpoints', () => {
   let prisma: {
     invoice: {
       aggregate: jest.Mock;
+      findFirst: jest.Mock;
+      create: jest.Mock;
     };
     contract: {
       aggregate: jest.Mock;
       findMany: jest.Mock;
+      update: jest.Mock;
     };
     payroll: {
       aggregate: jest.Mock;
+    };
+    auditLog: {
+      create: jest.Mock;
     };
     withRlsCompanyContext: jest.Mock;
   };
@@ -24,13 +35,19 @@ describe('RevenueService compatibility endpoints', () => {
     prisma = {
       invoice: {
         aggregate: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
       },
       contract: {
         aggregate: jest.fn(),
         findMany: jest.fn(),
+        update: jest.fn(),
       },
       payroll: {
         aggregate: jest.fn(),
+      },
+      auditLog: {
+        create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
       },
       withRlsCompanyContext: jest
         .fn()
@@ -144,6 +161,107 @@ describe('RevenueService compatibility endpoints', () => {
         companyId: 'company-1',
       },
       _sum: { totalAmount: true },
+    });
+  });
+
+  it('processa faturamento mensal dentro do contexto RLS e cria invoice idempotente', async () => {
+    prisma.contract.findMany.mockResolvedValueOnce([
+      {
+        id: 'contract-1',
+        companyId: 'company-1',
+        customerId: 'customer-1',
+        amount: new Prisma.Decimal(500),
+        billingDay: 5,
+      },
+    ]);
+    prisma.invoice.findFirst.mockResolvedValueOnce(null);
+    prisma.invoice.create.mockResolvedValueOnce({ id: 'invoice-1' });
+    prisma.contract.update.mockResolvedValueOnce({ id: 'contract-1' });
+
+    const result = await service.processBillingInternal('company-1', {
+      month: 8,
+      year: 2026,
+      mode: 'MANUAL',
+    });
+
+    expect(result.status).toBe('OK');
+    expect(result.totals).toMatchObject({
+      contractsFound: 1,
+      processed: 1,
+      created: 1,
+      skipped: 0,
+      failed: 0,
+      amountCreated: 500,
+    });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prisma.contract.findMany).toHaveBeenCalledWith({
+      where: {
+        companyId: 'company-1',
+        status: ContractStatus.ACTIVE,
+        deletedAt: null,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    expect(prisma.invoice.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        companyId: 'company-1',
+        customerId: 'customer-1',
+        type: InvoiceType.SERVICE,
+        deletedAt: null,
+      }),
+      orderBy: {
+        issuedAt: 'desc',
+      },
+    });
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        companyId: 'company-1',
+        customerId: 'customer-1',
+        amount: new Prisma.Decimal(500),
+        type: InvoiceType.SERVICE,
+        status: InvoiceStatus.NORMAL,
+        reconciled: false,
+      }),
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it('calcula métricas mensais de receita dentro do contexto RLS', async () => {
+    prisma.invoice.aggregate.mockResolvedValueOnce({
+      _sum: { amount: new Prisma.Decimal(10000) },
+      _count: { id: 3 },
+    });
+    prisma.invoice.aggregate.mockResolvedValueOnce({
+      _sum: { amount: new Prisma.Decimal(120000) },
+    });
+    prisma.payroll.aggregate.mockResolvedValueOnce({
+      _sum: { totalAmount: new Prisma.Decimal(36000) },
+    });
+
+    const result = await service.getRevenueMetrics('company-1', 8, 2026);
+
+    expect(result).toMatchObject({
+      period: '08/2026',
+      totalInvoiced: 10000,
+      taxProvision: 1550,
+      invoiceCount: 3,
+      fiscalIntelligence: {
+        isEligibleAnexoIII: true,
+      },
+    });
+    expect(prisma.invoice.aggregate).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        companyId: 'company-1',
+        status: InvoiceStatus.NORMAL,
+        deletedAt: null,
+      }),
+      _sum: { amount: true },
+      _count: { id: true },
     });
   });
 });

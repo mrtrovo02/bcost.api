@@ -187,16 +187,20 @@ export class RevenueService {
       `[RevenueBilling] Iniciando faturamento: company=${companyId}, period=${period.label}, mode=${mode}, force=${force}`,
     );
 
-    const contracts = await this.prisma.contract.findMany({
-      where: {
-        companyId,
-        status: ContractStatus.ACTIVE,
-        deletedAt: null,
-      },
-      orderBy: {
-        createdAt: 'asc',
-      },
-    });
+    const contracts = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.contract.findMany({
+          where: {
+            companyId,
+            status: ContractStatus.ACTIVE,
+            deletedAt: null,
+          },
+          orderBy: {
+            createdAt: 'asc',
+          },
+        }),
+    );
 
     const results: BillingContractResult[] = [];
     let amountCreated = 0;
@@ -256,28 +260,66 @@ export class RevenueService {
           continue;
         }
 
-        const existing = await this.prisma.invoice.findFirst({
-          where: {
-            companyId,
-            customerId,
-            type: InvoiceType.SERVICE,
-            deletedAt: null,
-            issuedAt: {
-              gte: period.start,
-              lt: period.end,
-            },
-          },
-          orderBy: {
-            issuedAt: 'desc',
-          },
-        });
+        const billingExecution = await this.prisma.withRlsCompanyContext(
+          companyId,
+          async (tx) => {
+            const existing = await tx.invoice.findFirst({
+              where: {
+                companyId,
+                customerId,
+                type: InvoiceType.SERVICE,
+                deletedAt: null,
+                issuedAt: {
+                  gte: period.start,
+                  lt: period.end,
+                },
+              },
+              orderBy: {
+                issuedAt: 'desc',
+              },
+            });
 
-        if (existing && !force) {
+            if (existing && !force) {
+              return {
+                status: 'SKIPPED' as const,
+                invoiceId: existing.id,
+              };
+            }
+
+            const invoice = await tx.invoice.create({
+              data: {
+                companyId,
+                customerId,
+                amount: contract.amount,
+                type: InvoiceType.SERVICE,
+                status: InvoiceStatus.NORMAL,
+                issuedAt: now,
+                reconciled: false,
+              },
+            });
+
+            await tx.contract.update({
+              where: {
+                id: contractId,
+              },
+              data: {
+                lastBillingAt: now,
+              },
+            });
+
+            return {
+              status: 'CREATED' as const,
+              invoiceId: invoice.id,
+            };
+          },
+        );
+
+        if (billingExecution.status === 'SKIPPED') {
           results.push({
             contractId,
             customerId,
             status: 'SKIPPED',
-            invoiceId: existing.id,
+            invoiceId: billingExecution.invoiceId,
             amount,
             reason:
               'Já existe invoice de serviço para este cliente no período.',
@@ -285,42 +327,17 @@ export class RevenueService {
           continue;
         }
 
-        const createdInvoice = await this.prisma.$transaction(async (tx) => {
-          const invoice = await tx.invoice.create({
-            data: {
-              companyId,
-              customerId,
-              amount: contract.amount,
-              type: InvoiceType.SERVICE,
-              status: InvoiceStatus.NORMAL,
-              issuedAt: now,
-              reconciled: false,
-            },
-          });
-
-          await tx.contract.update({
-            where: {
-              id: contractId,
-            },
-            data: {
-              lastBillingAt: now,
-            },
-          });
-
-          return invoice;
-        });
-
         await this.safeAuditLog({
           companyId,
           action: 'AUTO_REVENUE_GENERATION',
           module: 'revenue',
           entity: 'Invoice',
-          entityId: createdInvoice.id,
+          entityId: billingExecution.invoiceId,
           severity: 'INFO',
           source: mode,
           payload: {
             contractId,
-            invoiceId: createdInvoice.id,
+            invoiceId: billingExecution.invoiceId,
             customerId,
             amount,
             period: period.label,
@@ -337,7 +354,7 @@ export class RevenueService {
           contractId,
           customerId,
           status: 'CREATED',
-          invoiceId: createdInvoice.id,
+          invoiceId: billingExecution.invoiceId,
           amount,
         });
       } catch (error) {
@@ -420,19 +437,23 @@ export class RevenueService {
     const startDate = new Date(Date.UTC(year, month - 1, 1));
     const endDate = new Date(Date.UTC(year, month, 1));
 
-    const metrics = await this.prisma.invoice.aggregate({
-      where: {
-        companyId,
-        status: InvoiceStatus.NORMAL,
-        deletedAt: null,
-        issuedAt: {
-          gte: startDate,
-          lt: endDate,
-        },
-      },
-      _sum: { amount: true },
-      _count: { id: true },
-    });
+    const metrics = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.invoice.aggregate({
+          where: {
+            companyId,
+            status: InvoiceStatus.NORMAL,
+            deletedAt: null,
+            issuedAt: {
+              gte: startDate,
+              lt: endDate,
+            },
+          },
+          _sum: { amount: true },
+          _count: { id: true },
+        }),
+    );
 
     const totalInvoiced = metrics._sum.amount?.toNumber() ?? 0;
     const taxProvision = Number((totalInvoiced * 0.155).toFixed(2));
@@ -700,7 +721,9 @@ export class RevenueService {
 
     for (const data of candidates) {
       try {
-        await this.prisma.auditLog.create({ data });
+        await this.prisma.withRlsCompanyContext(params.companyId, async (tx) =>
+          tx.auditLog.create({ data }),
+        );
 
         return {
           recorded: true,
