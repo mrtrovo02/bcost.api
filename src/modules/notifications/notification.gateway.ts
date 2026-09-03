@@ -29,9 +29,17 @@ type ReconciliationResult = { autoReconciled: number } & Record<
 type RealtimeNotificationPayload = Record<string, unknown>;
 type DashboardUpdatePayload = Record<string, unknown>;
 
+const NOTIFICATION_SOCKET_ALLOWED_ORIGINS = [
+  'http://localhost:3000',
+  'http://localhost:5000',
+  'https://bcost.com.br',
+  'https://www.bcost.com.br',
+  'https://app.bcost.com.br',
+] as const;
+
 @WebSocketGateway({
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5000'],
+    origin: [...NOTIFICATION_SOCKET_ALLOWED_ORIGINS],
     credentials: true,
   },
   namespace: 'notifications',
