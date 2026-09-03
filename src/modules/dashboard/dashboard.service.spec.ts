@@ -75,6 +75,9 @@ describe('DashboardService (Management Cockpit)', () => {
       },
       invoice: {
         count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({
+          _sum: { amount: new Prisma.Decimal(250000) },
+        }),
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'inv-1',
@@ -103,6 +106,7 @@ describe('DashboardService (Management Cockpit)', () => {
         ]),
       },
       taxObligation: {
+        count: jest.fn().mockResolvedValue(3),
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'tax-1',
@@ -176,6 +180,7 @@ describe('DashboardService (Management Cockpit)', () => {
           ]),
       },
       automationJob: {
+        count: jest.fn().mockResolvedValue(2),
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'job-1',
@@ -204,6 +209,15 @@ describe('DashboardService (Management Cockpit)', () => {
       financialSnapshot: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+      auditLog: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            action: 'INVOICE_IMPORTED',
+            module: 'FISCAL',
+            createdAt: new Date(),
+          },
+        ]),
+      },
       payroll: {
         count: jest.fn().mockResolvedValue(1),
       },
@@ -223,16 +237,42 @@ describe('DashboardService (Management Cockpit)', () => {
         ),
     };
 
-    const noop = {} as never;
+    const analyticsServiceMock = {
+      getFiscalHealthScore: jest.fn().mockResolvedValue(92),
+      getRevenueHistory: jest
+        .fn()
+        .mockResolvedValue([{ month: 1, value: 100 }]),
+    };
+    const insightsServiceMock = {
+      getFinancialHealth: jest.fn().mockResolvedValue({
+        score: 88,
+        status: 'HEALTHY',
+      }),
+    };
+    const cashFlowServiceMock = {
+      getLatestProjection: jest
+        .fn()
+        .mockResolvedValue([{ day: 1, cash: 1000 }]),
+    };
+    const anomalyServiceMock = {
+      detectAnomalies: jest
+        .fn()
+        .mockResolvedValue([{ deviationScore: 2.5 }, { deviationScore: 1.1 }]),
+    };
+
     return {
       service: new DashboardService(
         prismaMock as never,
-        noop,
-        noop,
-        noop,
-        noop,
+        analyticsServiceMock as never,
+        insightsServiceMock as never,
+        cashFlowServiceMock as never,
+        anomalyServiceMock as never,
       ),
       prismaMock,
+      analyticsServiceMock,
+      insightsServiceMock,
+      cashFlowServiceMock,
+      anomalyServiceMock,
     };
   };
 
@@ -274,6 +314,36 @@ describe('DashboardService (Management Cockpit)', () => {
       planned: 100000,
       actual: 150000,
       variance: 50000,
+    });
+  });
+
+  it('consolida visão geral com agregados diretos dentro do contexto RLS', async () => {
+    const { service, prismaMock } = createService();
+    prismaMock.invoice.count.mockResolvedValueOnce(4);
+
+    const result = await service.getCompanyOverview('company-1');
+
+    expect(result.summary).toMatchObject({
+      fiscalScore: 92,
+      financialScore: 88,
+      totalRevenueYTD: 250000,
+      activeAutomations: 2,
+      criticalAnomalies: 1,
+      overdueObligations: 3,
+      unreconciledInvoices: 4,
+    });
+    expect(prismaMock.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prismaMock.automationJob.count).toHaveBeenCalledWith({
+      where: { companyId: 'company-1', status: JobStatus.RUNNING },
+    });
+    expect(prismaMock.auditLog.findMany).toHaveBeenCalledWith({
+      where: { companyId: 'company-1' },
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      select: { action: true, createdAt: true, module: true },
     });
   });
 

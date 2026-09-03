@@ -68,16 +68,20 @@ export class DashboardService {
         this.analyticsService.getFiscalHealthScore(companyId),
         this.analyticsService.getRevenueHistory(companyId),
 
-        this.prisma.automationJob.count({
-          where: { companyId, status: JobStatus.RUNNING },
-        }),
+        this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+          tx.automationJob.count({
+            where: { companyId, status: JobStatus.RUNNING },
+          }),
+        ),
 
-        this.prisma.auditLog.findMany({
-          where: { companyId },
-          take: 5,
-          orderBy: { createdAt: 'desc' },
-          select: { action: true, createdAt: true, module: true },
-        }),
+        this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+          tx.auditLog.findMany({
+            where: { companyId },
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+            select: { action: true, createdAt: true, module: true },
+          }),
+        ),
 
         this.insightsService.getFinancialHealth(companyId),
         this.anomalyService.detectAnomalies(companyId),
@@ -86,26 +90,31 @@ export class DashboardService {
 
       const currentYear = new Date().getUTCFullYear();
 
-      // YTD — faturamento acumulado no ano corrente
-      const ytdRevenue = await this.prisma.invoice.aggregate({
-        where: {
-          companyId,
-          issuedAt: {
-            gte: new Date(new Date().getUTCFullYear(), 0, 1),
-          },
-        },
-        _sum: { amount: true },
-      });
+      const [ytdRevenue, overdueObligations, unreconciledInvoices] =
+        await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+          Promise.all([
+            // YTD — faturamento acumulado no ano corrente
+            tx.invoice.aggregate({
+              where: {
+                companyId,
+                issuedAt: {
+                  gte: new Date(currentYear, 0, 1),
+                },
+              },
+              _sum: { amount: true },
+            }),
 
-      // Obrigações fiscais vencidas — alerta crítico para o contador
-      const overdueObligations = await this.prisma.taxObligation.count({
-        where: { companyId, status: ObligationStatus.OVERDUE },
-      });
+            // Obrigações fiscais vencidas — alerta crítico para o contador
+            tx.taxObligation.count({
+              where: { companyId, status: ObligationStatus.OVERDUE },
+            }),
 
-      // Notas pendentes de reconciliação — diferencial vs players legados
-      const unreconciledInvoices = await this.prisma.invoice.count({
-        where: { companyId, reconciled: false },
-      });
+            // Notas pendentes de reconciliação — diferencial vs players legados
+            tx.invoice.count({
+              where: { companyId, reconciled: false },
+            }),
+          ]),
+        );
 
       return {
         summary: {
