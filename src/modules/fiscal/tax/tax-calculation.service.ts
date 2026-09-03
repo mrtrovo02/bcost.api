@@ -139,10 +139,14 @@ export class TaxCalculationService {
       );
     }
 
-    const company = await this.prisma.company.findUnique({
-      where: { id: companyId },
-      select: { taxRegime: true, anexo: true, name: true },
-    });
+    const company = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.company.findUnique({
+          where: { id: companyId },
+          select: { taxRegime: true, anexo: true, name: true },
+        }),
+    );
 
     if (!company)
       throw new NotFoundException('Empresa não encontrada no sistema.');
@@ -159,15 +163,17 @@ export class TaxCalculationService {
     const [rbt12, aggregateInvoices, payroll12] = await Promise.all([
       this.calculateRBT12(companyId, month, year),
 
-      this.prisma.invoice.aggregate({
-        where: {
-          companyId,
-          issuedAt: { gte: startDate, lte: endDate },
-          status: InvoiceStatus.NORMAL,
-          reconciled: true,
-        },
-        _sum: { amount: true },
-      }),
+      this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        tx.invoice.aggregate({
+          where: {
+            companyId,
+            issuedAt: { gte: startDate, lte: endDate },
+            status: InvoiceStatus.NORMAL,
+            reconciled: true,
+          },
+          _sum: { amount: true },
+        }),
+      ),
 
       this.calculatePayroll12(companyId, month, year),
     ]);
@@ -207,19 +213,21 @@ export class TaxCalculationService {
     };
 
     // 5. Audit Log
-    await this.prisma.auditLog.create({
-      data: {
-        userId,
-        companyId,
-        action: 'TAX_CALCULATION_GENERATE',
-        module: 'FISCAL',
-        entity: 'TaxCalculation',
-        // 🚀 CORREÇÃO TS2352: Double casting para garantir que o Prisma aceite como JsonValue
-        payload: result as unknown as Prisma.InputJsonValue,
-        responseTime: Date.now() - startTime,
-        statusCode: 200,
-      },
-    });
+    await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.auditLog.create({
+        data: {
+          userId,
+          companyId,
+          action: 'TAX_CALCULATION_GENERATE',
+          module: 'FISCAL',
+          entity: 'TaxCalculation',
+          // 🚀 CORREÇÃO TS2352: Double casting para garantir que o Prisma aceite como JsonValue
+          payload: result as unknown as Prisma.InputJsonValue,
+          responseTime: Date.now() - startTime,
+          statusCode: 200,
+        },
+      }),
+    );
 
     return result;
   }
@@ -284,9 +292,13 @@ export class TaxCalculationService {
     const period = `${year}-${String(month).padStart(2, '0')}`;
     const obligationName = `Guia DAS - Simples Nacional - ${period}`;
 
-    const existing = await this.prisma.taxObligation.findFirst({
-      where: { companyId, name: obligationName },
-    });
+    const existing = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.taxObligation.findFirst({
+          where: { companyId, name: obligationName },
+        }),
+    );
 
     if (existing) {
       throw new ConflictException(
@@ -323,7 +335,7 @@ export class TaxCalculationService {
       evidencePacket: preview.evidencePacket,
     } as unknown as Prisma.InputJsonValue;
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
       const obligation = await tx.taxObligation.create({
         data: {
           companyId,
@@ -370,15 +382,19 @@ export class TaxCalculationService {
     const startOfRbt = new Date(Date.UTC(year - 1, month - 1, 1));
     const endOfRbt = new Date(Date.UTC(year, month - 1, 0));
 
-    const rbtAggr = await this.prisma.invoice.aggregate({
-      where: {
-        companyId,
-        issuedAt: { gte: startOfRbt, lte: endOfRbt },
-        status: InvoiceStatus.NORMAL,
-        reconciled: true,
-      },
-      _sum: { amount: true },
-    });
+    const rbtAggr = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.invoice.aggregate({
+          where: {
+            companyId,
+            issuedAt: { gte: startOfRbt, lte: endOfRbt },
+            status: InvoiceStatus.NORMAL,
+            reconciled: true,
+          },
+          _sum: { amount: true },
+        }),
+    );
 
     return new Prisma.Decimal(rbtAggr._sum.amount ?? 0); // FIX: || → ??
   }
@@ -388,16 +404,20 @@ export class TaxCalculationService {
     month: number,
     year: number,
   ): Promise<Prisma.Decimal> {
-    const payrollAggr = await this.prisma.payroll.aggregate({
-      where: {
-        companyId,
-        OR: [
-          { year, month: { lt: month } },
-          { year: year - 1, month: { gte: month } },
-        ],
-      },
-      _sum: { totalAmount: true },
-    });
+    const payrollAggr = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.payroll.aggregate({
+          where: {
+            companyId,
+            OR: [
+              { year, month: { lt: month } },
+              { year: year - 1, month: { gte: month } },
+            ],
+          },
+          _sum: { totalAmount: true },
+        }),
+    );
 
     return new Prisma.Decimal(payrollAggr._sum.totalAmount ?? 0);
   }

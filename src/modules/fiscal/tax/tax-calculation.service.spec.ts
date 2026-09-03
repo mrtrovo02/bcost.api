@@ -30,11 +30,17 @@ describe('TaxCalculationService', () => {
       },
       taxObligation: {
         findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'obligation-1' }),
+      },
+      taxCalculation: {
+        upsert: jest.fn().mockResolvedValue({ id: 'calc-1' }),
       },
       auditLog: {
         create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
       },
-      $transaction: jest.fn(),
+      withRlsCompanyContext: jest
+        .fn()
+        .mockImplementation(async (_companyId, callback) => callback(prisma)),
     };
 
     return {
@@ -142,23 +148,11 @@ describe('TaxCalculationService', () => {
         status: 'BLOCKED',
       }),
     });
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.taxObligation.create).not.toHaveBeenCalled();
   });
 
   it('gera obrigação quando gates oficiais estão atendidos', async () => {
     const { service, prisma } = buildService();
-    const taxCalculationUpsert = jest.fn().mockResolvedValue({ id: 'calc-1' });
-
-    prisma.$transaction.mockImplementation(async (callback) =>
-      callback({
-        taxObligation: {
-          create: jest.fn().mockResolvedValue({ id: 'obligation-1' }),
-        },
-        taxCalculation: {
-          upsert: taxCalculationUpsert,
-        },
-      }),
-    );
 
     const obligation = await service.closeMonthAndGenerateObligation(
       'company-1',
@@ -174,8 +168,11 @@ describe('TaxCalculationService', () => {
     );
 
     expect(obligation).toEqual({ id: 'obligation-1' });
-    expect(prisma.$transaction).toHaveBeenCalled();
-    expect(taxCalculationUpsert).toHaveBeenCalledWith(
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prisma.taxCalculation.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
           inputSnapshot: expect.objectContaining({
