@@ -99,6 +99,7 @@ export class CompanyAccessGuard implements CanActivate {
     const redactedHeaders = redactSensitiveHeaders(request.headers);
 
     return [
+      this.toCompanyId(request.companyId),
       this.toCompanyId(request.params?.companyId),
       this.toCompanyId(request.query?.company_id),
       this.toCompanyId(request.query?.companyId),

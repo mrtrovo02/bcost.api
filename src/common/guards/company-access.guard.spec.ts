@@ -7,6 +7,7 @@ describe('CompanyAccessGuard', () => {
 
   function createContext(input: {
     companyId?: string;
+    resolvedCompanyId?: string;
     headers?: Record<string, unknown>;
     query?: Record<string, unknown>;
     body?: Record<string, unknown>;
@@ -25,6 +26,7 @@ describe('CompanyAccessGuard', () => {
           params: input.companyId ? { companyId: input.companyId } : {},
           query: input.query ?? {},
           body: input.body ?? {},
+          companyId: input.resolvedCompanyId,
           user: input.user,
         }),
       }),
@@ -75,6 +77,37 @@ describe('CompanyAccessGuard', () => {
     });
 
     expect(guard.canActivate(context)).toBe(true);
+  });
+
+  it('valida companyId resolvido previamente no request pelo TenantContextGuard', () => {
+    const user = {
+      companyId: 'company-active',
+      activeCompanyId: 'company-active',
+      companyIds: ['company-active'],
+      role: 'OWNER',
+    };
+
+    const context = createContext({
+      resolvedCompanyId: 'company-active',
+      user,
+    });
+
+    expect(guard.canActivate(context)).toBe(true);
+    expect(user.activeCompanyId).toBe('company-active');
+  });
+
+  it('bloqueia request.companyId resolvido quando nao pertence ao usuario', () => {
+    const context = createContext({
+      resolvedCompanyId: 'company-external',
+      user: {
+        companyId: 'company-active',
+        activeCompanyId: 'company-active',
+        companyIds: ['company-active'],
+        role: 'OWNER',
+      },
+    });
+
+    expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
   });
 
   it('aceita companyId por header de forma case-insensitive', () => {

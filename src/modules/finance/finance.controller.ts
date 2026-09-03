@@ -23,6 +23,8 @@ import { JwtAuthGuard } from '#auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '#auth/guards/roles.guard.js';
 import { Roles } from '#auth/decorators/roles.decorator.js';
 import { CurrentUser } from '#auth/decorators/current-user.decorator.js';
+import { CompanyAccessGuard } from '#common/guards/company-access.guard.js';
+import { TenantContextGuard } from '#common/guards/tenant-context.guard.js';
 
 // Compatibilidade total com o seu schema.prisma
 import { CompanyRole } from '@prisma/client';
@@ -33,7 +35,7 @@ import { CompanyRole } from '@prisma/client';
  */
 @ApiTags('Finance')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard, RolesGuard)
 @Controller('finance')
 export class FinanceController {
   private readonly logger = new Logger(FinanceController.name);
