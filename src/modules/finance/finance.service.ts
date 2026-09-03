@@ -91,6 +91,7 @@ export class FinanceService {
       const amountToMatch = obligation.amount.mul(-1);
       const potentialMatch = await this.prisma.bankTransaction.findFirst({
         where: {
+          companyId,
           amount: amountToMatch,
           reconciled: false,
           occurredAt: {
@@ -210,7 +211,7 @@ export class FinanceService {
         _sum: { amount: true },
       }),
       this.prisma.taxObligation.aggregate({
-        where: { status: ObligationStatus.PENDING },
+        where: { companyId, status: ObligationStatus.PENDING },
         _sum: { amount: true },
       }),
     ]);
