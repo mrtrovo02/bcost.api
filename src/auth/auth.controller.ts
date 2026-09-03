@@ -57,6 +57,7 @@ export class AuthController {
    */
   @Public()
   @Get('setup-admin')
+  @ThrottleEndpoint({ limit: 1, ttl: 3600 })
   @ApiOperation({ summary: 'Configurar usuário administrador inicial' })
   @ApiResponse({ status: 200, description: 'Admin configurado com sucesso.' })
   @ApiResponse({
