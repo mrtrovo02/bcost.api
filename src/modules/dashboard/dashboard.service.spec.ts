@@ -277,6 +277,25 @@ describe('DashboardService (Management Cockpit)', () => {
     });
   });
 
+  it('consolida o cockpit gerencial dentro do contexto RLS da empresa', async () => {
+    const { service, prismaMock } = createService();
+
+    await service.getManagementCockpit('company-1');
+
+    expect(prismaMock.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prismaMock.invoice.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ companyId: 'company-1' }),
+      select: expect.objectContaining({
+        id: true,
+        amount: true,
+        taxAmount: true,
+      }),
+    });
+  });
+
   it('deve lançar InternalServerErrorException quando a empresa não existir', async () => {
     const { service } = createService(null);
 

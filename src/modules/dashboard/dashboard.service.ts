@@ -164,88 +164,90 @@ export class DashboardService {
       automationJobs,
       complianceChecks,
       financialSnapshots,
-    ] = await Promise.all([
-      this.prisma.company.findUnique({
-        where: { id: companyId },
-        select: { id: true, name: true, settings: true },
-      }),
-      this.prisma.invoice.findMany({
-        where: {
-          companyId,
-          issuedAt: { gte: yearStart, lte: monthEnd },
-        },
-        select: {
-          id: true,
-          amount: true,
-          taxAmount: true,
-          issuedAt: true,
-          reconciled: true,
-          status: true,
-        },
-      }),
-      this.prisma.taxObligation.findMany({
-        where: { companyId },
-        select: { id: true, amount: true, dueDate: true, status: true },
-      }),
-      this.prisma.fiscalObligation.findMany({
-        where: { companyId },
-        select: { id: true, status: true, dueDate: true, type: true },
-      }),
-      this.prisma.bankTransaction.findMany({
-        where: { companyId, occurredAt: { gte: yearStart, lte: monthEnd } },
-        select: {
-          id: true,
-          amount: true,
-          type: true,
-          occurredAt: true,
-          reconciled: true,
-          description: true,
-        },
-      }),
-      this.prisma.accountingEntry.findMany({
-        where: { companyId, year: currentYear },
-        select: {
-          id: true,
-          amount: true,
-          month: true,
-          debitCode: true,
-          creditCode: true,
-          description: true,
-        },
-      }),
-      this.prisma.accountPlan.findMany({
-        where: { OR: [{ companyId }, { companyId: null }] },
-        select: { code: true, name: true, type: true },
-      }),
-      this.prisma.automationJob.findMany({
-        where: { companyId, createdAt: { gte: yearStart } },
-        select: { id: true, status: true, name: true, updatedAt: true },
-        orderBy: { updatedAt: 'desc' },
-        take: 10,
-      }),
-      this.prisma.complianceCheck.findMany({
-        where: { companyId, resolved: false },
-        select: {
-          id: true,
-          severity: true,
-          checkName: true,
-          description: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-      }),
-      this.prisma.financialSnapshot.findMany({
-        where: { companyId, year: currentYear },
-        select: {
-          month: true,
-          revenue: true,
-          expenses: true,
-          taxPayable: true,
-          netProfit: true,
-        },
-        orderBy: { month: 'asc' },
-      }),
-    ]);
+    ] = await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      Promise.all([
+        tx.company.findUnique({
+          where: { id: companyId },
+          select: { id: true, name: true, settings: true },
+        }),
+        tx.invoice.findMany({
+          where: {
+            companyId,
+            issuedAt: { gte: yearStart, lte: monthEnd },
+          },
+          select: {
+            id: true,
+            amount: true,
+            taxAmount: true,
+            issuedAt: true,
+            reconciled: true,
+            status: true,
+          },
+        }),
+        tx.taxObligation.findMany({
+          where: { companyId },
+          select: { id: true, amount: true, dueDate: true, status: true },
+        }),
+        tx.fiscalObligation.findMany({
+          where: { companyId },
+          select: { id: true, status: true, dueDate: true, type: true },
+        }),
+        tx.bankTransaction.findMany({
+          where: { companyId, occurredAt: { gte: yearStart, lte: monthEnd } },
+          select: {
+            id: true,
+            amount: true,
+            type: true,
+            occurredAt: true,
+            reconciled: true,
+            description: true,
+          },
+        }),
+        tx.accountingEntry.findMany({
+          where: { companyId, year: currentYear },
+          select: {
+            id: true,
+            amount: true,
+            month: true,
+            debitCode: true,
+            creditCode: true,
+            description: true,
+          },
+        }),
+        tx.accountPlan.findMany({
+          where: { OR: [{ companyId }, { companyId: null }] },
+          select: { code: true, name: true, type: true },
+        }),
+        tx.automationJob.findMany({
+          where: { companyId, createdAt: { gte: yearStart } },
+          select: { id: true, status: true, name: true, updatedAt: true },
+          orderBy: { updatedAt: 'desc' },
+          take: 10,
+        }),
+        tx.complianceCheck.findMany({
+          where: { companyId, resolved: false },
+          select: {
+            id: true,
+            severity: true,
+            checkName: true,
+            description: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        }),
+        tx.financialSnapshot.findMany({
+          where: { companyId, year: currentYear },
+          select: {
+            month: true,
+            revenue: true,
+            expenses: true,
+            taxPayable: true,
+            netProfit: true,
+          },
+          orderBy: { month: 'asc' },
+        }),
+      ]),
+    );
 
     if (!company) {
       throw new InternalServerErrorException(
