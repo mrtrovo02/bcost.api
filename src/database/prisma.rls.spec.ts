@@ -22,6 +22,13 @@ const RLS_HARDENING_MIGRATION_PATH = join(
   '20260903000000_harden_rls_force_and_coverage',
   'migration.sql',
 );
+const RLS_RUNTIME_GRANTS_MIGRATION_PATH = join(
+  process.cwd(),
+  'prisma',
+  'migrations',
+  '20260903001000_grant_bcost_app_runtime_privileges',
+  'migration.sql',
+);
 
 const COMPANY_SCOPED_RLS_TABLES = [
   'invoices',
@@ -77,6 +84,10 @@ const HARDENED_RLS_TABLES = [
 describe('PostgreSQL RLS policies', () => {
   const migrationSql = readFileSync(RLS_MIGRATION_PATH, 'utf8');
   const hardeningSql = readFileSync(RLS_HARDENING_MIGRATION_PATH, 'utf8');
+  const runtimeGrantsSql = readFileSync(
+    RLS_RUNTIME_GRANTS_MIGRATION_PATH,
+    'utf8',
+  );
 
   it('deve criar a funcao de contexto usando TEXT conforme schema Prisma atual', () => {
     expect(migrationSql).toContain(
@@ -191,6 +202,19 @@ describe('PostgreSQL RLS policies', () => {
         `CREATE POLICY ${tableName}_update_policy ON "${tableName}"`,
       );
     }
+  });
+
+  it('deve conceder privilegios minimos para a role de runtime sem DELETE fisico', () => {
+    expect(runtimeGrantsSql).toContain(
+      'GRANT USAGE ON SCHEMA public TO bcost_app;',
+    );
+    expect(runtimeGrantsSql).toContain(
+      'GRANT EXECUTE ON FUNCTION public.get_current_company_id() TO bcost_app;',
+    );
+    expect(runtimeGrantsSql).toContain(
+      'GRANT SELECT, INSERT, UPDATE ON TABLE',
+    );
+    expect(runtimeGrantsSql).not.toMatch(/GRANT\s+.*DELETE/i);
   });
 });
 
