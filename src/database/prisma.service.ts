@@ -84,6 +84,9 @@ type PrismaEventEmitter = {
 };
 
 type SetConfigResult = Array<{ set_config: string }>;
+type RlsTransactionHandler<T> = (
+  transaction: Prisma.TransactionClient,
+) => Promise<T>;
 
 @Injectable()
 export class PrismaService
@@ -151,8 +154,8 @@ export class PrismaService
   async onModuleInit(): Promise<void> {
     // PostgreSQL RLS esta habilitado por migration para as tabelas criticas de cliente.
     // As policies leem `app.current_company_id`; o escopo principal continua vindo do
-    // TenantContextGuard/Prisma Extension, e fluxos transacionais podem chamar
-    // setRlsCompanyContext para ativar a segunda camada diretamente na sessao do banco.
+    // TenantContextGuard/Prisma Extension. Rotinas fiscais sensiveis devem usar
+    // withRlsCompanyContext para manter o contexto local e atomico na transacao.
     this.connectInBackground();
   }
 
@@ -344,6 +347,25 @@ export class PrismaService
     await this.$queryRaw<SetConfigResult>`
       SELECT set_config('app.current_company_id', '', false)
     `;
+  }
+
+  async withRlsCompanyContext<T>(
+    companyId: string,
+    handler: RlsTransactionHandler<T>,
+  ): Promise<T> {
+    const normalizedCompanyId = companyId.trim();
+
+    if (!normalizedCompanyId) {
+      throw new Error('companyId is required to open an RLS transaction.');
+    }
+
+    return this.$transaction(async (transaction) => {
+      await transaction.$executeRaw`
+        SELECT set_config('app.current_company_id', ${normalizedCompanyId}, true)
+      `;
+
+      return handler(transaction);
+    });
   }
 
   private registerEventListeners(): void {

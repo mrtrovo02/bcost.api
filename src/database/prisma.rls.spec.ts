@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from './prisma.service.js';
 import { TenantContext } from '#common/tenant/tenant.context.js';
 
@@ -91,6 +92,10 @@ describe('PostgreSQL RLS policies', () => {
 
 describe('PrismaService RLS context helpers', () => {
   let service: PrismaService;
+  let moduleRef: TestingModule;
+
+  type ExecuteRawTaggedCall = [TemplateStringsArray, string, boolean];
+  type TransactionCallback<T> = (tx: Prisma.TransactionClient) => Promise<T>;
 
   const mockConfigService = {
     getOrThrow: jest.fn().mockImplementation((key: string) => {
@@ -105,17 +110,18 @@ describe('PrismaService RLS context helpers', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    const module: TestingModule = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       providers: [
         PrismaService,
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
-    service = module.get<PrismaService>(PrismaService);
+    service = moduleRef.get<PrismaService>(PrismaService);
   });
 
   afterEach(async () => {
+    await moduleRef.close();
     jest.restoreAllMocks();
   });
 
@@ -146,5 +152,54 @@ describe('PrismaService RLS context helpers', () => {
     });
 
     expect(queryRawSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('deve executar operacoes RLS em transacao com contexto local', async () => {
+    const companyId = ' company-rls-003 ';
+    const normalizedCompanyId = 'company-rls-003';
+    const executeRawSpy = jest
+      .fn<Promise<number>, ExecuteRawTaggedCall>()
+      .mockResolvedValue(1);
+    const transactionClient = {
+      $executeRaw: executeRawSpy,
+    } as unknown as Prisma.TransactionClient;
+    const transactionSpy = jest.spyOn(service, '$transaction');
+
+    transactionSpy.mockImplementation(
+      (async (input: unknown) => {
+        if (typeof input !== 'function') {
+          throw new Error('Expected an interactive transaction callback.');
+        }
+
+        return (input as TransactionCallback<string>)(transactionClient);
+      }) as typeof service.$transaction,
+    );
+
+    const result = await service.withRlsCompanyContext(companyId, async (tx) => {
+      expect(tx).toBe(transactionClient);
+      return 'rls-ok';
+    });
+
+    expect(result).toBe('rls-ok');
+    expect(transactionSpy).toHaveBeenCalledTimes(1);
+    expect(executeRawSpy).toHaveBeenCalledTimes(1);
+
+    const [sqlTemplate, companyIdParam] = executeRawSpy.mock
+      .calls[0] as ExecuteRawTaggedCall;
+    const sqlText = sqlTemplate.join('');
+
+    expect(sqlText).toContain("set_config('app.current_company_id'");
+    expect(sqlText).toContain('true');
+    expect(companyIdParam).toBe(normalizedCompanyId);
+  });
+
+  it('deve bloquear transacao RLS sem companyId valido', async () => {
+    const transactionSpy = jest.spyOn(service, '$transaction');
+
+    await expect(
+      service.withRlsCompanyContext('   ', async () => 'never-runs'),
+    ).rejects.toThrow('companyId is required');
+
+    expect(transactionSpy).not.toHaveBeenCalled();
   });
 });
