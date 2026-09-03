@@ -461,37 +461,41 @@ export class DashboardService {
     horizonDate.setDate(today.getDate() + days);
 
     const [urgentObligations, overdueObligations, expiringCerts] =
-      await Promise.all([
-        // Vencendo em breve
-        this.prisma.taxObligation.findMany({
-          where: {
-            companyId,
-            status: ObligationStatus.PENDING,
-            dueDate: { gte: today, lte: horizonDate },
-          },
-          orderBy: { dueDate: 'asc' },
-        }),
+      await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        Promise.all([
+          // Vencendo em breve
+          tx.taxObligation.findMany({
+            where: {
+              companyId,
+              status: ObligationStatus.PENDING,
+              dueDate: { gte: today, lte: horizonDate },
+            },
+            orderBy: { dueDate: 'asc' },
+          }),
 
-        // Já vencidas (crítico — multa e juros acumulando)
-        this.prisma.taxObligation.findMany({
-          where: {
-            companyId,
-            status: ObligationStatus.OVERDUE,
-          },
-          orderBy: { dueDate: 'asc' },
-          take: 10,
-        }),
+          // Já vencidas (crítico — multa e juros acumulando)
+          tx.taxObligation.findMany({
+            where: {
+              companyId,
+              status: ObligationStatus.OVERDUE,
+            },
+            orderBy: { dueDate: 'asc' },
+            take: 10,
+          }),
 
-        // Certificados digitais expirando em 30 dias
-        this.prisma.digitalCertificate.findMany({
-          where: {
-            companyId,
-            validTo: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
-            status: 'ACTIVE',
-          },
-          select: { id: true, issuer: true, validTo: true },
-        }),
-      ]);
+          // Certificados digitais expirando em 30 dias
+          tx.digitalCertificate.findMany({
+            where: {
+              companyId,
+              validTo: {
+                lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              },
+              status: 'ACTIVE',
+            },
+            select: { id: true, issuer: true, validTo: true },
+          }),
+        ]),
+      );
 
     const formatObligation = (ob: (typeof urgentObligations)[0]) => ({
       id: ob.id,

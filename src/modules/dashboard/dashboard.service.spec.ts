@@ -106,6 +106,7 @@ describe('DashboardService (Management Cockpit)', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             id: 'tax-1',
+            name: 'DAS',
             amount: new Prisma.Decimal(5000),
             dueDate: new Date(),
             status: ObligationStatus.PAID,
@@ -206,6 +207,15 @@ describe('DashboardService (Management Cockpit)', () => {
       payroll: {
         count: jest.fn().mockResolvedValue(1),
       },
+      digitalCertificate: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'cert-1',
+            issuer: 'ICP-Brasil',
+            validTo: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+          },
+        ]),
+      },
       withRlsCompanyContext: jest
         .fn()
         .mockImplementation(async (_companyId, callback) =>
@@ -297,6 +307,47 @@ describe('DashboardService (Management Cockpit)', () => {
     expect(prismaMock.taxCalculation.aggregate).toHaveBeenCalledWith({
       where: expect.objectContaining({ companyId: 'company-1' }),
       _sum: { totalAmount: true },
+    });
+  });
+
+  it('lista alertas financeiros dentro do contexto RLS da empresa', async () => {
+    const { service, prismaMock } = createService();
+    prismaMock.taxObligation.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'tax-upcoming',
+          name: 'DAS',
+          amount: new Prisma.Decimal(1000),
+          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          status: ObligationStatus.PENDING,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'tax-overdue',
+          name: 'INSS',
+          amount: new Prisma.Decimal(500),
+          dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          status: ObligationStatus.OVERDUE,
+        },
+      ]);
+
+    const result = await service.getFinancialAlerts('company-1', 7);
+
+    expect(result.upcoming).toHaveLength(1);
+    expect(result.overdue).toHaveLength(1);
+    expect(result.certificates).toHaveLength(1);
+    expect(prismaMock.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prismaMock.digitalCertificate.findMany).toHaveBeenCalledWith({
+      where: {
+        companyId: 'company-1',
+        validTo: { lte: expect.any(Date) },
+        status: 'ACTIVE',
+      },
+      select: { id: true, issuer: true, validTo: true },
     });
   });
 });
