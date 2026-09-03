@@ -4,7 +4,11 @@ import { BankingService } from './banking.service.js';
 interface BankingPrismaMock {
   bankTransaction: {
     findFirst: jest.Mock<Promise<unknown>, [unknown]>;
+    findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
     update: jest.Mock<Promise<unknown>, [unknown]>;
+  };
+  bankAccount: {
+    findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
   };
   invoice: {
     findFirst: jest.Mock<Promise<unknown>, [unknown]>;
@@ -29,9 +33,13 @@ function createPrismaMock(): BankingPrismaMock {
         invoiceId: 'invoice-001',
         taxObligationId: 'obligation-001',
       }),
+      findMany: jest.fn<Promise<unknown[]>, [unknown]>().mockResolvedValue([]),
       update: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
         id: 'transaction-001',
       }),
+    },
+    bankAccount: {
+      findMany: jest.fn<Promise<unknown[]>, [unknown]>().mockResolvedValue([]),
     },
     invoice: {
       findFirst: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
@@ -69,11 +77,7 @@ describe('BankingService tenant isolation', () => {
   });
 
   it('vincula nota fiscal usando contexto RLS e filtros por empresa', async () => {
-    await service.linkInvoice(
-      'company-001',
-      'transaction-001',
-      'invoice-001',
-    );
+    await service.linkInvoice('company-001', 'transaction-001', 'invoice-001');
 
     expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
       'company-001',
@@ -128,6 +132,45 @@ describe('BankingService tenant isolation', () => {
         invoiceId: true,
         taxObligationId: true,
       },
+    });
+  });
+
+  it('lista transacoes bancarias dentro do contexto RLS da empresa', async () => {
+    const from = new Date('2026-01-01T00:00:00.000Z');
+    const to = new Date('2026-01-31T23:59:59.999Z');
+
+    await service.listTransactionsForCompany({
+      companyId: 'company-001',
+      from,
+      to,
+      limit: 25,
+    });
+
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-001',
+      expect.any(Function),
+    );
+    expect(prisma.bankTransaction.findMany).toHaveBeenCalledWith({
+      where: {
+        companyId: 'company-001',
+        occurredAt: { gte: from, lte: to },
+      },
+      orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+      take: 25,
+    });
+  });
+
+  it('lista contas bancarias dentro do contexto RLS da empresa', async () => {
+    await service.listAccountsForCompany('company-001');
+
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-001',
+      expect.any(Function),
+    );
+    expect(prisma.bankAccount.findMany).toHaveBeenCalledWith({
+      where: { companyId: 'company-001' },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
     });
   });
 });

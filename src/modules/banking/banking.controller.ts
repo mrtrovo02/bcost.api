@@ -23,7 +23,6 @@ import type { BankAccount, BankTransaction } from '@prisma/client';
 import { BankingService } from './banking.service.js';
 import { ReconciliationService } from './reconciliation.service.js';
 import { ImportService } from './import.service.js';
-import { PrismaService } from '../../database/prisma.service.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { LegacyApiAlias } from '../../common/decorators/legacy-api-alias.decorator.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
@@ -107,7 +106,6 @@ export class BankingController {
     private readonly bankingService: BankingService,
     private readonly reconciliationService: ReconciliationService,
     private readonly importService: ImportService,
-    private readonly prisma: PrismaService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -211,30 +209,12 @@ export class BankingController {
   }): Promise<BankingTransactionResponse[]> {
     const { companyId, from, to, limit = 100 } = params;
 
-    const baseWhere: Prisma.BankTransactionWhereInput = {
-      companyId,
-    };
-
-    const dateFilter =
-      from || to
-        ? {
-            ...(from ? { gte: from } : {}),
-            ...(to ? { lte: to } : {}),
-          }
-        : undefined;
-
-    const where: Prisma.BankTransactionWhereInput = dateFilter
-      ? {
-          companyId,
-          occurredAt: dateFilter,
-        }
-      : baseWhere;
-
     try {
-      const rows = await this.prisma.bankTransaction.findMany({
-        where,
-        orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
-        take: limit,
+      const rows = await this.bankingService.listTransactionsForCompany({
+        companyId,
+        from,
+        to,
+        limit,
       });
 
       return rows.map((tx) => this.normalizeTransaction(tx));
@@ -253,11 +233,7 @@ export class BankingController {
     companyId: string,
   ): Promise<BankingAccountResponse[]> {
     try {
-      const rows = await this.prisma.bankAccount.findMany({
-        where: { companyId },
-        orderBy: { createdAt: 'desc' },
-        take: 100,
-      });
+      const rows = await this.bankingService.listAccountsForCompany(companyId);
 
       return rows.map((account) => this.normalizeAccount(account));
     } catch (error) {

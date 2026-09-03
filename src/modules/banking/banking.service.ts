@@ -18,6 +18,7 @@ import {
   InvoiceStatus,
   ObligationStatus,
 } from '@prisma/client';
+import type { BankAccount, BankTransaction } from '@prisma/client';
 import {
   OfxData,
   OfxTransaction,
@@ -169,6 +170,45 @@ export class BankingService {
     });
   }
 
+  async listTransactionsForCompany(params: {
+    companyId: string;
+    from?: Date;
+    to?: Date;
+    limit?: number;
+  }): Promise<BankTransaction[]> {
+    const { companyId, from, to, limit = 100 } = params;
+    const dateFilter =
+      from || to
+        ? {
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lte: to } : {}),
+          }
+        : undefined;
+
+    const where: Prisma.BankTransactionWhereInput = {
+      companyId,
+      ...(dateFilter ? { occurredAt: dateFilter } : {}),
+    };
+
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.bankTransaction.findMany({
+        where,
+        orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+        take: limit,
+      }),
+    );
+  }
+
+  async listAccountsForCompany(companyId: string): Promise<BankAccount[]> {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.bankAccount.findMany({
+        where: { companyId },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+    );
+  }
+
   /**
    * Busca transações com filtros de texto e status de reconciliação.
    */
@@ -205,10 +245,16 @@ export class BankingService {
    * Operação atômica: atualiza transação e fatura no mesmo commit.
    * Atualiza status da fatura para PAID — reflete no DRE e PnL em tempo real.
    */
-  async linkInvoice(companyId: string, transactionId: string, invoiceId: string) {
+  async linkInvoice(
+    companyId: string,
+    transactionId: string,
+    invoiceId: string,
+  ) {
     return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
       const [trn, inv] = await Promise.all([
-        tx.bankTransaction.findFirst({ where: { id: transactionId, companyId } }),
+        tx.bankTransaction.findFirst({
+          where: { id: transactionId, companyId },
+        }),
         tx.invoice.findFirst({ where: { id: invoiceId, companyId } }),
       ]);
 
@@ -244,7 +290,9 @@ export class BankingService {
   ) {
     return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
       const [trn, obligation] = await Promise.all([
-        tx.bankTransaction.findFirst({ where: { id: transactionId, companyId } }),
+        tx.bankTransaction.findFirst({
+          where: { id: transactionId, companyId },
+        }),
         tx.taxObligation.findFirst({
           where: { id: taxObligationId, companyId },
         }),
