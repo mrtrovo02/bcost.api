@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   BadRequestException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js'; // Você precisará criar este DTO
@@ -92,9 +93,12 @@ export class CompanyService {
     }
 
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const companyId = randomUUID();
+
+      return await this.prisma.withRlsCompanyContext(companyId, async (tx) => {
         const company = await tx.company.create({
           data: {
+            id: companyId,
             name: dto.name,
             cnpj: normalizedCnpj,
             taxRegime: dto.taxRegime ?? TaxRegime.SIMPLES_NACIONAL,

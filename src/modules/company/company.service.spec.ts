@@ -10,6 +10,7 @@ import { CompanyService } from './company.service.js';
 
 type PrismaMock = {
   $transaction: jest.Mock;
+  withRlsCompanyContext: jest.Mock;
   company: {
     findUnique: jest.Mock;
     findFirst: jest.Mock;
@@ -45,6 +46,12 @@ describe('CompanyService', () => {
     prisma = {
       $transaction: jest.fn(async (callback: (tx: PrismaMock) => unknown) =>
         callback(prisma),
+      ),
+      withRlsCompanyContext: jest.fn(
+        async (
+          _companyId: string,
+          callback: (tx: PrismaMock) => unknown,
+        ) => callback(prisma),
       ),
       company: {
         findUnique: jest.fn().mockResolvedValue(null),
@@ -100,7 +107,7 @@ describe('CompanyService', () => {
     ).rejects.toThrow(BadRequestException);
 
     expect(prisma.company.findUnique).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.withRlsCompanyContext).not.toHaveBeenCalled();
   });
 
   it('bloqueia cadastro com CNPJ duplicado normalizado', async () => {
@@ -133,9 +140,14 @@ describe('CompanyService', () => {
     );
 
     expect(result).toEqual(company);
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Function),
+    );
     expect(prisma.company.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          id: expect.any(String),
           cnpj: '11222333000181',
           taxRegime: TaxRegime.SIMPLES_NACIONAL,
         }),
