@@ -53,9 +53,13 @@ export class TaxService {
    */
   async calculateMonthlyTax(companyId: string, month: number, year: number) {
     try {
-      const company = await this.prisma.company.findUnique({
-        where: { id: companyId },
-      });
+      const company = await this.prisma.withRlsCompanyContext(
+        companyId,
+        async (tx) =>
+          tx.company.findUnique({
+            where: { id: companyId },
+          }),
+      );
       if (!company) throw new NotFoundException('Empresa não localizada.');
 
       const integrity = await this.validateHistoryIntegrity(companyId);
@@ -66,42 +70,44 @@ export class TaxService {
       const past12End = new Date(Date.UTC(year, month - 1, 0, 23, 59, 59));
 
       const [monthlyInvoices, rbt12Result, folha12Result, bankSum] =
-        await Promise.all([
-          this.prisma.invoice.aggregate({
-            where: {
-              companyId,
-              status: InvoiceStatus.NORMAL,
-              issuedAt: { gte: startDate, lte: endDate },
-            },
-            _sum: { amount: true },
-          }),
-          this.prisma.invoice.aggregate({
-            where: {
-              companyId,
-              status: InvoiceStatus.NORMAL,
-              issuedAt: { gte: past12Start, lte: past12End },
-            },
-            _sum: { amount: true },
-          }),
-          this.prisma.payroll.aggregate({
-            where: {
-              companyId,
-              OR: [
-                { year: year, month: { lt: month } },
-                { year: year - 1, month: { gte: month } },
-              ],
-            },
-            _sum: { totalAmount: true },
-          }),
-          this.prisma.bankTransaction.aggregate({
-            where: {
-              companyId,
-              occurredAt: { gte: startDate, lte: endDate },
-              type: TransactionType.CREDIT,
-            },
-            _sum: { amount: true },
-          }),
-        ]);
+        await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+          Promise.all([
+            tx.invoice.aggregate({
+              where: {
+                companyId,
+                status: InvoiceStatus.NORMAL,
+                issuedAt: { gte: startDate, lte: endDate },
+              },
+              _sum: { amount: true },
+            }),
+            tx.invoice.aggregate({
+              where: {
+                companyId,
+                status: InvoiceStatus.NORMAL,
+                issuedAt: { gte: past12Start, lte: past12End },
+              },
+              _sum: { amount: true },
+            }),
+            tx.payroll.aggregate({
+              where: {
+                companyId,
+                OR: [
+                  { year: year, month: { lt: month } },
+                  { year: year - 1, month: { gte: month } },
+                ],
+              },
+              _sum: { totalAmount: true },
+            }),
+            tx.bankTransaction.aggregate({
+              where: {
+                companyId,
+                occurredAt: { gte: startDate, lte: endDate },
+                type: TransactionType.CREDIT,
+              },
+              _sum: { amount: true },
+            }),
+          ]),
+        );
 
       const totalRevenue = Number(monthlyInvoices._sum?.amount || 0);
       const bankRevenue = Number(bankSum._sum?.amount || 0);
@@ -171,10 +177,14 @@ export class TaxService {
       );
 
     // Busca o RBT12 atual para simular com a alíquota correta do cliente
-    const rbt12Data = await this.prisma.invoice.aggregate({
-      where: { companyId, status: InvoiceStatus.NORMAL },
-      _sum: { amount: true },
-    });
+    const rbt12Data = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.invoice.aggregate({
+          where: { companyId, status: InvoiceStatus.NORMAL },
+          _sum: { amount: true },
+        }),
+    );
 
     const rbt12 = Number(rbt12Data._sum?.amount || 0);
     // Simula no Anexo III (padrão bCost para serviços)
@@ -194,10 +204,14 @@ export class TaxService {
    * 📊 HISTÓRICO ANUAL
    */
   async getYearlyPerformance(companyId: string, year: number) {
-    const data = await this.prisma.financialSnapshot.findMany({
-      where: { companyId, year },
-      orderBy: { month: 'asc' },
-    });
+    const data = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.financialSnapshot.findMany({
+          where: { companyId, year },
+          orderBy: { month: 'asc' },
+        }),
+    );
 
     return data.map((d) => ({
       month: d.month,
@@ -216,9 +230,13 @@ export class TaxService {
    * 🛡️ AUDITORIA DE INTEGRIDADE
    */
   async validateHistoryIntegrity(companyId: string) {
-    const count = await this.prisma.financialSnapshot.count({
-      where: { companyId },
-    });
+    const count = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.financialSnapshot.count({
+          where: { companyId },
+        }),
+    );
     return {
       isNewCompany: count < 12,
       monthsFound: count,
