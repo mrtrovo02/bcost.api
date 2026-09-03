@@ -29,6 +29,12 @@ const RLS_RUNTIME_GRANTS_MIGRATION_PATH = join(
   '20260903001000_grant_bcost_app_runtime_privileges',
   'migration.sql',
 );
+const PRISMA_SERVICE_PATH = join(
+  process.cwd(),
+  'src',
+  'database',
+  'prisma.service.ts',
+);
 
 const COMPANY_SCOPED_RLS_TABLES = [
   'invoices',
@@ -329,5 +335,14 @@ describe('PrismaService RLS context helpers', () => {
     ).rejects.toThrow('companyId is required');
 
     expect(transactionSpy).not.toHaveBeenCalled();
+  });
+
+  it('nao deve permitir fallback silencioso para hard-delete em modelos auditaveis', () => {
+    const prismaServiceSource = readFileSync(PRISMA_SERVICE_PATH, 'utf8');
+
+    expect(prismaServiceSource).not.toContain('executando hard-delete');
+    expect(prismaServiceSource).toContain(
+      'Hard-delete blocked for ${model}: soft-delete delegate is required.',
+    );
   });
 });

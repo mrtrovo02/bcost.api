@@ -293,29 +293,24 @@ export class PrismaService
               }
             }
 
-            // 3. Interceptador de Delete (Soft Delete com Fallback)
+            // 3. Interceptador de Delete (Soft Delete obrigatório)
             if (
               SOFT_DELETE_MODELS.has(model) &&
               (operation === 'delete' || operation === 'deleteMany')
             ) {
-              try {
-                const action = operation === 'delete' ? 'update' : 'updateMany';
-                const delegate = prismaService.getSoftDeleteDelegate(model);
+              const action = operation === 'delete' ? 'update' : 'updateMany';
+              const delegate = prismaService.getSoftDeleteDelegate(model);
 
-                if (!delegate) {
-                  throw new Error(`Delegate ${model} não suporta soft-delete.`);
-                }
-
-                return await delegate[action]({
-                  where: operationArgs.where,
-                  data: { deletedAt: new Date() },
-                });
-              } catch {
-                prismaService.logger.debug(
-                  `Soft-delete não suportado para ${model}, executando hard-delete.`,
+              if (!delegate) {
+                throw new Error(
+                  `Hard-delete blocked for ${model}: soft-delete delegate is required.`,
                 );
-                return query(args);
               }
+
+              return await delegate[action]({
+                where: operationArgs.where,
+                data: { deletedAt: new Date() },
+              });
             }
 
             return query(args);
