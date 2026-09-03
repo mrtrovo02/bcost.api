@@ -39,11 +39,13 @@ export class PayrollService {
     this.logger.log(
       `[Payroll] Buscando histórico completo para empresa ${companyId}`,
     );
-    return await this.prisma.payroll.findMany({
-      where: { companyId },
-      orderBy: [{ year: 'desc' }, { month: 'desc' }],
-      take: 24,
-    });
+    return await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.payroll.findMany({
+        where: { companyId },
+        orderBy: [{ year: 'desc' }, { month: 'desc' }],
+        take: 24,
+      }),
+    );
   }
 
   /**
@@ -55,44 +57,46 @@ export class PayrollService {
     );
 
     try {
-      // Usamos findFirst com a dupla month/year (Substitui referenceMonth)
-      const existing = await this.prisma.payroll.findFirst({
-        where: {
-          companyId,
-          month: data.month,
-          year: data.year,
-        },
-      });
-
-      if (existing) {
-        return await this.prisma.payroll.update({
-          where: { id: existing.id },
-          data: {
-            totalAmount: new Prisma.Decimal(data.amount),
-            // Atualizamos campos auxiliares se existirem no seu DTO
-            salariesAmount: data.salariesAmount
-              ? new Prisma.Decimal(data.salariesAmount)
-              : existing.salariesAmount,
-            proLaboreAmount: data.proLaboreAmount
-              ? new Prisma.Decimal(data.proLaboreAmount)
-              : existing.proLaboreAmount,
+      return await this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+        // Usamos findFirst com a dupla month/year (Substitui referenceMonth)
+        const existing = await tx.payroll.findFirst({
+          where: {
+            companyId,
+            month: data.month,
+            year: data.year,
           },
         });
-      }
 
-      return await this.prisma.payroll.create({
-        data: {
-          companyId,
-          month: data.month,
-          year: data.year,
-          totalAmount: new Prisma.Decimal(data.amount),
-          salariesAmount: data.salariesAmount
-            ? new Prisma.Decimal(data.salariesAmount)
-            : 0,
-          proLaboreAmount: data.proLaboreAmount
-            ? new Prisma.Decimal(data.proLaboreAmount)
-            : 0,
-        },
+        if (existing) {
+          return await tx.payroll.update({
+            where: { id: existing.id },
+            data: {
+              totalAmount: new Prisma.Decimal(data.amount),
+              // Atualizamos campos auxiliares se existirem no seu DTO
+              salariesAmount: data.salariesAmount
+                ? new Prisma.Decimal(data.salariesAmount)
+                : existing.salariesAmount,
+              proLaboreAmount: data.proLaboreAmount
+                ? new Prisma.Decimal(data.proLaboreAmount)
+                : existing.proLaboreAmount,
+            },
+          });
+        }
+
+        return await tx.payroll.create({
+          data: {
+            companyId,
+            month: data.month,
+            year: data.year,
+            totalAmount: new Prisma.Decimal(data.amount),
+            salariesAmount: data.salariesAmount
+              ? new Prisma.Decimal(data.salariesAmount)
+              : 0,
+            proLaboreAmount: data.proLaboreAmount
+              ? new Prisma.Decimal(data.proLaboreAmount)
+              : 0,
+          },
+        });
       });
     } catch (error: unknown) {
       this.logger.error(`[Payroll Error] ${this.getErrorMessage(error)}`);
@@ -165,21 +169,25 @@ export class PayrollService {
 
     // 3. Agregação em paralelo (Performance de Elite)
     const [revenueData, payrollData] = await Promise.all([
-      this.prisma.invoice.aggregate({
-        where: {
-          companyId,
-          status: InvoiceStatus.NORMAL,
-          issuedAt: { gte: startDate, lte: endDate },
-        },
-        _sum: { amount: true },
-      }),
-      this.prisma.payroll.aggregate({
-        where: {
-          companyId,
-          OR: pastMonthsConditions, // Busca exata pelos meses decompostos
-        },
-        _sum: { totalAmount: true },
-      }),
+      this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        tx.invoice.aggregate({
+          where: {
+            companyId,
+            status: InvoiceStatus.NORMAL,
+            issuedAt: { gte: startDate, lte: endDate },
+          },
+          _sum: { amount: true },
+        }),
+      ),
+      this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        tx.payroll.aggregate({
+          where: {
+            companyId,
+            OR: pastMonthsConditions, // Busca exata pelos meses decompostos
+          },
+          _sum: { totalAmount: true },
+        }),
+      ),
     ]);
 
     const rbt12 = new Prisma.Decimal(revenueData._sum?.amount || 0);
@@ -215,11 +223,15 @@ export class PayrollService {
    * Estatísticas de folha para o Dashboard de BI.
    */
   async getPayrollStats(companyId: string) {
-    const records = await this.prisma.payroll.findMany({
-      where: { companyId },
-      orderBy: [{ year: 'desc' }, { month: 'desc' }],
-      take: 12,
-    });
+    const records = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.payroll.findMany({
+          where: { companyId },
+          orderBy: [{ year: 'desc' }, { month: 'desc' }],
+          take: 12,
+        }),
+    );
 
     if (records.length === 0) {
       return {
