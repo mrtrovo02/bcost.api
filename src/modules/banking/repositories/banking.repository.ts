@@ -1,6 +1,6 @@
 'use strict';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service.js';
 import { TransactionType, Prisma } from '@prisma/client';
 
@@ -10,6 +10,20 @@ export class BankingRepository {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private getCompanyId(
+    data: Prisma.BankTransactionUncheckedCreateInput,
+  ): string {
+    const companyId = data.companyId;
+
+    if (typeof companyId !== 'string' || !companyId.trim()) {
+      throw new BadRequestException(
+        'companyId é obrigatório para criar transação bancária.',
+      );
+    }
+
+    return companyId;
+  }
+
   /**
    * Cria uma transação bancária e atualiza o saldo atômico (Cache) da conta.
    * Resolve o erro de propriedade inexistente 'balance' alterando para 'balanceCache'.
@@ -17,7 +31,9 @@ export class BankingRepository {
   async createTransactionWithBalanceUpdate(
     data: Prisma.BankTransactionUncheckedCreateInput,
   ) {
-    return this.prisma.$transaction(async (tx) => {
+    const companyId = this.getCompanyId(data);
+
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
       // 1. Tratamento do valor (Amount)
       // Garantimos que o amount seja um Decimal válido para cálculos precisos
       let amountValue: Prisma.Decimal.Value;
@@ -67,12 +83,17 @@ export class BankingRepository {
    * Busca saldo total consolidado (Usado pelo CashFlowService)
    */
   async getTotalBalance(companyId: string) {
-    const aggregate = await this.prisma.bankAccount.aggregate({
-      where: { companyId },
-      _sum: {
-        balanceCache: true, // Corrigido de balance para balanceCache
-      },
-    });
+    const aggregate = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.bankAccount.aggregate({
+          where: { companyId },
+          _sum: {
+            balanceCache: true, // Corrigido de balance para balanceCache
+          },
+        }),
+    );
+
     return aggregate._sum.balanceCache || new Prisma.Decimal(0);
   }
 }
