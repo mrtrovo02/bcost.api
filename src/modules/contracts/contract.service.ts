@@ -49,11 +49,7 @@ export class ContractService {
     return this.prisma.withRlsCompanyContext(dto.companyId, async (tx) => {
       const customerId = await this.resolveCustomerId(tx, dto);
 
-      return this.createWithClient(
-        tx,
-        dto.companyId,
-        dto.toPrisma(customerId),
-      );
+      return this.createWithClient(tx, dto.companyId, dto.toPrisma(customerId));
     });
   }
 
@@ -137,67 +133,97 @@ export class ContractService {
     const dayOfMonth = today.getDate();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    // Busca contratos ativos que devem ser faturados hoje
-    const pendingContracts = await this.prisma.contract.findMany({
-      where: {
-        companyId,
-        status: ContractStatus.ACTIVE,
-        billingDay: dayOfMonth,
-        OR: [
-          { lastBillingAt: null },
-          { lastBillingAt: { lt: firstDayOfMonth } },
-        ],
-      },
-    });
+    const pendingContracts = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        tx.contract.findMany({
+          where: {
+            companyId,
+            status: ContractStatus.ACTIVE,
+            billingDay: dayOfMonth,
+            OR: [
+              { lastBillingAt: null },
+              { lastBillingAt: { lt: firstDayOfMonth } },
+            ],
+          },
+        }),
+    );
 
     const results: BillingDetail[] = [];
 
     for (const contract of pendingContracts) {
       const contractStartTime = Date.now();
       try {
-        const execution = await this.prisma.$transaction(async (tx) => {
-          // 1. Geração da Fatura (Invoice) baseada no Schema Real
-          const invoice = await tx.invoice.create({
-            data: {
-              companyId: contract.companyId,
-              customerId: contract.customerId,
-              type: InvoiceType.SERVICE,
-              status: InvoiceStatus.NORMAL,
-              amount: contract.amount, // No seu schema é amount
-              issuedAt: today, // No seu schema é issuedAt
-              reconciled: false, // Campo presente no schema
-            },
-          });
+        const execution = await this.prisma.withRlsCompanyContext(
+          companyId,
+          async (tx) => {
+            const billableContract = await tx.contract.findFirst({
+              where: {
+                id: contract.id,
+                companyId,
+                status: ContractStatus.ACTIVE,
+                billingDay: dayOfMonth,
+                OR: [
+                  { lastBillingAt: null },
+                  { lastBillingAt: { lt: firstDayOfMonth } },
+                ],
+              },
+            });
 
-          // 2. Lock de Segurança: Atualiza o contrato para evitar duplicidade
-          await tx.contract.update({
-            where: { id: contract.id },
-            data: { lastBillingAt: today },
-          });
+            if (!billableContract) {
+              return null;
+            }
 
-          // 3. Registro de Auditoria (Compliance)
-          await tx.auditLog.create({
-            data: {
-              userId,
-              companyId: contract.companyId,
-              action: 'CONTRACT_AUTO_BILLING',
-              module: 'REVENUE',
-              entity: 'Contract',
-              entityId: contract.id,
-              payload: {
-                invoiceId: invoice.id,
-                amount: contract.amount.toString(),
-              } satisfies Prisma.InputJsonObject,
-              responseTime: Date.now() - contractStartTime,
-              statusCode: 201,
-            },
-          });
+            // 1. Geração da Fatura (Invoice) baseada no Schema Real
+            const invoice = await tx.invoice.create({
+              data: {
+                companyId: billableContract.companyId,
+                customerId: billableContract.customerId,
+                type: InvoiceType.SERVICE,
+                status: InvoiceStatus.NORMAL,
+                amount: billableContract.amount, // No seu schema é amount
+                issuedAt: today, // No seu schema é issuedAt
+                reconciled: false, // Campo presente no schema
+              },
+            });
 
-          return { contractId: contract.id, invoiceId: invoice.id };
-        });
+            // 2. Lock de Segurança: Atualiza o contrato para evitar duplicidade
+            await tx.contract.update({
+              where: { id: billableContract.id },
+              data: { lastBillingAt: today },
+            });
 
-        results.push(execution);
-        this.logger.log(`[Billing Success] Contrato ${contract.id} faturado.`);
+            // 3. Registro de Auditoria (Compliance)
+            await tx.auditLog.create({
+              data: {
+                userId,
+                companyId: billableContract.companyId,
+                action: 'CONTRACT_AUTO_BILLING',
+                module: 'REVENUE',
+                entity: 'Contract',
+                entityId: billableContract.id,
+                payload: {
+                  invoiceId: invoice.id,
+                  amount: billableContract.amount.toString(),
+                } satisfies Prisma.InputJsonObject,
+                responseTime: Date.now() - contractStartTime,
+                statusCode: 201,
+              },
+            });
+
+            return {
+              contractId: billableContract.id,
+              invoiceId: invoice.id,
+            };
+          },
+        );
+
+        if (execution) {
+          results.push(execution);
+          this.logger.log(
+            `[Billing Success] Contrato ${contract.id} faturado.`,
+          );
+        }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
 

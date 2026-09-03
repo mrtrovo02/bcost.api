@@ -1,8 +1,20 @@
 import { BadRequestException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import {
+  ContractStatus,
+  InvoiceStatus,
+  InvoiceType,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { ContractService } from './contract.service.js';
 import { CreateContractDto } from './dto/create-contract.dto.js';
+
+interface ContractRecord {
+  id: string;
+  companyId: string;
+  customerId: string;
+  amount: Prisma.Decimal;
+}
 
 interface ContractPrismaMock {
   customer: {
@@ -11,8 +23,15 @@ interface ContractPrismaMock {
   };
   contract: {
     create: jest.Mock<Promise<unknown>, [unknown]>;
-    findMany: jest.Mock<Promise<unknown[]>, [unknown]>;
+    findMany: jest.Mock<Promise<ContractRecord[]>, [unknown]>;
     findFirst: jest.Mock<Promise<unknown>, [unknown]>;
+    update: jest.Mock<Promise<unknown>, [unknown]>;
+  };
+  invoice: {
+    create: jest.Mock<Promise<{ id: string }>, [unknown]>;
+  };
+  auditLog: {
+    create: jest.Mock<Promise<unknown>, [unknown]>;
   };
   withRlsCompanyContext: jest.Mock<
     Promise<unknown>,
@@ -26,17 +45,34 @@ function createPrismaMock(): ContractPrismaMock {
       upsert: jest.fn<Promise<{ id: string }>, [unknown]>().mockResolvedValue({
         id: 'customer-001',
       }),
-      findFirst: jest.fn<Promise<{ id: string } | null>, [unknown]>().mockResolvedValue({
-        id: 'customer-001',
-      }),
+      findFirst: jest
+        .fn<Promise<{ id: string } | null>, [unknown]>()
+        .mockResolvedValue({
+          id: 'customer-001',
+        }),
     },
     contract: {
       create: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
         id: 'contract-001',
       }),
-      findMany: jest.fn<Promise<unknown[]>, [unknown]>().mockResolvedValue([]),
+      findMany: jest
+        .fn<Promise<ContractRecord[]>, [unknown]>()
+        .mockResolvedValue([]),
       findFirst: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
         id: 'contract-001',
+      }),
+      update: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
+        id: 'contract-001',
+      }),
+    },
+    invoice: {
+      create: jest.fn<Promise<{ id: string }>, [unknown]>().mockResolvedValue({
+        id: 'invoice-001',
+      }),
+    },
+    auditLog: {
+      create: jest.fn<Promise<unknown>, [unknown]>().mockResolvedValue({
+        id: 'audit-001',
       }),
     },
     withRlsCompanyContext: jest.fn<
@@ -48,7 +84,9 @@ function createPrismaMock(): ContractPrismaMock {
   return prisma;
 }
 
-function createDto(overrides: Partial<CreateContractDto> = {}): CreateContractDto {
+function createDto(
+  overrides: Partial<CreateContractDto> = {},
+): CreateContractDto {
   const dto = new CreateContractDto();
   dto.companyId = 'company-001';
   dto.customerName = 'Cliente Real LTDA';
@@ -107,9 +145,14 @@ describe('ContractService', () => {
   });
 
   it('bloqueia contrato sem customerId e sem dados minimos do cliente', async () => {
-    const dto = createDto({ customerName: undefined, customerDocument: undefined });
+    const dto = createDto({
+      customerName: undefined,
+      customerDocument: undefined,
+    });
 
-    await expect(service.createFromDto(dto)).rejects.toThrow(BadRequestException);
+    await expect(service.createFromDto(dto)).rejects.toThrow(
+      BadRequestException,
+    );
     expect(prisma.contract.create).not.toHaveBeenCalled();
   });
 
@@ -124,6 +167,56 @@ describe('ContractService', () => {
       where: { companyId: 'company-001', deletedAt: null },
       include: { customer: true },
       orderBy: { createdAt: 'desc' },
+    });
+  });
+
+  it('executa ciclo de faturamento dentro do contexto RLS da empresa', async () => {
+    const billingDay = new Date().getDate();
+    const contract: ContractRecord = {
+      id: 'contract-001',
+      companyId: 'company-001',
+      customerId: 'customer-001',
+      amount: new Prisma.Decimal(399),
+    };
+
+    prisma.contract.findMany.mockResolvedValueOnce([contract]);
+    prisma.contract.findFirst.mockResolvedValueOnce(contract);
+
+    const result = await service.runBillingCycle('company-001', 'user-001');
+
+    expect(result).toEqual({
+      processed: 1,
+      successful: 1,
+      details: [{ contractId: 'contract-001', invoiceId: 'invoice-001' }],
+    });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledTimes(2);
+    expect(prisma.contract.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        companyId: 'company-001',
+        status: ContractStatus.ACTIVE,
+        billingDay,
+      }),
+    });
+    expect(prisma.invoice.create).toHaveBeenCalledWith({
+      data: {
+        companyId: 'company-001',
+        customerId: 'customer-001',
+        type: InvoiceType.SERVICE,
+        status: InvoiceStatus.NORMAL,
+        amount: new Prisma.Decimal(399),
+        issuedAt: expect.any(Date),
+        reconciled: false,
+      },
+    });
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: 'user-001',
+        companyId: 'company-001',
+        action: 'CONTRACT_AUTO_BILLING',
+        module: 'REVENUE',
+        entity: 'Contract',
+        entityId: 'contract-001',
+      }),
     });
   });
 });
