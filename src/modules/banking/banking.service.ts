@@ -205,80 +205,90 @@ export class BankingService {
    * Operação atômica: atualiza transação e fatura no mesmo commit.
    * Atualiza status da fatura para PAID — reflete no DRE e PnL em tempo real.
    */
-  async linkInvoice(transactionId: string, invoiceId: string) {
-    const [trn, inv] = await Promise.all([
-      this.prisma.bankTransaction.findUnique({ where: { id: transactionId } }),
-      this.prisma.invoice.findUnique({ where: { id: invoiceId } }),
-    ]);
+  async linkInvoice(companyId: string, transactionId: string, invoiceId: string) {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      const [trn, inv] = await Promise.all([
+        tx.bankTransaction.findFirst({ where: { id: transactionId, companyId } }),
+        tx.invoice.findFirst({ where: { id: invoiceId, companyId } }),
+      ]);
 
-    if (!trn) throw new NotFoundException('Transação não encontrada.');
-    if (!inv) throw new NotFoundException('Nota fiscal não encontrada.');
-    if (trn.reconciled)
-      throw new BadRequestException('Transação já conciliada.');
-    if (inv.reconciled)
-      throw new BadRequestException('Nota fiscal já conciliada.');
+      if (!trn) throw new NotFoundException('Transação não encontrada.');
+      if (!inv) throw new NotFoundException('Nota fiscal não encontrada.');
+      if (trn.reconciled)
+        throw new BadRequestException('Transação já conciliada.');
+      if (inv.reconciled)
+        throw new BadRequestException('Nota fiscal já conciliada.');
 
-    return this.prisma.$transaction([
-      this.prisma.bankTransaction.update({
+      const transaction = await tx.bankTransaction.update({
         where: { id: transactionId },
         data: { reconciled: true, invoiceId },
-      }),
-      this.prisma.invoice.update({
+      });
+      const invoice = await tx.invoice.update({
         where: { id: invoiceId },
         // Atualiza para PAID — impacta DRE e dashboard de inadimplência
         data: { reconciled: true, status: InvoiceStatus.PAID },
-      }),
-    ]);
+      });
+
+      return [transaction, invoice];
+    });
   }
 
   /**
    * Vincula transação a uma obrigação fiscal (DAS, GPS, DARF).
    * Marca a obrigação como PAID — remove dos alertas de vencimento.
    */
-  async linkTaxObligation(transactionId: string, taxObligationId: string) {
-    const [trn, obligation] = await Promise.all([
-      this.prisma.bankTransaction.findUnique({ where: { id: transactionId } }),
-      this.prisma.taxObligation.findUnique({ where: { id: taxObligationId } }),
-    ]);
+  async linkTaxObligation(
+    companyId: string,
+    transactionId: string,
+    taxObligationId: string,
+  ) {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      const [trn, obligation] = await Promise.all([
+        tx.bankTransaction.findFirst({ where: { id: transactionId, companyId } }),
+        tx.taxObligation.findFirst({
+          where: { id: taxObligationId, companyId },
+        }),
+      ]);
 
-    if (!trn) throw new NotFoundException('Transação não encontrada.');
-    if (!obligation)
-      throw new NotFoundException('Obrigação fiscal não encontrada.');
-    if (trn.reconciled)
-      throw new BadRequestException('Transação já conciliada.');
+      if (!trn) throw new NotFoundException('Transação não encontrada.');
+      if (!obligation)
+        throw new NotFoundException('Obrigação fiscal não encontrada.');
+      if (trn.reconciled)
+        throw new BadRequestException('Transação já conciliada.');
 
-    return this.prisma.$transaction([
-      this.prisma.bankTransaction.update({
+      const transaction = await tx.bankTransaction.update({
         where: { id: transactionId },
         data: { taxObligationId, reconciled: true },
-      }),
-      this.prisma.taxObligation.update({
+      });
+      const updatedObligation = await tx.taxObligation.update({
         where: { id: taxObligationId },
         data: { status: ObligationStatus.PAID },
-      }),
-    ]);
+      });
+
+      return [transaction, updatedObligation];
+    });
   }
 
   /**
    * Desfaz uma conciliação — libera transação e nota/obrigação para rematch.
    * Essencial para correção de erros do auto-match.
    */
-  async unlinkTransaction(transactionId: string) {
-    const trn = await this.prisma.bankTransaction.findUnique({
-      where: { id: transactionId },
-      select: {
-        id: true,
-        reconciled: true,
-        invoiceId: true,
-        taxObligationId: true,
-      },
-    });
+  async unlinkTransaction(companyId: string, transactionId: string) {
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      const trn = await tx.bankTransaction.findFirst({
+        where: { id: transactionId, companyId },
+        select: {
+          id: true,
+          reconciled: true,
+          invoiceId: true,
+          taxObligationId: true,
+        },
+      });
 
-    if (!trn) throw new NotFoundException('Transação não encontrada.');
-    if (!trn.reconciled)
-      throw new BadRequestException('Transação não está conciliada.');
+      if (!trn) throw new NotFoundException('Transação não encontrada.');
+      if (!trn.reconciled)
+        throw new BadRequestException('Transação não está conciliada.');
 
-    return this.prisma.$transaction(async (tx) => {
       await tx.bankTransaction.update({
         where: { id: transactionId },
         data: { reconciled: false, invoiceId: null, taxObligationId: null },
