@@ -58,21 +58,34 @@ export class BankingService {
       throw new BadRequestException('Arquivo OFX vazio ou inválido.');
     }
 
-    // Valida se a conta bancária pertence à empresa (segurança multi-tenant)
-    const account = await this.prisma.bankAccount.findFirst({
-      where: { id: bankAccountId, companyId },
-    });
-    if (!account) {
-      throw new NotFoundException(
-        'Conta bancária não encontrada para esta empresa.',
-      );
-    }
+    let transactions: OfxTransaction[];
+    let ledgerBal: string | number | undefined;
 
     try {
       const rawData = fileBuffer.toString('utf-8');
       const parsedData = this.parseOfx(rawData);
       const stmtrs = parsedData?.OFX?.BANKMSGSRSV1?.STMTTRNRS?.STMTRS;
-      const transactions = normalizeOfxTransactions(stmtrs);
+      transactions = normalizeOfxTransactions(stmtrs);
+      ledgerBal = getLedgerBalance(stmtrs);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`[OFX ERROR] ${message}`);
+      throw new BadRequestException(
+        'Falha ao processar o arquivo OFX. Verifique o formato.',
+      );
+    }
+
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
+      // Valida se a conta bancária pertence à empresa (segurança multi-tenant)
+      const account = await tx.bankAccount.findFirst({
+        where: { id: bankAccountId, companyId },
+      });
+
+      if (!account) {
+        throw new NotFoundException(
+          'Conta bancária não encontrada para esta empresa.',
+        );
+      }
 
       if (transactions.length === 0) {
         this.logger.warn(`[OFX] Nenhuma transação encontrada no extrato.`);
@@ -83,15 +96,14 @@ export class BankingService {
         };
       }
 
-      // Saldo final do extrato (LEDGERBAL) — atualiza balanceCache se disponível
-      const ledgerBal = getLedgerBalance(stmtrs);
+      const result: BankTransaction[] = [];
 
-      const operations = transactions
-        .map((trn) => this.normalizeTransaction(trn))
-        .map((trn) => {
-          const amount = new Prisma.Decimal(trn.amount);
+      for (const sourceTransaction of transactions) {
+        const trn = this.normalizeTransaction(sourceTransaction);
+        const amount = new Prisma.Decimal(trn.amount);
 
-          return this.prisma.bankTransaction.upsert({
+        result.push(
+          await tx.bankTransaction.upsert({
             where: { id: trn.fitid },
             update: {}, // Transações bancárias são imutáveis após importação
             create: {
@@ -107,14 +119,13 @@ export class BankingService {
               reconciled: false,
               metadata: { fitid: trn.fitid, trnType: trn.type },
             },
-          });
-        });
-
-      const result = await this.prisma.$transaction(operations);
+          }),
+        );
+      }
 
       // Atualiza balanceCache com saldo real do extrato quando disponível
       if (ledgerBal !== undefined) {
-        await this.prisma.bankAccount.update({
+        await tx.bankAccount.update({
           where: { id: bankAccountId },
           data: { balanceCache: new Prisma.Decimal(ledgerBal) },
         });
@@ -133,13 +144,7 @@ export class BankingService {
         imported: result.length,
         message: 'Extrato bancário importado com sucesso.',
       };
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.error(`[OFX ERROR] ${message}`);
-      throw new BadRequestException(
-        'Falha ao processar o arquivo OFX. Verifique o formato.',
-      );
-    }
+    });
   }
 
   // ---------------------------------------------------------------------------
