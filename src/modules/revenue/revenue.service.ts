@@ -465,53 +465,55 @@ export class RevenueService {
     const nextYearStart = new Date(Date.UTC(currentYear + 1, 0, 1));
 
     const [yearRevenue, currentRevenue, previousRevenue, activeContracts] =
-      await Promise.all([
-        this.prisma.invoice.aggregate({
-          where: {
-            companyId,
-            status: InvoiceStatus.NORMAL,
-            deletedAt: null,
-            issuedAt: {
-              gte: yearStart,
-              lt: nextYearStart,
+      await this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+        Promise.all([
+          tx.invoice.aggregate({
+            where: {
+              companyId,
+              status: InvoiceStatus.NORMAL,
+              deletedAt: null,
+              issuedAt: {
+                gte: yearStart,
+                lt: nextYearStart,
+              },
             },
-          },
-          _sum: { amount: true },
-        }),
-        this.prisma.invoice.aggregate({
-          where: {
-            companyId,
-            status: InvoiceStatus.NORMAL,
-            deletedAt: null,
-            issuedAt: {
-              gte: currentPeriod.start,
-              lt: currentPeriod.end,
+            _sum: { amount: true },
+          }),
+          tx.invoice.aggregate({
+            where: {
+              companyId,
+              status: InvoiceStatus.NORMAL,
+              deletedAt: null,
+              issuedAt: {
+                gte: currentPeriod.start,
+                lt: currentPeriod.end,
+              },
             },
-          },
-          _sum: { amount: true },
-        }),
-        this.prisma.invoice.aggregate({
-          where: {
-            companyId,
-            status: InvoiceStatus.NORMAL,
-            deletedAt: null,
-            issuedAt: {
-              gte: previousPeriod.start,
-              lt: previousPeriod.end,
+            _sum: { amount: true },
+          }),
+          tx.invoice.aggregate({
+            where: {
+              companyId,
+              status: InvoiceStatus.NORMAL,
+              deletedAt: null,
+              issuedAt: {
+                gte: previousPeriod.start,
+                lt: previousPeriod.end,
+              },
             },
-          },
-          _sum: { amount: true },
-        }),
-        this.prisma.contract.aggregate({
-          where: {
-            companyId,
-            status: ContractStatus.ACTIVE,
-            deletedAt: null,
-          },
-          _count: { id: true },
-          _sum: { amount: true },
-        }),
-      ]);
+            _sum: { amount: true },
+          }),
+          tx.contract.aggregate({
+            where: {
+              companyId,
+              status: ContractStatus.ACTIVE,
+              deletedAt: null,
+            },
+            _count: { id: true },
+            _sum: { amount: true },
+          }),
+        ]),
+      );
 
     const totalRevenue = this.toNumber(yearRevenue._sum.amount);
     const currentMonthRevenue = this.toNumber(currentRevenue._sum.amount);
@@ -546,16 +548,18 @@ export class RevenueService {
   }
 
   async getRevenueContracts(companyId: string) {
-    return this.prisma.contract.findMany({
-      where: {
-        companyId,
-        deletedAt: null,
-      },
-      include: {
-        customer: true,
-      },
-      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-    });
+    return this.prisma.withRlsCompanyContext(companyId, async (tx) =>
+      tx.contract.findMany({
+        where: {
+          companyId,
+          deletedAt: null,
+        },
+        include: {
+          customer: true,
+        },
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+      }),
+    );
   }
 
   async getFactorR(companyId: string) {
@@ -564,22 +568,27 @@ export class RevenueService {
       Date.UTC(now.getUTCFullYear() - 1, now.getUTCMonth(), 1),
     );
 
-    const revenueAgg = await this.prisma.invoice.aggregate({
-      where: {
-        companyId,
-        status: InvoiceStatus.NORMAL,
-        deletedAt: null,
-        issuedAt: { gte: startDate },
-      },
-      _sum: { amount: true },
-    });
-
-    const payrollAgg = await this.prisma.payroll.aggregate({
-      where: {
-        companyId,
-      },
-      _sum: { totalAmount: true },
-    });
+    const [revenueAgg, payrollAgg] = await this.prisma.withRlsCompanyContext(
+      companyId,
+      async (tx) =>
+        Promise.all([
+          tx.invoice.aggregate({
+            where: {
+              companyId,
+              status: InvoiceStatus.NORMAL,
+              deletedAt: null,
+              issuedAt: { gte: startDate },
+            },
+            _sum: { amount: true },
+          }),
+          tx.payroll.aggregate({
+            where: {
+              companyId,
+            },
+            _sum: { totalAmount: true },
+          }),
+        ]),
+    );
 
     const revenueLast12Months = revenueAgg._sum.amount?.toNumber() ?? 0;
     const payrollLast12Months = payrollAgg._sum.totalAmount?.toNumber() ?? 0;

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { ContractStatus, InvoiceStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { RevenueService } from './revenue.service.js';
 
@@ -12,6 +12,10 @@ describe('RevenueService compatibility endpoints', () => {
       aggregate: jest.Mock;
       findMany: jest.Mock;
     };
+    payroll: {
+      aggregate: jest.Mock;
+    };
+    withRlsCompanyContext: jest.Mock;
   };
 
   beforeEach(() => {
@@ -25,6 +29,12 @@ describe('RevenueService compatibility endpoints', () => {
         aggregate: jest.fn(),
         findMany: jest.fn(),
       },
+      payroll: {
+        aggregate: jest.fn(),
+      },
+      withRlsCompanyContext: jest
+        .fn()
+        .mockImplementation(async (_companyId, callback) => callback(prisma)),
     };
 
     service = new RevenueService(prisma as unknown as PrismaService);
@@ -58,6 +68,18 @@ describe('RevenueService compatibility endpoints', () => {
         previous: '2026-07',
       },
     });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prisma.invoice.aggregate).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        companyId: 'company-1',
+        status: InvoiceStatus.NORMAL,
+        deletedAt: null,
+      }),
+      _sum: { amount: true },
+    });
   });
 
   it('lista contratos de receita por empresa sem removidos logicamente', async () => {
@@ -82,6 +104,46 @@ describe('RevenueService compatibility endpoints', () => {
         customer: true,
       },
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+    });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+  });
+
+  it('calcula Fator R com receita e folha dentro do contexto RLS', async () => {
+    prisma.invoice.aggregate.mockResolvedValueOnce({
+      _sum: { amount: new Prisma.Decimal(1200000) },
+    });
+    prisma.payroll.aggregate.mockResolvedValueOnce({
+      _sum: { totalAmount: new Prisma.Decimal(360000) },
+    });
+
+    const result = await service.getFactorR('company-1');
+
+    expect(result).toMatchObject({
+      value: 0.3,
+      isEligibleForAnexoIII: true,
+      revenueLast12Months: 1200000,
+      payrollLast12Months: 360000,
+    });
+    expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
+      'company-1',
+      expect.any(Function),
+    );
+    expect(prisma.invoice.aggregate).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        companyId: 'company-1',
+        status: InvoiceStatus.NORMAL,
+        deletedAt: null,
+      }),
+      _sum: { amount: true },
+    });
+    expect(prisma.payroll.aggregate).toHaveBeenCalledWith({
+      where: {
+        companyId: 'company-1',
+      },
+      _sum: { totalAmount: true },
     });
   });
 });
