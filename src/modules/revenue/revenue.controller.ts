@@ -4,14 +4,15 @@ import {
   Param,
   Post,
   Query,
-  ParseIntPipe,
   ParseUUIDPipe,
+  ValidationPipe,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { RevenueService } from './revenue.service.js';
+import { GetMetricsDto } from './dto/get-metrics.dto.js';
 
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
 @Controller('revenue')
@@ -36,10 +37,14 @@ export class RevenueController {
   @Get('metrics/:companyId')
   getMetrics(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Query('month', ParseIntPipe) month: number,
-    @Query('year', ParseIntPipe) year: number,
+    @Query(new ValidationPipe({ transform: true, whitelist: true }))
+    query: GetMetricsDto,
   ) {
-    return this.revenueService.getRevenueMetrics(companyId, month, year);
+    return this.revenueService.getRevenueMetrics(
+      companyId,
+      query.month,
+      query.year,
+    );
   }
 
   @Get('factor-r/:companyId')
