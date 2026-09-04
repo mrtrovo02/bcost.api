@@ -4,7 +4,13 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { BillingEntitlementsService } from './billing-entitlements.service.js';
+import {
+  BillingEntitlementsService,
+  type AuthUser,
+  type FeatureDefinition,
+  type LimitKey,
+  type PlanLevel,
+} from './billing-entitlements.service.js';
 import { PrismaService } from '#database/prisma.service.js';
 
 type MockPrismaService = {
@@ -33,6 +39,21 @@ describe('BillingEntitlementsService', () => {
         lastPlanChangeAt: '2026-01-01T00:00:00.000Z',
       },
     },
+  };
+
+  const toRecord = (value: unknown): Record<string, unknown> => {
+    expect(value).toEqual(expect.any(Object));
+    return value as Record<string, unknown>;
+  };
+
+  const toStringArray = (value: unknown): string[] => {
+    expect(Array.isArray(value)).toBe(true);
+    return value as string[];
+  };
+
+  const toFeatures = (value: unknown): FeatureDefinition[] => {
+    expect(Array.isArray(value)).toBe(true);
+    return value as FeatureDefinition[];
   };
 
   beforeEach(async () => {
@@ -74,16 +95,52 @@ describe('BillingEntitlementsService', () => {
 
   describe('getEntitlements', () => {
     it('deve retornar os direitos e limites do plano PRO corretamente', async () => {
-      const result = (await service.getEntitlements(
-        'company-uuid-123',
-      )) as Record<string, any>;
+      const result = toRecord(await service.getEntitlements('company-uuid-123'));
+      const limits = toRecord(result.limits);
+      const enabledFeatures = toStringArray(result.enabledFeatures);
+      const lockedFeatures = toStringArray(result.lockedFeatures);
 
       expect(result.status).toBe('OK');
       expect(result.planLevel).toBe('PRO');
-      expect(result.limits.invoicesPerMonth).toBe(500);
-      expect(result.limits.users).toBe(10);
-      expect(result.enabledFeatures).toContain('banking.reconciliation');
-      expect(result.lockedFeatures).toContain('ai.copilot');
+      expect(limits.invoicesPerMonth).toBe(500);
+      expect(limits.users).toBe(10);
+      expect(enabledFeatures).toContain('banking.reconciliation');
+      expect(lockedFeatures).toContain('ai.copilot');
+    });
+
+    it('deve expor prontidão comercial e guardrails jurídicos por feature', async () => {
+      const result = toRecord(await service.getEntitlements('company-uuid-123'));
+      const features = toFeatures(result.features);
+
+      expect(features).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: 'fiscal.diagnostics',
+            moduleSlug: 'tax-scenarios',
+            marketReadiness: 'SELLABLE',
+          }),
+          expect.objectContaining({
+            key: 'accounting.entries',
+            moduleSlug: 'accounting-entries',
+            marketReadiness: 'ROADMAP_LOCKED',
+            commercialGuardrail: expect.stringContaining(
+              'Não vender como escrituração contábil oficial',
+            ),
+          }),
+          expect.objectContaining({
+            key: 'digital.certificates',
+            moduleSlug: 'digital-certificates',
+            marketReadiness: 'ROADMAP_LOCKED',
+          }),
+          expect.objectContaining({
+            key: 'ai.copilot',
+            marketReadiness: 'ROADMAP_LOCKED',
+            commercialGuardrail: expect.stringContaining(
+              'Não vender como automação fiscal autônoma',
+            ),
+          }),
+        ]),
+      );
     });
 
     it('deve lançar NotFoundException quando a empresa não for encontrada', async () => {
@@ -101,37 +158,39 @@ describe('BillingEntitlementsService', () => {
       };
 
       await expect(
-        service.getEntitlements('company-uuid-123', user as any),
+        service.getEntitlements('company-uuid-123', user),
       ).rejects.toThrow(ForbiddenException);
     });
   });
 
   describe('checkFeature', () => {
     it('deve permitir funcionalidade disponível para o plano da empresa', async () => {
-      const result = (await service.checkFeature(
+      const result = toRecord(await service.checkFeature(
         'company-uuid-123',
         'banking.reconciliation',
-      )) as Record<string, any>;
+      ));
 
       expect(result.allowed).toBe(true);
       expect(result.status).toBe('ALLOWED');
+      expect(toRecord(result.feature).marketReadiness).toBe('SELLABLE');
     });
 
     it('deve bloquear funcionalidade que exige plano superior (ENTERPRISE)', async () => {
-      const result = (await service.checkFeature(
+      const result = toRecord(await service.checkFeature(
         'company-uuid-123',
         'ai.copilot',
-      )) as Record<string, any>;
+      ));
 
       expect(result.allowed).toBe(false);
       expect(result.status).toBe('LOCKED');
+      expect(toRecord(result.feature).marketReadiness).toBe('ROADMAP_LOCKED');
     });
 
     it('deve retornar UNKNOWN_FEATURE para chave de feature inexistente', async () => {
-      const result = (await service.checkFeature(
+      const result = toRecord(await service.checkFeature(
         'company-uuid-123',
         'feature.inexistente',
-      )) as Record<string, any>;
+      ));
 
       expect(result.allowed).toBe(false);
       expect(result.status).toBe('UNKNOWN_FEATURE');
@@ -140,11 +199,11 @@ describe('BillingEntitlementsService', () => {
 
   describe('checkLimit', () => {
     it('deve retornar ALLOWED quando o uso atual estiver abaixo do limite', async () => {
-      const result = (await service.checkLimit(
+      const result = toRecord(await service.checkLimit(
         'company-uuid-123',
-        'invoicesPerMonth' as any,
+        'invoicesPerMonth',
         150,
-      )) as Record<string, any>;
+      ));
 
       expect(result.allowed).toBe(true);
       expect(result.status).toBe('ALLOWED');
@@ -152,11 +211,11 @@ describe('BillingEntitlementsService', () => {
     });
 
     it('deve retornar LIMIT_EXCEEDED quando a cota for atingida ou superada', async () => {
-      const result = (await service.checkLimit(
+      const result = toRecord(await service.checkLimit(
         'company-uuid-123',
-        'invoicesPerMonth' as any,
+        'invoicesPerMonth',
         500,
-      )) as Record<string, any>;
+      ));
 
       expect(result.allowed).toBe(false);
       expect(result.status).toBe('LIMIT_EXCEEDED');
@@ -165,7 +224,11 @@ describe('BillingEntitlementsService', () => {
 
     it('deve lançar BadRequestException para chave de limite inválida', async () => {
       await expect(
-        service.checkLimit('company-uuid-123', 'limiteInvalido' as any, 10),
+        service.checkLimit(
+          'company-uuid-123',
+          'limiteInvalido' as LimitKey,
+          10,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -178,12 +241,12 @@ describe('BillingEntitlementsService', () => {
         role: 'OWNER',
       };
 
-      const result = (await service.updatePlan(
+      const result = toRecord(await service.updatePlan(
         'company-uuid-123',
-        'ENTERPRISE' as any,
-        adminUser as any,
+        'ENTERPRISE' satisfies PlanLevel,
+        adminUser satisfies AuthUser,
         'Upgrade para expansão',
-      )) as Record<string, any>;
+      ));
 
       expect(result.status).toBe('OK');
       expect(result.oldPlan).toBe('PRO');
@@ -209,8 +272,8 @@ describe('BillingEntitlementsService', () => {
       await expect(
         service.updatePlan(
           'company-uuid-123',
-          'ENTERPRISE' as any,
-          memberUser as any,
+          'ENTERPRISE' satisfies PlanLevel,
+          memberUser satisfies AuthUser,
         ),
       ).rejects.toThrow(ForbiddenException);
     });

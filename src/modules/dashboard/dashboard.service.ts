@@ -17,7 +17,10 @@ import {
   NotificationSeverity,
 } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
-import { AnalyticsService } from '../analytics/analytics.service.js';
+import {
+  AnalyticsService,
+  type FiscalHealthScore,
+} from '../analytics/analytics.service.js';
 import { InsightsService } from '../../insights/insights.service.js';
 import { CashFlowProjectionService } from '../../insights/cash-flow-projection/cash-flow-projection.service.js';
 import { AnomalyDetectionService } from '../../insights/anomaly-detection/anomaly-detection.service.js';
@@ -35,6 +38,14 @@ type DashboardFinancialHealth = {
 
 type DashboardAnomaly = {
   deviationScore: number;
+};
+
+const UNAVAILABLE_FISCAL_HEALTH_SCORE: FiscalHealthScore = {
+  score: 0,
+  totalObligations: 0,
+  paidObligations: 0,
+  pendingObligations: 0,
+  rating: 'CRÍTICO',
 };
 
 @Injectable()
@@ -103,9 +114,9 @@ export class DashboardService {
         this.cashFlowService.getLatestProjection(companyId),
       ]);
 
-      const healthScore = this.settledOr(
+      const healthScore = this.settledOr<FiscalHealthScore>(
         healthScoreResult,
-        0,
+        UNAVAILABLE_FISCAL_HEALTH_SCORE,
         'fiscal-health-score',
       );
       const revenueHistory = this.settledOr(

@@ -242,7 +242,13 @@ describe('DashboardService (Management Cockpit)', () => {
     };
 
     const analyticsServiceMock = {
-      getFiscalHealthScore: jest.fn().mockResolvedValue(92),
+      getFiscalHealthScore: jest.fn().mockResolvedValue({
+        score: 92,
+        totalObligations: 12,
+        paidObligations: 11,
+        pendingObligations: 1,
+        rating: 'EXCELENTE',
+      }),
       getRevenueHistory: jest
         .fn()
         .mockResolvedValue([{ month: 1, value: 100 }]),
@@ -328,7 +334,13 @@ describe('DashboardService (Management Cockpit)', () => {
     const result = await service.getCompanyOverview('company-1');
 
     expect(result.summary).toMatchObject({
-      fiscalScore: 92,
+      fiscalScore: {
+        score: 92,
+        totalObligations: 12,
+        paidObligations: 11,
+        pendingObligations: 1,
+        rating: 'EXCELENTE',
+      },
       financialScore: 88,
       totalRevenueYTD: 250000,
       activeAutomations: 2,
@@ -379,7 +391,13 @@ describe('DashboardService (Management Cockpit)', () => {
     const result = await service.getCompanyOverview('company-1');
 
     expect(result.summary).toMatchObject({
-      fiscalScore: 0,
+      fiscalScore: {
+        score: 0,
+        totalObligations: 0,
+        paidObligations: 0,
+        pendingObligations: 0,
+        rating: 'CRÍTICO',
+      },
       financialScore: 0,
       criticalAnomalies: 0,
       totalRevenueYTD: 250000,

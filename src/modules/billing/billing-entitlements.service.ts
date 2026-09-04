@@ -49,7 +49,15 @@ export type FeatureDefinition = {
   label: string;
   description: string;
   minPlan: PlanLevel;
+  moduleSlug?: string;
+  marketReadiness: MarketReadiness;
+  commercialGuardrail: string;
 };
+
+export type MarketReadiness =
+  | 'SELLABLE'
+  | 'ASSISTED_BETA'
+  | 'ROADMAP_LOCKED';
 
 export type PlanDefinition = {
   level: PlanLevel;
@@ -135,24 +143,40 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     label: 'Dashboard Enterprise',
     description: 'Visão executiva consolidada com indicadores operacionais.',
     minPlan: 'FREE',
+    moduleSlug: 'command-center',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Usar como cockpit demonstrativo/gerencial até o Command Center produtivo ter endpoints completos, evidências e SLA operacional.',
   },
   {
     key: 'fiscal.diagnostics',
     label: 'Diagnóstico fiscal',
     description: 'Análise fiscal, saúde tributária e indicadores do Simples.',
     minPlan: 'FREE',
+    moduleSlug: 'tax-scenarios',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido como triagem consultiva e diagnóstico orientativo, com revisão CRC para enquadramento definitivo.',
   },
   {
     key: 'fiscal.payroll.factorR',
     label: 'Fator R / Folha',
     description: 'Análise de Fator R, pró-labore e economia tributária.',
     minPlan: 'PRO',
+    moduleSlug: 'tax-scenarios',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido como simulação de Fator R; decisão de anexo exige CNAE, RBT12, folha validada e aceite/revisão contábil.',
   },
   {
     key: 'banking.ofx',
     label: 'Importação OFX',
     description: 'Importação de extratos bancários para conciliação.',
     minPlan: 'PRO',
+    moduleSlug: 'bank-transactions',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido como conciliação assistida por extrato importado; Open Finance/BaaS depende de integração homologada.',
   },
   {
     key: 'banking.reconciliation',
@@ -160,12 +184,20 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     description:
       'Motor de conciliação automática entre banco e documentos fiscais.',
     minPlan: 'PRO',
+    moduleSlug: 'bank-transactions',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido para conciliação operacional com trilha de auditoria; baixa automática deve respeitar conferência e exceções.',
   },
   {
     key: 'revenue.billing',
     label: 'Revenue Billing',
     description: 'Faturamento automático recorrente a partir de contratos.',
     minPlan: 'PRO',
+    moduleSlug: 'finance-operations',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido como gestão de receita e cobrança; emissão fiscal e split payment exigem integrações fiscais/financeiras ativas.',
   },
   {
     key: 'international.invoices',
@@ -173,48 +205,79 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     description:
       'Gestão contábil, tributária e emissão de invoices para prestação de serviços ao exterior.',
     minPlan: 'PRO',
+    moduleSlug: 'international-service',
+    marketReadiness: 'ASSISTED_BETA',
+    commercialGuardrail:
+      'Vender somente como operação assistida com validação de contrato, natureza cambial, município, ISS e documentos de exportação de serviços.',
   },
   {
     key: 'automation.jobs',
     label: 'Automation Jobs',
     description: 'Monitoramento dos jobs operacionais da plataforma.',
     minPlan: 'PRO',
+    moduleSlug: 'operational-workflows',
+    marketReadiness: 'ASSISTED_BETA',
+    commercialGuardrail:
+      'Vender como esteira assistida enquanto RPAs, DLQ, retries e runbooks por portal governamental não estiverem homologados.',
   },
   {
     key: 'automation.retry',
     label: 'Retry executável',
     description: 'Reprocessamento real de jobs suportados com auditoria.',
     minPlan: 'ENTERPRISE',
+    moduleSlug: 'operational-workflows',
+    marketReadiness: 'ASSISTED_BETA',
+    commercialGuardrail:
+      'Liberar somente para operadores autorizados, com idempotência, audit log e bloqueio contra duplicidade fiscal.',
   },
   {
     key: 'audit.logs',
     label: 'AuditLog Enterprise',
     description: 'Trilha de auditoria pesquisável por módulo, ação e entidade.',
     minPlan: 'PRO',
+    moduleSlug: 'audit-log',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido como trilha de auditoria técnica; retenção e exportação devem seguir o plano contratado e LGPD.',
   },
   {
     key: 'accounting.entries',
     label: 'Lançamentos contábeis',
     description: 'Base contábil para fechamento e classificação.',
     minPlan: 'PRO',
+    moduleSlug: 'accounting-entries',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Não vender como escrituração contábil oficial até existir motor contábil completo, conciliação, bloqueio de competência e assinatura CRC.',
   },
   {
     key: 'digital.certificates',
     label: 'Certificados digitais',
     description: 'Gestão de certificados e alertas de vencimento.',
     minPlan: 'ENTERPRISE',
+    moduleSlug: 'digital-certificates',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Não prometer automação fiscal baseada em certificado até existir cofre seguro, criptografia, política de rotação e operação homologada.',
   },
   {
     key: 'webhooks',
     label: 'Webhooks',
     description: 'Integrações externas com eventos da plataforma.',
     minPlan: 'ENTERPRISE',
+    moduleSlug: 'webhooks',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Não vender integração pública até existirem assinatura de payload, idempotência, retry, DLQ e portal de logs para clientes.',
   },
   {
     key: 'ai.copilot',
     label: 'Copilot fiscal',
     description: 'Assistente fiscal/financeiro com IA e contexto da empresa.',
     minPlan: 'ENTERPRISE',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Não vender como automação fiscal autônoma até existir RAG auditável, fontes oficiais versionadas e política de revisão humana.',
   },
   {
     key: 'ai.rag',
@@ -222,12 +285,19 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     description:
       'Busca inteligente em documentos, XMLs, obrigações e auditoria.',
     minPlan: 'ENTERPRISE',
+    moduleSlug: 'audit-intelligence',
+    marketReadiness: 'ROADMAP_LOCKED',
+    commercialGuardrail:
+      'Não vender como parecer fiscal automatizado até existir base documental versionada, citações rastreáveis e revisão por especialista.',
   },
   {
     key: 'support.priority',
     label: 'Suporte prioritário',
     description: 'Atendimento prioritário e suporte consultivo.',
     minPlan: 'ENTERPRISE',
+    marketReadiness: 'SELLABLE',
+    commercialGuardrail:
+      'Pode ser vendido com SLA e escopo contratual explícitos, sem promessa de substituição de contador responsável.',
   },
 ];
 
