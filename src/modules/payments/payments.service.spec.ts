@@ -453,4 +453,40 @@ describe('PaymentsService', () => {
       }),
     );
   });
+
+  it('limita consultas de eventos de webhook a no máximo 100 registros', async () => {
+    prismaMock.paymentWebhookEvent.findMany.mockResolvedValueOnce([]);
+
+    const result = await service.listWebhookEvents('company-001', {
+      limit: 500,
+    });
+
+    expect(result.filters).toEqual({
+      status: null,
+      limit: 100,
+    });
+    expect(prismaMock.paymentWebhookEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 100,
+      }),
+    );
+  });
+
+  it('usa limite padrão para consultas de eventos de webhook com valor inválido', async () => {
+    prismaMock.paymentWebhookEvent.findMany.mockResolvedValueOnce([]);
+
+    const result = await service.listWebhookEvents('company-001', {
+      limit: Number.NaN,
+    });
+
+    expect(result.filters).toEqual({
+      status: null,
+      limit: 50,
+    });
+    expect(prismaMock.paymentWebhookEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        take: 50,
+      }),
+    );
+  });
 });

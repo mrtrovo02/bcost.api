@@ -51,6 +51,9 @@ type PaymentWebhookEventAuditItem = {
   updatedAt: Date;
 };
 
+const DEFAULT_WEBHOOK_EVENTS_LIMIT = 50;
+const MAX_WEBHOOK_EVENTS_LIMIT = 100;
+
 @Injectable()
 export class PaymentsService {
   constructor(
@@ -220,6 +223,7 @@ export class PaymentsService {
     companyId: string,
     query: ListWebhookEventsQueryDto = {},
   ) {
+    const limit = this.normalizeWebhookEventsLimit(query.limit);
     const where: Prisma.PaymentWebhookEventWhereInput = {
       companyId,
       ...(query.status ? { status: query.status } : {}),
@@ -231,7 +235,7 @@ export class PaymentsService {
         orderBy: {
           createdAt: 'desc',
         },
-        take: query.limit ?? 50,
+        take: limit,
         select: {
           id: true,
           provider: true,
@@ -250,7 +254,7 @@ export class PaymentsService {
       companyId,
       filters: {
         status: query.status ?? null,
-        limit: query.limit ?? 50,
+        limit,
       },
       events,
       generatedAt: new Date().toISOString(),
@@ -599,6 +603,19 @@ export class PaymentsService {
     if (status === 'expired') return CheckoutSessionStatus.EXPIRED;
     if (status === 'open') return CheckoutSessionStatus.OPEN;
     return CheckoutSessionStatus.CREATED;
+  }
+
+  private normalizeWebhookEventsLimit(limit?: number): number {
+    if (!Number.isFinite(limit)) {
+      return DEFAULT_WEBHOOK_EVENTS_LIMIT;
+    }
+
+    const finiteLimit = Number(limit);
+
+    return Math.min(
+      Math.max(Math.trunc(finiteLimit), 1),
+      MAX_WEBHOOK_EVENTS_LIMIT,
+    );
   }
 
   private isPlainRecord(value: unknown): value is Record<string, unknown> {
