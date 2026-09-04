@@ -46,6 +46,10 @@ const COMPANY_SCOPED_MODELS = new Set<string>([
   'Asset',
   'Budget',
   'CostCenter',
+  'PaymentCustomer',
+  'Subscription',
+  'CheckoutSession',
+  'PaymentWebhookEvent',
 ]);
 
 const SOFT_DELETE_MODELS = new Set<string>([

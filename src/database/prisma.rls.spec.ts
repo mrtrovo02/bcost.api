@@ -210,6 +210,20 @@ describe('PostgreSQL RLS policies', () => {
     }
   });
 
+  it('deve incluir modelos de monetizacao no escopo runtime da extensao Prisma', () => {
+    const prismaServiceSource = readFileSync(PRISMA_SERVICE_PATH, 'utf8');
+    const paymentScopedModels = [
+      'PaymentCustomer',
+      'Subscription',
+      'CheckoutSession',
+      'PaymentWebhookEvent',
+    ] as const;
+
+    for (const modelName of paymentScopedModels) {
+      expect(prismaServiceSource).toContain(`'${modelName}'`);
+    }
+  });
+
   it('deve conceder privilegios minimos para a role de runtime sem DELETE fisico', () => {
     expect(runtimeGrantsSql).toContain(
       'GRANT USAGE ON SCHEMA public TO bcost_app;',
