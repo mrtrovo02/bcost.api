@@ -223,6 +223,13 @@ describe('EnterpriseModulesService', () => {
         /^(SOFTWARE_ONLY|ASSISTED_AUTOMATION|CRC_VALIDATED|HUMAN_LED)$/,
       );
       expect(item.operationalGuardrails?.length).toBeGreaterThan(0);
+      expect(item.launchGate).toMatchObject({
+        status: 'BLOCK',
+        canSell: false,
+      });
+      expect(item.launchGate.blockers).toContain(
+        'módulo em roadmap não pode ser vendido como automação pronta',
+      );
     }
   });
 
@@ -238,6 +245,11 @@ describe('EnterpriseModulesService', () => {
       expect(item.endpoint).toBe(`/enterprise/modules/${item.slug}/:companyId`);
       expect(item.canonicalOwner).toBe('enterprise-modules');
       expect(item.automationBoundary).toBe('SOFTWARE_ONLY');
+      expect(item.launchGate).toMatchObject({
+        status: 'PASS',
+        canSell: true,
+      });
+      expect(item.launchGate.requiredEvidence).toContain('tenant isolation por companyId');
     }
   });
 
@@ -267,12 +279,14 @@ describe('EnterpriseModulesService', () => {
     for (const item of directSale?.modules ?? []) {
       expect(item.marketReadiness).toBe('SELLABLE');
       expect(item.persistence).toBe('PRISMA');
+      expect(item.launchGate.canSell).toBe(true);
     }
 
     for (const lane of [assistedValidation, blockedRoadmap]) {
       for (const item of lane?.modules ?? []) {
         expect(item.marketReadiness).toBe('ROADMAP_LOCKED');
         expect(item.persistence).toBe('ROADMAP');
+        expect(item.launchGate.canSell).toBe(false);
       }
     }
 

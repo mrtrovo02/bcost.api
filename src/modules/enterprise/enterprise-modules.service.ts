@@ -80,6 +80,15 @@ type EnterpriseCatalogPersistence = 'PRISMA' | 'ROADMAP';
 
 type EnterpriseMarketReadiness = 'SELLABLE' | 'ROADMAP_LOCKED';
 
+type EnterpriseLaunchGateStatus = 'PASS' | 'BLOCK';
+
+type EnterpriseLaunchGate = {
+  status: EnterpriseLaunchGateStatus;
+  canSell: boolean;
+  requiredEvidence: string[];
+  blockers: string[];
+};
+
 type EnterpriseCommercialLaneId =
   | 'direct-sale'
   | 'assisted-validation'
@@ -97,6 +106,7 @@ type EnterpriseCatalogItem = {
   canonicalOwner?: string;
   automationBoundary?: RoadmapAutomationBoundary;
   operationalGuardrails?: string[];
+  launchGate: EnterpriseLaunchGate;
 };
 
 type EnterpriseCommercialLaneSummary = {
@@ -749,7 +759,7 @@ export class EnterpriseModulesService {
       'HUMAN_LED',
     ];
     const directSaleModules = catalog.filter(
-      (item) => item.marketReadiness === 'SELLABLE',
+      (item) => item.marketReadiness === 'SELLABLE' && item.launchGate.canSell,
     );
     const assistedValidationModules = catalog.filter(
       (item) =>
@@ -847,6 +857,7 @@ export class EnterpriseModulesService {
       operationalGuardrails: [
         'Endpoint persistido exige autenticação JWT, empresa válida e filtros por companyId antes de expor dados.',
       ],
+      launchGate: this.buildLaunchGate('SELLABLE', true),
     };
   }
 
@@ -872,6 +883,37 @@ export class EnterpriseModulesService {
       operationalGuardrails:
         config.operationalGuardrails ??
         this.resolveRoadmapOperationalGuardrails(config, automationBoundary),
+      launchGate: this.buildLaunchGate('ROADMAP_LOCKED', Boolean(config.endpoint)),
+    };
+  }
+
+  private buildLaunchGate(
+    readiness: EnterpriseMarketReadiness,
+    hasEndpoint: boolean,
+  ): EnterpriseLaunchGate {
+    const requiredEvidence = [
+      'endpoint produtivo',
+      'autenticação JWT',
+      'tenant isolation por companyId',
+      'entitlement de plano',
+      'tratamento de erro auditável',
+    ];
+    const blockers: string[] = [];
+
+    if (!hasEndpoint) {
+      blockers.push('endpoint ausente no catálogo enterprise');
+    }
+
+    if (readiness === 'ROADMAP_LOCKED') {
+      blockers.push('módulo em roadmap não pode ser vendido como automação pronta');
+      requiredEvidence.push('integração homologada', 'roteiro operacional assistido');
+    }
+
+    return {
+      status: blockers.length > 0 ? 'BLOCK' : 'PASS',
+      canSell: blockers.length === 0,
+      requiredEvidence,
+      blockers,
     };
   }
 
