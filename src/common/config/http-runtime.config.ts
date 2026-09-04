@@ -4,11 +4,30 @@ import type { ConfigService } from '@nestjs/config';
 
 export type CorsOriginConfig = true | string[] | RegExp[];
 
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function toUrlOrigin(value: string): string | null {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
 export function parseCsvList(value?: string | null): string[] {
-  return (value || '')
+  const raw = value || '';
+  const urlMatches = raw.match(/https?:\/\/[^\s,\])]+/gi) ?? [];
+
+  if (urlMatches.length > 0) {
+    return unique(urlMatches.map(toUrlOrigin).filter((item): item is string => Boolean(item)));
+  }
+
+  return unique(raw
     .split(',')
     .map((item) => item.trim())
-    .filter(Boolean);
+    .filter(Boolean));
 }
 
 export function resolveCorsOrigins(

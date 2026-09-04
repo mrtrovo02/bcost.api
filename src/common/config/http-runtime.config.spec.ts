@@ -11,6 +11,18 @@ describe('HTTP runtime production config', () => {
     ).toEqual(['https://app.bcost.com.br', 'https://admin.bcost.com.br']);
   });
 
+  it('normalizes markdown-pasted CORS origins from production env files', () => {
+    expect(
+      parseCsvList(
+        '[https://bcost.com.br,https://www.bcost.com.br,https://app.bcost.com.br](https://bcost.com.br,https://www.bcost.com.br,https://app.bcost.com.br)',
+      ),
+    ).toEqual([
+      'https://bcost.com.br',
+      'https://www.bcost.com.br',
+      'https://app.bcost.com.br',
+    ]);
+  });
+
   it('allows all CORS origins outside production when no explicit origin is configured', () => {
     expect(resolveCorsOrigins('', false)).toBe(true);
   });
