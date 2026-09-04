@@ -285,7 +285,11 @@ describe('PaymentsService', () => {
         where: expect.objectContaining({
           companyId: 'company-001',
           status: {
-            in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+            in: [
+              SubscriptionStatus.ACTIVE,
+              SubscriptionStatus.TRIALING,
+              SubscriptionStatus.PAST_DUE,
+            ],
           },
         }),
       }),
@@ -318,6 +322,33 @@ describe('PaymentsService', () => {
         status: 'ACTIVE_SUBSCRIPTION_EXISTS',
         currentPlanLevel: 'ENTERPRISE',
         subscriptionStatus: SubscriptionStatus.TRIALING,
+      }),
+    });
+
+    expect(providerMock.createCheckoutSession).not.toHaveBeenCalled();
+    expect(prismaMock.checkoutSession.create).not.toHaveBeenCalled();
+  });
+
+  it('bloqueia novo checkout para assinatura past_due e preserva regularizacao pelo portal', async () => {
+    prismaMock.subscription.findFirst.mockResolvedValueOnce(
+      createSubscriptionRecord({
+        status: SubscriptionStatus.PAST_DUE,
+        planLevel: 'PRO',
+      }),
+    );
+
+    await expect(
+      service.createCheckoutSession('company-001', {
+        planLevel: 'ENTERPRISE',
+        successUrl:
+          'https://app.bcost.com.br/dashboard/settings?billing=success',
+        cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+        currentPlanLevel: 'PRO',
+        subscriptionStatus: SubscriptionStatus.PAST_DUE,
       }),
     });
 

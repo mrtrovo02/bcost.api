@@ -53,6 +53,11 @@ type PaymentWebhookEventAuditItem = {
 
 const DEFAULT_WEBHOOK_EVENTS_LIMIT = 50;
 const MAX_WEBHOOK_EVENTS_LIMIT = 100;
+const BILLABLE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = [
+  SubscriptionStatus.ACTIVE,
+  SubscriptionStatus.TRIALING,
+  SubscriptionStatus.PAST_DUE,
+];
 
 @Injectable()
 export class PaymentsService {
@@ -73,7 +78,7 @@ export class PaymentsService {
       where: {
         companyId,
         status: {
-          in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+          in: BILLABLE_SUBSCRIPTION_STATUSES,
         },
       },
       select: {
@@ -508,11 +513,9 @@ export class PaymentsService {
     planLevel: string,
     status: SubscriptionStatus,
   ): Promise<void> {
-    const activeStatuses: SubscriptionStatus[] = [
-      SubscriptionStatus.ACTIVE,
-      SubscriptionStatus.TRIALING,
-    ];
-    const nextPlanLevel = activeStatuses.includes(status) ? planLevel : 'FREE';
+    const nextPlanLevel = BILLABLE_SUBSCRIPTION_STATUSES.includes(status)
+      ? planLevel
+      : 'FREE';
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       select: {
