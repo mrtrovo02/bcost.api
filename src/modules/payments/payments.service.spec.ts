@@ -376,6 +376,25 @@ describe('PaymentsService', () => {
     });
   });
 
+  it('bloqueia portal de cobranca com returnUrl fora do dominio oficial', async () => {
+    prismaMock.paymentCustomer.findUnique.mockResolvedValueOnce(
+      createPaymentCustomer(),
+    );
+
+    await expect(
+      service.createBillingPortalSession('company-001', {
+        returnUrl: 'https://evil.example/phishing',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: 'returnUrl deve pertencer ao domínio oficial do frontend.',
+        statusCode: 400,
+      }),
+    });
+
+    expect(providerMock.createBillingPortalSession).not.toHaveBeenCalled();
+  });
+
   it('marca webhook sem efeito operacional como IGNORED', async () => {
     const providerEvent: PaymentProviderWebhookEvent = {
       provider: 'STRIPE',
