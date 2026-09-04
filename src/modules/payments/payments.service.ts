@@ -454,7 +454,13 @@ export class PaymentsService {
         })
       : null;
 
-    const normalizedPlan = subscription.planLevel ?? 'PRO';
+    if (!subscription.planLevel) {
+      throw new BadRequestException(
+        'Webhook de assinatura sem planLevel monetizável no metadata.',
+      );
+    }
+
+    const normalizedPlan = subscription.planLevel;
     const normalizedStatus = subscription.status as SubscriptionStatus;
 
     await this.prisma.subscription.upsert({

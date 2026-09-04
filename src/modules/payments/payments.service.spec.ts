@@ -421,6 +421,68 @@ describe('PaymentsService', () => {
     );
   });
 
+  it('falha webhook de assinatura sem planLevel monetizavel para nao liberar plano indevido', async () => {
+    const providerEvent: PaymentProviderWebhookEvent = {
+      provider: 'STRIPE',
+      providerEventId: 'evt_missing_plan',
+      eventType: 'customer.subscription.updated',
+      companyId: 'company-001',
+      payload: { id: 'evt_missing_plan' },
+      subscription: {
+        provider: 'STRIPE',
+        providerSubscriptionId: 'sub_missing_plan',
+        providerCustomerId: 'cus_123',
+        companyId: 'company-001',
+        planLevel: null,
+        status: 'ACTIVE',
+        currentPeriodStart: new Date('2026-08-31T12:00:00.000Z'),
+        currentPeriodEnd: new Date('2026-09-30T12:00:00.000Z'),
+        cancelAtPeriodEnd: false,
+        metadata: {
+          companyId: 'company-001',
+        },
+      },
+    };
+
+    jest
+      .mocked(providerMock.constructWebhookEvent)
+      .mockReturnValueOnce(providerEvent);
+    prismaMock.paymentWebhookEvent.findUnique.mockResolvedValueOnce(null);
+    prismaMock.paymentWebhookEvent.create.mockResolvedValueOnce(
+      createWebhookRecord({
+        providerEventId: 'evt_missing_plan',
+        eventType: 'customer.subscription.updated',
+      }),
+    );
+    prismaMock.paymentWebhookEvent.update.mockResolvedValueOnce(
+      createWebhookRecord({
+        providerEventId: 'evt_missing_plan',
+        eventType: 'customer.subscription.updated',
+        status: WebhookDeliveryStatus.FAILED,
+        errorMessage:
+          'Webhook de assinatura sem planLevel monetizável no metadata.',
+      }),
+    );
+
+    await expect(
+      service.processStripeWebhook(Buffer.from('{}'), 'stripe-signature'),
+    ).rejects.toThrow(
+      'Webhook de assinatura sem planLevel monetizável no metadata.',
+    );
+
+    expect(prismaMock.subscription.upsert).not.toHaveBeenCalled();
+    expect(prismaMock.company.update).not.toHaveBeenCalled();
+    expect(prismaMock.paymentWebhookEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: WebhookDeliveryStatus.FAILED,
+          errorMessage:
+            'Webhook de assinatura sem planLevel monetizável no metadata.',
+        }),
+      }),
+    );
+  });
+
   it('lista eventos de webhook sem retornar payload sensivel', async () => {
     prismaMock.paymentWebhookEvent.findMany.mockResolvedValueOnce([
       createWebhookRecord({
