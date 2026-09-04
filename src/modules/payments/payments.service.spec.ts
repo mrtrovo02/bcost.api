@@ -1,7 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import {
+  CheckoutSessionStatus,
   PaymentProvider,
   type PaymentCustomer,
+  type CheckoutSession,
+  type Subscription,
+  SubscriptionStatus,
   WebhookDeliveryStatus,
   type PaymentWebhookEvent as PrismaPaymentWebhookEvent,
 } from '@prisma/client';
@@ -23,17 +27,33 @@ type PaymentWebhookEventDelegateMock = {
 };
 
 type CheckoutSessionDelegateMock = {
+  create: jest.Mock<Promise<CheckoutSession>, [unknown]>;
   updateMany: jest.Mock<Promise<{ count: number }>, [unknown]>;
 };
 
 type PaymentCustomerDelegateMock = {
   findUnique: jest.Mock<Promise<PaymentCustomer | null>, [unknown]>;
+  upsert: jest.Mock<Promise<PaymentCustomer>, [unknown]>;
+  findFirst: jest.Mock<Promise<PaymentCustomer | null>, [unknown]>;
+};
+
+type CompanyDelegateMock = {
+  findFirst: jest.Mock<Promise<CompanyBillingContactMock | null>, [unknown]>;
+  findUnique: jest.Mock<Promise<{ settings: unknown } | null>, [unknown]>;
+  update: jest.Mock<Promise<{ id: string; planLevel: string }>, [unknown]>;
+};
+
+type SubscriptionDelegateMock = {
+  findFirst: jest.Mock<Promise<Subscription | null>, [unknown]>;
+  upsert: jest.Mock<Promise<Subscription>, [unknown]>;
 };
 
 type PrismaMock = {
+  company: CompanyDelegateMock;
   paymentWebhookEvent: PaymentWebhookEventDelegateMock;
   checkoutSession: CheckoutSessionDelegateMock;
   paymentCustomer: PaymentCustomerDelegateMock;
+  subscription: SubscriptionDelegateMock;
 };
 
 type ProviderFactoryMock = {
@@ -47,6 +67,85 @@ type BillingEntitlementsMock = {
 type ConfigServiceMock = {
   get: jest.Mock<string | undefined, [string]>;
 };
+
+type CompanyBillingContactMock = {
+  id: string;
+  name: string;
+  cnpj: string;
+  planLevel: string | null;
+  users: Array<{
+    user: {
+      email: string;
+      name: string;
+    };
+  }>;
+};
+
+function createCompanyBillingContact(): CompanyBillingContactMock {
+  return {
+    id: 'company-001',
+    name: 'Empresa Teste LTDA',
+    cnpj: '12345678000195',
+    planLevel: 'FREE',
+    users: [
+      {
+        user: {
+          email: 'amandacontabil@bcost.com.br',
+          name: 'Amanda Contabil',
+        },
+      },
+    ],
+  };
+}
+
+function createCheckoutSessionRecord(
+  overrides: Partial<CheckoutSession> = {},
+): CheckoutSession {
+  const now = new Date('2026-08-31T12:00:00.000Z');
+
+  return {
+    id: 'checkout-session-id',
+    companyId: 'company-001',
+    paymentCustomerId: 'payment-customer-id',
+    provider: PaymentProvider.STRIPE,
+    providerCheckoutSessionId: 'cs_test_123',
+    planLevel: 'PRO',
+    status: CheckoutSessionStatus.OPEN,
+    checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_123',
+    expiresAt: new Date('2026-08-31T13:00:00.000Z'),
+    completedAt: null,
+    metadata: {},
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
+function createSubscriptionRecord(
+  overrides: Partial<Subscription> = {},
+): Subscription {
+  const now = new Date('2026-08-31T12:00:00.000Z');
+
+  return {
+    id: 'subscription-id',
+    companyId: 'company-001',
+    paymentCustomerId: 'payment-customer-id',
+    provider: PaymentProvider.STRIPE,
+    providerSubscriptionId: 'sub_123',
+    providerCustomerId: 'cus_123',
+    planLevel: 'PRO',
+    status: SubscriptionStatus.ACTIVE,
+    currentPeriodStart: now,
+    currentPeriodEnd: new Date('2026-09-30T12:00:00.000Z'),
+    cancelAtPeriodEnd: false,
+    canceledAt: null,
+    trialEndsAt: null,
+    metadata: {},
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
 
 function createWebhookRecord(
   overrides: Partial<PrismaPaymentWebhookEvent> = {},
@@ -97,6 +196,14 @@ describe('PaymentsService', () => {
 
   beforeEach(() => {
     prismaMock = {
+      company: {
+        findFirst: jest.fn().mockResolvedValue(createCompanyBillingContact()),
+        findUnique: jest.fn().mockResolvedValue({ settings: {} }),
+        update: jest.fn().mockResolvedValue({
+          id: 'company-001',
+          planLevel: 'PRO',
+        }),
+      },
       paymentWebhookEvent: {
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -104,10 +211,17 @@ describe('PaymentsService', () => {
         findMany: jest.fn(),
       },
       checkoutSession: {
+        create: jest.fn().mockResolvedValue(createCheckoutSessionRecord()),
         updateMany: jest.fn(),
       },
       paymentCustomer: {
         findUnique: jest.fn(),
+        upsert: jest.fn().mockResolvedValue(createPaymentCustomer()),
+        findFirst: jest.fn().mockResolvedValue(createPaymentCustomer()),
+      },
+      subscription: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockResolvedValue(createSubscriptionRecord()),
       },
     };
 
@@ -142,6 +256,73 @@ describe('PaymentsService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('cria checkout somente quando a empresa não possui assinatura ativa', async () => {
+    prismaMock.paymentCustomer.findUnique.mockResolvedValueOnce(
+      createPaymentCustomer(),
+    );
+    jest.mocked(providerMock.createCheckoutSession).mockResolvedValueOnce({
+      provider: 'STRIPE',
+      providerCheckoutSessionId: 'cs_test_123',
+      providerCustomerId: 'cus_123',
+      providerSubscriptionId: null,
+      checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      status: 'open',
+      expiresAt: new Date('2026-08-31T13:00:00.000Z'),
+    });
+
+    const result = await service.createCheckoutSession('company-001', {
+      planLevel: 'PRO',
+      successUrl: 'https://app.bcost.com.br/dashboard/settings?billing=success',
+      cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+    });
+
+    expect(result.status).toBe('OK');
+    expect(result.checkoutSession.providerCheckoutSessionId).toBe('cs_test_123');
+    expect(prismaMock.subscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          companyId: 'company-001',
+          status: {
+            in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+          },
+        }),
+      }),
+    );
+    expect(providerMock.createCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: 'company-001',
+        planLevel: 'PRO',
+      }),
+    );
+  });
+
+  it('bloqueia novo checkout quando já existe assinatura ativa ou trialing', async () => {
+    prismaMock.subscription.findFirst.mockResolvedValueOnce(
+      createSubscriptionRecord({
+        status: SubscriptionStatus.TRIALING,
+        planLevel: 'ENTERPRISE',
+      }),
+    );
+
+    await expect(
+      service.createCheckoutSession('company-001', {
+        planLevel: 'PRO',
+        successUrl:
+          'https://app.bcost.com.br/dashboard/settings?billing=success',
+        cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+        currentPlanLevel: 'ENTERPRISE',
+        subscriptionStatus: SubscriptionStatus.TRIALING,
+      }),
+    });
+
+    expect(providerMock.createCheckoutSession).not.toHaveBeenCalled();
+    expect(prismaMock.checkoutSession.create).not.toHaveBeenCalled();
   });
 
   it('retorna OK_IDEMPOTENT quando o webhook Stripe ja foi processado', async () => {

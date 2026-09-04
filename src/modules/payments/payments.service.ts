@@ -66,6 +66,36 @@ export class PaymentsService {
     user?: AuthUser,
   ) {
     const company = await this.findCompanyBillingContact(companyId);
+    const activeSubscription = await this.prisma.subscription.findFirst({
+      where: {
+        companyId,
+        status: {
+          in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.TRIALING],
+        },
+      },
+      select: {
+        id: true,
+        planLevel: true,
+        status: true,
+        currentPeriodEnd: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    if (activeSubscription) {
+      throw new BadRequestException({
+        status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+        message:
+          'Empresa já possui assinatura ativa. Use o portal de cobrança para alterar o plano.',
+        companyId,
+        currentPlanLevel: activeSubscription.planLevel,
+        subscriptionStatus: activeSubscription.status,
+        currentPeriodEnd: activeSubscription.currentPeriodEnd,
+      });
+    }
+
     const provider = this.providerFactory.getProvider('STRIPE');
     const existingCustomer = await this.prisma.paymentCustomer.findUnique({
       where: {
