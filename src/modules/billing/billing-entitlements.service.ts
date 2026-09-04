@@ -699,17 +699,31 @@ export class BillingEntitlementsService {
       });
     }
 
-    const allowed = this.canAccess(planLevel, feature.minPlan);
+    const allowedByPlan = this.canAccess(planLevel, feature.minPlan);
+    const blockedByReadiness = feature.marketReadiness === 'ROADMAP_LOCKED';
+    const allowed = allowedByPlan && !blockedByReadiness;
+
+    const status = !allowedByPlan
+      ? 'LOCKED'
+      : blockedByReadiness
+        ? 'ROADMAP_LOCKED'
+        : 'ALLOWED';
+
+    const message = !allowedByPlan
+      ? `Feature exige plano mínimo ${feature.minPlan}.`
+      : blockedByReadiness
+        ? feature.commercialGuardrail
+        : feature.marketReadiness === 'ASSISTED_BETA'
+          ? `Feature liberada em operação assistida: ${feature.commercialGuardrail}`
+          : 'Feature liberada para o plano atual.';
 
     return this.normalize({
-      status: allowed ? 'ALLOWED' : 'LOCKED',
+      status,
       allowed,
       companyId,
       planLevel,
       feature,
-      message: allowed
-        ? 'Feature liberada para o plano atual.'
-        : `Feature exige plano mínimo ${feature.minPlan}.`,
+      message,
       generatedAt: new Date().toISOString(),
     });
   }

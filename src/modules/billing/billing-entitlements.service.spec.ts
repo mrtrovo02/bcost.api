@@ -186,6 +186,39 @@ describe('BillingEntitlementsService', () => {
       expect(toRecord(result.feature).marketReadiness).toBe('ROADMAP_LOCKED');
     });
 
+    it('deve bloquear feature ROADMAP_LOCKED mesmo para plano ENTERPRISE', async () => {
+      prismaMock.company.findFirst.mockResolvedValueOnce({
+        ...mockCompany,
+        planLevel: 'ENTERPRISE',
+      });
+
+      const result = toRecord(await service.checkFeature(
+        'company-uuid-123',
+        'digital.certificates',
+      ));
+
+      expect(result.allowed).toBe(false);
+      expect(result.status).toBe('ROADMAP_LOCKED');
+      expect(result.message).toEqual(
+        expect.stringContaining('Não prometer automação fiscal baseada em certificado'),
+      );
+      expect(toRecord(result.feature).marketReadiness).toBe('ROADMAP_LOCKED');
+    });
+
+    it('deve liberar feature ASSISTED_BETA por plano com mensagem de operação assistida', async () => {
+      const result = toRecord(await service.checkFeature(
+        'company-uuid-123',
+        'automation.jobs',
+      ));
+
+      expect(result.allowed).toBe(true);
+      expect(result.status).toBe('ALLOWED');
+      expect(result.message).toEqual(
+        expect.stringContaining('operação assistida'),
+      );
+      expect(toRecord(result.feature).marketReadiness).toBe('ASSISTED_BETA');
+    });
+
     it('deve retornar UNKNOWN_FEATURE para chave de feature inexistente', async () => {
       const result = toRecord(await service.checkFeature(
         'company-uuid-123',

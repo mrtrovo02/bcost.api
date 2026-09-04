@@ -23,10 +23,13 @@ type RequestWithTenant = AuthenticatedRequest & {
 
 type FeatureEntitlementCheckResult = {
   allowed: boolean;
+  status?: string;
   message: string;
   planLevel: string;
   feature?: {
     minPlan?: string;
+    marketReadiness?: string;
+    commercialGuardrail?: string;
   };
 };
 
@@ -70,12 +73,17 @@ export class FeatureEntitlementGuard implements CanActivate {
 
     if (!result.allowed) {
       throw new ForbiddenException({
-        status: 'FEATURE_LOCKED',
+        status:
+          result.status === 'ROADMAP_LOCKED'
+            ? 'FEATURE_ROADMAP_LOCKED'
+            : 'FEATURE_LOCKED',
         message: result.message,
         companyId,
         feature: requiredFeature,
         planLevel: result.planLevel,
         requiredPlan: result.feature?.minPlan,
+        marketReadiness: result.feature?.marketReadiness,
+        commercialGuardrail: result.feature?.commercialGuardrail,
       });
     }
 
