@@ -20,6 +20,14 @@ function toUrlOrigin(value: string): string | null {
   }
 }
 
+function isHttpsOrigin(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 export function parseCsvList(value?: string | null): string[] {
   const raw = value || '';
   const urlMatches = raw.match(/https?:\/\/[^\s,\])]+/gi) ?? [];
@@ -41,9 +49,12 @@ export function resolveCorsOrigins(
   isProd: boolean,
 ): CorsOriginConfig {
   const origins = parseCsvList(configuredOrigins);
+  const productionOrigins = isProd
+    ? origins.filter((origin) => isHttpsOrigin(origin))
+    : origins;
 
-  if (origins.length > 0) {
-    return origins;
+  if (productionOrigins.length > 0) {
+    return productionOrigins;
   }
 
   return isProd ? PRODUCTION_CORS_ORIGINS : true;

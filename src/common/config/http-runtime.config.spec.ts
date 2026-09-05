@@ -54,6 +54,21 @@ describe('HTTP runtime production config', () => {
     ).toEqual(['https://app.bcost.com.br', 'https://admin.bcost.com.br']);
   });
 
+  it('drops explicit HTTP origins in production and keeps HTTPS origins', () => {
+    expect(
+      resolveCorsOrigins(
+        'http://app.bcost.com.br,https://app.bcost.com.br,http://localhost:3000',
+        true,
+      ),
+    ).toEqual(['https://app.bcost.com.br']);
+  });
+
+  it('allows explicit HTTP localhost origins outside production', () => {
+    expect(resolveCorsOrigins('http://localhost:3000', false)).toEqual([
+      'http://localhost:3000',
+    ]);
+  });
+
   it('keeps Swagger enabled during non-production development', () => {
     expect(shouldEnableSwagger(false, 'false')).toBe(true);
   });
