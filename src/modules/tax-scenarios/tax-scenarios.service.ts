@@ -14,6 +14,7 @@ import {
   TaxScenarioPreProposal,
   TaxScenarioPreProposalDocument,
   TaxScenarioRecommendation,
+  TaxScenarioLegalRiskAssessment,
   TaxScenarioServiceQualification,
   TaxScenarioSimulationResponse,
 } from './tax-scenarios.types.js';
@@ -117,6 +118,11 @@ export class TaxScenariosService {
       serviceQualification,
       complianceTrail,
     );
+    const legalRiskAssessment = this.buildLegalRiskAssessment(
+      complianceTrail,
+      serviceQualification,
+      preProposal,
+    );
 
     return {
       status: 'OK',
@@ -169,6 +175,7 @@ export class TaxScenariosService {
       calculationAudit,
       serviceQualification,
       preProposal,
+      legalRiskAssessment,
       guardrails: [
         ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? [
@@ -1062,6 +1069,76 @@ export class TaxScenariosService {
         'A simulação é estimativa de triagem e não representa apuração oficial, parecer tributário definitivo ou promessa de economia.',
         'Contratação, abertura, migração, enquadramento e desenquadramento devem manter evidências arquivadas para trilha de auditoria.',
       ],
+    };
+  }
+
+  private buildLegalRiskAssessment(
+    complianceTrail: TaxScenarioComplianceTrail,
+    serviceQualification: TaxScenarioServiceQualification,
+    preProposal: TaxScenarioPreProposal,
+  ): TaxScenarioLegalRiskAssessment {
+    const reviewedRules = complianceTrail.rules.filter(
+      (rule) =>
+        rule.status === 'BLOCKED' || rule.status === 'REQUIRES_REVIEW',
+    );
+    const missingEvidence = Array.from(
+      new Set([
+        ...serviceQualification.missingEvidence,
+        ...preProposal.documentChecklist
+          .filter((document) => document.required)
+          .map((document) => document.label),
+      ]),
+    );
+    const legalReliability: TaxScenarioLegalRiskAssessment['legalReliability'] =
+      preProposal.status === 'BLOCKED_BY_COMPLIANCE'
+        ? 'BLOCKED_FOR_AUTOMATED_SALE'
+        : preProposal.checkoutAllowed
+          ? 'ASSISTED_REVIEW_REQUIRED'
+          : 'TRIAGE_ONLY';
+    const evidenceStatus: TaxScenarioLegalRiskAssessment['evidenceGate']['status'] =
+      preProposal.status === 'BLOCKED_BY_COMPLIANCE'
+        ? 'BLOCKED'
+        : missingEvidence.length > 0
+          ? 'OPEN'
+          : 'READY_FOR_CRC_REVIEW';
+
+    return {
+      version: 'tax-scenarios-legal-risk-2026.1',
+      assessmentMode: 'CODE_BASED_SYSTEMIC_REVIEW',
+      legalReliability,
+      riskLevel: preProposal.riskLevel,
+      canAdvertiseSavings:
+        preProposal.checkoutAllowed &&
+        preProposal.riskLevel !== 'HIGH' &&
+        preProposal.riskLevel !== 'CRITICAL',
+      canUseAsOfficialAssessment: false,
+      requiredDisclosures: [
+        'Resultado gerencial para triagem e planejamento assistido, sem substituir apuração oficial ou parecer tributário.',
+        'Economia, enquadramento e migração dependem de RBT12, CNAE, município, retenções, folha/pró-labore e documentos fiscais reais.',
+        'CBS/IBS 2026 deve ser tratado como destaque informativo de calibração operacional, não como recolhimento definitivo automático.',
+        'Proposta comercial tributária exige dossiê de evidências e revisão de contador responsável antes da contratação.',
+      ],
+      evidenceGate: {
+        status: evidenceStatus,
+        requiredEvidence: preProposal.documentChecklist
+          .filter((document) => document.required)
+          .map((document) => document.label),
+        missingEvidence,
+      },
+      findings: reviewedRules.map((rule) => ({
+        code: rule.code,
+        severity: rule.severity,
+        title: rule.title,
+        impact:
+          rule.status === 'BLOCKED'
+            ? 'Bloqueia venda automática, promessa de economia ou recomendação de enquadramento.'
+            : 'Exige revisão assistida antes de orientar contratação, abertura, migração ou alteração de regime.',
+        correctiveAction:
+          rule.status === 'BLOCKED'
+            ? 'Abrir revisão de compliance, coletar evidências oficiais e reprocessar o cenário antes de qualquer proposta.'
+            : 'Coletar evidências exigidas, registrar memória de cálculo e submeter validação CRC.',
+        sourceBasis: rule.legalBasis,
+      })),
     };
   }
 

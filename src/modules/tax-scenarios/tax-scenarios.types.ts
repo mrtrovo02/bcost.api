@@ -157,6 +157,32 @@ export type TaxScenarioPreProposal = {
   legalTerms: string[];
 };
 
+export type TaxScenarioLegalRiskAssessment = {
+  version: 'tax-scenarios-legal-risk-2026.1';
+  assessmentMode: 'CODE_BASED_SYSTEMIC_REVIEW';
+  legalReliability:
+    | 'TRIAGE_ONLY'
+    | 'ASSISTED_REVIEW_REQUIRED'
+    | 'BLOCKED_FOR_AUTOMATED_SALE';
+  riskLevel: TaxScenarioPreProposal['riskLevel'];
+  canAdvertiseSavings: boolean;
+  canUseAsOfficialAssessment: false;
+  requiredDisclosures: string[];
+  evidenceGate: {
+    status: 'OPEN' | 'READY_FOR_CRC_REVIEW' | 'BLOCKED';
+    requiredEvidence: string[];
+    missingEvidence: string[];
+  };
+  findings: {
+    code: string;
+    severity: TaxComplianceRuleSeverity;
+    title: string;
+    impact: string;
+    correctiveAction: string;
+    sourceBasis: string[];
+  }[];
+};
+
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
   regressionSuite: {
@@ -191,6 +217,7 @@ export type TaxScenarioSimulationResponse = {
   calculationAudit: TaxScenarioCalculationAudit;
   serviceQualification: TaxScenarioServiceQualification;
   preProposal: TaxScenarioPreProposal;
+  legalRiskAssessment: TaxScenarioLegalRiskAssessment;
   guardrails: string[];
   generatedAt: string;
 };

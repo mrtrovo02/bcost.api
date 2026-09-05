@@ -172,6 +172,32 @@ describe('TaxScenariosService', () => {
     expect(result.complianceTrail.commercialDecision.reviewRuleCodes).toContain(
       'FACTOR_R_SERVICE_REVIEW',
     );
+    expect(result.legalRiskAssessment).toMatchObject({
+      version: 'tax-scenarios-legal-risk-2026.1',
+      assessmentMode: 'CODE_BASED_SYSTEMIC_REVIEW',
+      legalReliability: 'TRIAGE_ONLY',
+      riskLevel: 'HIGH',
+      canAdvertiseSavings: false,
+      canUseAsOfficialAssessment: false,
+      evidenceGate: {
+        status: 'OPEN',
+      },
+    });
+    expect(result.legalRiskAssessment.requiredDisclosures.join(' ')).toContain(
+      'sem substituir apuração oficial',
+    );
+    expect(result.legalRiskAssessment.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'FACTOR_R_SERVICE_REVIEW',
+          severity: 'HIGH',
+        }),
+        expect.objectContaining({
+          code: 'OFFICIAL_ASSESSMENT_LOCK',
+          severity: 'HIGH',
+        }),
+      ]),
+    );
   });
 
   it('retorna memória de cálculo com fórmulas e fontes rastreáveis', () => {
@@ -290,6 +316,22 @@ describe('TaxScenariosService', () => {
       serviceSku: 'COMPLIANCE_BLOCKER_REVIEW',
       nextRoute: '/dashboard/modules/audit-intelligence',
     });
+    expect(result.legalRiskAssessment).toMatchObject({
+      legalReliability: 'BLOCKED_FOR_AUTOMATED_SALE',
+      riskLevel: 'CRITICAL',
+      canAdvertiseSavings: false,
+      evidenceGate: {
+        status: 'BLOCKED',
+      },
+    });
+    expect(result.legalRiskAssessment.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'MEI_ELIGIBILITY',
+          severity: 'CRITICAL',
+        }),
+      ]),
+    );
     expect(result.preProposal.readinessScore).toBeLessThan(50);
     expect(result.preProposal.blockingReasons).toContain('MEI_ELIGIBILITY');
     expect(result.preProposal.ctaLabel).toBe('Abrir revisão de compliance');
