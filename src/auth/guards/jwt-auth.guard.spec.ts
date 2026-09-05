@@ -39,6 +39,7 @@ describe('JwtAuthGuard', () => {
   const originalEnableDemoFallback = process.env.ENABLE_DEMO_FALLBACK;
 
   afterEach(() => {
+    jest.restoreAllMocks();
     process.env.NODE_ENV = originalNodeEnv;
     process.env.ALLOW_DEMO_SESSION = originalAllowDemoSession;
     process.env.ENABLE_DEMO_FALLBACK = originalEnableDemoFallback;
@@ -75,6 +76,29 @@ describe('JwtAuthGuard', () => {
     const request: TestRequest = {
       headers: {
         authorization: 'Bearer demo-token-local',
+        'x-demo-session': 'true',
+      },
+    };
+    const guard = new JwtAuthGuard(createReflector());
+    const parentPrototype = Object.getPrototypeOf(JwtAuthGuard.prototype) as {
+      canActivate: (context: ExecutionContext) => boolean;
+    };
+    const parentCanActivateSpy = jest
+      .spyOn(parentPrototype, 'canActivate')
+      .mockReturnValueOnce(false);
+
+    expect(guard.canActivate(createExecutionContext(request))).toBe(false);
+    expect(parentCanActivateSpy).toHaveBeenCalledTimes(1);
+    expect(request.user).toBeUndefined();
+  });
+
+  it('does not accept demo session header alone in production even when demo is enabled', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_DEMO_SESSION = 'true';
+    process.env.ENABLE_DEMO_FALLBACK = 'true';
+
+    const request: TestRequest = {
+      headers: {
         'x-demo-session': 'true',
       },
     };
