@@ -33,6 +33,14 @@ type FeatureEntitlementCheckResult = {
   };
 };
 
+function resolveFeatureBlockStatus(
+  status?: string,
+): 'FEATURE_LOCKED' | 'FEATURE_ROADMAP_LOCKED' | 'FEATURE_UNKNOWN' {
+  if (status === 'ROADMAP_LOCKED') return 'FEATURE_ROADMAP_LOCKED';
+  if (status === 'UNKNOWN_FEATURE') return 'FEATURE_UNKNOWN';
+  return 'FEATURE_LOCKED';
+}
+
 @Injectable()
 export class FeatureEntitlementGuard implements CanActivate {
   constructor(
@@ -73,10 +81,7 @@ export class FeatureEntitlementGuard implements CanActivate {
 
     if (!result.allowed) {
       throw new ForbiddenException({
-        status:
-          result.status === 'ROADMAP_LOCKED'
-            ? 'FEATURE_ROADMAP_LOCKED'
-            : 'FEATURE_LOCKED',
+        status: resolveFeatureBlockStatus(result.status),
         message: result.message,
         companyId,
         feature: requiredFeature,
