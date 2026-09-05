@@ -23,6 +23,14 @@ describe('HTTP runtime production config', () => {
     ]);
   });
 
+  it('ignores malformed origin tokens instead of allowing raw values', () => {
+    expect(
+      parseCsvList(
+        'app.bcost.com.br, javascript:alert(1), https://app.bcost.com.br/dashboard',
+      ),
+    ).toEqual(['https://app.bcost.com.br']);
+  });
+
   it('allows all CORS origins outside production when no explicit origin is configured', () => {
     expect(resolveCorsOrigins('', false)).toBe(true);
   });
@@ -31,7 +39,10 @@ describe('HTTP runtime production config', () => {
     const origins = resolveCorsOrigins(undefined, true);
 
     expect(Array.isArray(origins)).toBe(true);
-    expect(String((origins as RegExp[])[0])).toContain('bcost');
+    expect('https://app.bcost.com.br').toMatch((origins as RegExp[])[0]);
+    expect('https://bcost.com.br').toMatch((origins as RegExp[])[0]);
+    expect('https://evilbcost.com.br').not.toMatch((origins as RegExp[])[0]);
+    expect('http://app.bcost.com.br').not.toMatch((origins as RegExp[])[0]);
   });
 
   it('prefers explicit CORS origins over defaults', () => {

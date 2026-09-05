@@ -3,6 +3,10 @@
 import type { ConfigService } from '@nestjs/config';
 
 export type CorsOriginConfig = true | string[] | RegExp[];
+const PRODUCTION_CORS_ORIGINS = [
+  /^https:\/\/(?:[a-z0-9-]+\.)?bcost\.com\.br$/i,
+  /^https:\/\/(?:[a-z0-9-]+\.)?peers\.company$/i,
+];
 
 function unique(values: string[]): string[] {
   return [...new Set(values)];
@@ -24,10 +28,12 @@ export function parseCsvList(value?: string | null): string[] {
     return unique(urlMatches.map(toUrlOrigin).filter((item): item is string => Boolean(item)));
   }
 
-  return unique(raw
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean));
+  return unique(
+    raw
+      .split(',')
+      .map((item) => toUrlOrigin(item.trim()))
+      .filter((item): item is string => Boolean(item)),
+  );
 }
 
 export function resolveCorsOrigins(
@@ -40,7 +46,7 @@ export function resolveCorsOrigins(
     return origins;
   }
 
-  return isProd ? [/bcost\.com\.br$/, /peers\.company$/] : true;
+  return isProd ? PRODUCTION_CORS_ORIGINS : true;
 }
 
 export function resolveCorsOriginsFromConfig(
