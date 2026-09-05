@@ -7,6 +7,8 @@ import {
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { SKIP_COMPANY_CHECK_KEY } from '../decorators/skip-company-check.decorator.js';
 import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
 import { TenantContext } from '../tenant/tenant.context.js';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -29,11 +31,6 @@ interface TenantContextRequest {
   traceId?: unknown;
 }
 
-type PrismaRlsContextClient = Pick<
-  PrismaService,
-  'setRlsCompanyContext' | 'clearRlsCompanyContext'
->;
-
 /**
  * ARQUIVO: src/common/guards/tenant-context.guard.ts
  *
@@ -54,12 +51,18 @@ export class TenantContextGuard implements CanActivate {
   private readonly logger = new Logger(TenantContextGuard.name);
 
   constructor(
+    private readonly reflector: Reflector,
     @Optional()
-    private readonly prisma?: PrismaRlsContextClient,
+    private readonly prisma?: PrismaService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<TenantContextRequest>();
+    const skipCompanyContext =
+      this.reflector.getAllAndOverride<boolean>(SKIP_COMPANY_CHECK_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? false;
 
     const redactedHeaders = redactSensitiveHeaders(
       request.headers,
@@ -78,18 +81,21 @@ export class TenantContextGuard implements CanActivate {
       );
     }
 
-    const requestCompanyId = distinctRequestedCompanyIds[0] ?? null;
+    const requestCompanyId = skipCompanyContext
+      ? null
+      : distinctRequestedCompanyIds[0] ?? null;
 
     const userId = request.user?.id ?? request.user?.sub ?? null;
     const role = request.user?.role || null;
 
     // Prioridade: companyId explícito na requisição > empresa ativa do
     // token > companyId "legado" do token.
-    const companyId =
-      requestCompanyId ||
-      request.user?.activeCompanyId ||
-      request.user?.companyId ||
-      null;
+    const companyId = skipCompanyContext
+      ? null
+      : requestCompanyId ||
+        request.user?.activeCompanyId ||
+        request.user?.companyId ||
+        null;
 
     request.companyId = companyId;
     request.traceId = rawTraceId ?? request.traceId;

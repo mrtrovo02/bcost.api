@@ -23,6 +23,7 @@ import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
+import { SkipCompanyCheck } from '../../common/decorators/skip-company-check.decorator.js';
 
 @ApiTags('Company')
 @ApiBearerAuth()
@@ -42,6 +43,7 @@ export class CompanyController {
   }
 
   @Get()
+  @SkipCompanyCheck()
   @ApiOperation({ summary: 'Listar todas as empresas' })
   @ApiResponse({ status: 200, description: 'Lista de empresas retornada.' })
   findAll(@GetUser('id') userId: string) {

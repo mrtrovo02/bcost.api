@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { TenantContext } from '../tenant/tenant.context.js';
 import { TenantContextGuard } from './tenant-context.guard.js';
 
@@ -29,6 +30,7 @@ interface MockPrismaRlsContextClient {
 
 describe('TenantContextGuard', () => {
   let prisma: MockPrismaRlsContextClient;
+  let reflector: jest.Mocked<Pick<Reflector, 'getAllAndOverride'>>;
   let guard: TenantContextGuard;
 
   beforeEach(() => {
@@ -38,7 +40,10 @@ describe('TenantContextGuard', () => {
         .mockResolvedValue(),
       clearRlsCompanyContext: jest.fn<Promise<void>, []>().mockResolvedValue(),
     };
-    guard = new TenantContextGuard(prisma);
+    reflector = {
+      getAllAndOverride: jest.fn().mockReturnValue(false),
+    };
+    guard = new TenantContextGuard(reflector as Reflector, prisma);
   });
 
   function createContext(request: MockTenantRequest): ExecutionContext {
@@ -46,6 +51,10 @@ describe('TenantContextGuard', () => {
       switchToHttp: jest.fn().mockReturnValue({
         getRequest: jest.fn().mockReturnValue(request),
       }),
+      getHandler: jest.fn().mockReturnValue(function mockHandler() {
+        return undefined;
+      }),
+      getClass: jest.fn().mockReturnValue(class MockController {}),
     } as unknown as ExecutionContext;
   }
 
@@ -152,6 +161,30 @@ describe('TenantContextGuard', () => {
     expect(request.companyId).toBeNull();
     expect(prisma.clearRlsCompanyContext).toHaveBeenCalledTimes(1);
     expect(prisma.setRlsCompanyContext).not.toHaveBeenCalled();
+  });
+
+  it('ignora empresa ativa e limpa RLS em rota account-scoped marcada com SkipCompanyCheck', async () => {
+    reflector.getAllAndOverride.mockReturnValueOnce(true);
+
+    const request: MockTenantRequest = {
+      user: {
+        id: 'user-6',
+        activeCompanyId: 'company-active',
+        companyId: 'company-legacy',
+        role: 'OWNER',
+      },
+    };
+
+    await TenantContext.run({ requestId: 'req-account-scope' }, async () => {
+      await expect(guard.canActivate(createContext(request))).resolves.toBe(
+        true,
+      );
+      expect(request.companyId).toBeNull();
+      expect(TenantContext.getTenantId()).toBeUndefined();
+      expect(TenantContext.getUserId()).toBe('user-6');
+      expect(prisma.clearRlsCompanyContext).toHaveBeenCalledTimes(1);
+      expect(prisma.setRlsCompanyContext).not.toHaveBeenCalled();
+    });
   });
 
   it('falha fechado em producao quando RLS nao pode ser sincronizado', async () => {
