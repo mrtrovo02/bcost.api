@@ -524,7 +524,7 @@ export class TaxScenariosService {
       rationale: [
         `Modelo com melhor resultado estimado: ${bestModel}.`,
         potentialGain > 0 && input.hasCrcReview === true
-          ? `Ganho anual revisado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+          ? `Diferença econômica revisada contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
           : potentialGain > 0
             ? `Diferença econômica preliminar identificada: R$ ${potentialGain.toLocaleString('pt-BR')}, condicionada à revisão CRC, RBT12, CNAE, município, retenções e documentação fiscal real.`
           : 'A comparação indica necessidade de detalhamento antes de decisão.',

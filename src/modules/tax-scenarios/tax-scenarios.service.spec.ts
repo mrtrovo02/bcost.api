@@ -181,6 +181,33 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('usa linguagem de diferença econômica mesmo quando a oportunidade tem revisão CRC', () => {
+    const builder = service as unknown as RecommendationBuilder;
+    const recommendation = builder.buildRecommendation(
+      {
+        activity: 'CONSULTING',
+        monthlyRevenue: 30_000,
+        monthlyDeductibleExpenses: 4_000,
+        monthlyPayroll: 20_000,
+        dependents: 1,
+        currentModel: 'LUCRO_PRESUMIDO',
+        hasCrcReview: true,
+      },
+      'SIMPLES_NACIONAL',
+      [
+        buildTaxScenarioCalculation('LUCRO_PRESUMIDO', 220_000),
+        buildTaxScenarioCalculation('SIMPLES_NACIONAL', 280_000),
+      ],
+      55,
+      360_000,
+    );
+
+    expect(recommendation.rationale.join(' ')).toContain(
+      'Diferença econômica revisada',
+    );
+    expect(recommendation.rationale.join(' ')).not.toContain('Ganho anual');
+  });
+
   it('retorna trilha de compliance para impedir uso como apuração oficial automática', () => {
     const result = service.simulate({
       activity: 'SERVICE_PROVIDER',
