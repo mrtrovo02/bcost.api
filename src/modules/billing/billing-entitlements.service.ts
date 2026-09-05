@@ -154,9 +154,9 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     description: 'Análise fiscal, saúde tributária e indicadores do Simples.',
     minPlan: 'FREE',
     moduleSlug: 'tax-scenarios',
-    marketReadiness: 'SELLABLE',
+    marketReadiness: 'ASSISTED_BETA',
     commercialGuardrail:
-      'Pode ser vendido como triagem consultiva e diagnóstico orientativo, com revisão CRC para enquadramento definitivo.',
+      'Vender somente como diagnóstico assistido; não comunicar apuração oficial, enquadramento definitivo ou economia garantida sem dossiê e revisão CRC.',
   },
   {
     key: 'fiscal.payroll.factorR',
@@ -164,9 +164,9 @@ const FEATURE_DEFINITIONS: FeatureDefinition[] = [
     description: 'Análise de Fator R, pró-labore e economia tributária.',
     minPlan: 'PRO',
     moduleSlug: 'tax-scenarios',
-    marketReadiness: 'SELLABLE',
+    marketReadiness: 'ASSISTED_BETA',
     commercialGuardrail:
-      'Pode ser vendido como simulação de Fator R; decisão de anexo exige CNAE, RBT12, folha validada e aceite/revisão contábil.',
+      'Vender somente como simulação assistida de Fator R; decisão de anexo exige CNAE, RBT12, folha validada, aceite explícito e revisão contábil.',
   },
   {
     key: 'banking.ofx',

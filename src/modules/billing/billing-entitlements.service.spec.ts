@@ -117,7 +117,18 @@ describe('BillingEntitlementsService', () => {
           expect.objectContaining({
             key: 'fiscal.diagnostics',
             moduleSlug: 'tax-scenarios',
-            marketReadiness: 'SELLABLE',
+            marketReadiness: 'ASSISTED_BETA',
+            commercialGuardrail: expect.stringContaining(
+              'não comunicar apuração oficial',
+            ),
+          }),
+          expect.objectContaining({
+            key: 'fiscal.payroll.factorR',
+            moduleSlug: 'tax-scenarios',
+            marketReadiness: 'ASSISTED_BETA',
+            commercialGuardrail: expect.stringContaining(
+              'simulação assistida de Fator R',
+            ),
           }),
           expect.objectContaining({
             key: 'accounting.entries',
