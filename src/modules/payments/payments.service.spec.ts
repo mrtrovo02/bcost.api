@@ -426,6 +426,61 @@ describe('PaymentsService', () => {
     expect(providerMock.createBillingPortalSession).not.toHaveBeenCalled();
   });
 
+  it('bloqueia checkout com successUrl fora do dominio oficial', async () => {
+    prismaMock.paymentCustomer.findUnique.mockResolvedValueOnce(
+      createPaymentCustomer(),
+    );
+
+    await expect(
+      service.createCheckoutSession('company-001', {
+        planLevel: 'PRO',
+        successUrl: 'https://evil.example/success',
+        cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        message: 'successUrl deve pertencer ao domínio oficial do frontend.',
+        statusCode: 400,
+      }),
+    });
+
+    expect(providerMock.createCheckoutSession).not.toHaveBeenCalled();
+    expect(prismaMock.checkoutSession.create).not.toHaveBeenCalled();
+  });
+
+  it('usa dominio oficial como fallback de checkout em producao sem FRONTEND_BASE_URL', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    configMock.get.mockReturnValue(undefined);
+    prismaMock.paymentCustomer.findUnique.mockResolvedValueOnce(
+      createPaymentCustomer(),
+    );
+    jest.mocked(providerMock.createCheckoutSession).mockResolvedValueOnce({
+      provider: 'STRIPE',
+      providerCheckoutSessionId: 'cs_test_123',
+      providerCustomerId: 'cus_123',
+      providerSubscriptionId: null,
+      checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_123',
+      status: 'open',
+      expiresAt: new Date('2026-08-31T13:00:00.000Z'),
+    });
+
+    try {
+      await service.createCheckoutSession('company-001', {
+        planLevel: 'PRO',
+      });
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+
+    expect(providerMock.createCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        successUrl: 'https://app.bcost.com.br/dashboard/settings?billing=success',
+        cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+      }),
+    );
+  });
+
   it('marca webhook sem efeito operacional como IGNORED', async () => {
     const providerEvent: PaymentProviderWebhookEvent = {
       provider: 'STRIPE',

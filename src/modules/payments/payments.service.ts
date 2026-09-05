@@ -53,6 +53,7 @@ type PaymentWebhookEventAuditItem = {
 
 const DEFAULT_WEBHOOK_EVENTS_LIMIT = 50;
 const MAX_WEBHOOK_EVENTS_LIMIT = 100;
+const PRODUCTION_FRONTEND_BASE_URL = 'https://app.bcost.com.br';
 const BILLABLE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = [
   SubscriptionStatus.ACTIVE,
   SubscriptionStatus.TRIALING,
@@ -602,7 +603,9 @@ export class PaymentsService {
     const value =
       this.config.get<string>('FRONTEND_BASE_URL') ??
       this.config.get<string>('PUBLIC_APP_URL') ??
-      'http://localhost:3000';
+      (process.env.NODE_ENV === 'production'
+        ? PRODUCTION_FRONTEND_BASE_URL
+        : 'http://localhost:3000');
 
     return value.replace(/\/$/, '');
   }
