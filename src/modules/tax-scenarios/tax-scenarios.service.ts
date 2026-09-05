@@ -523,8 +523,10 @@ export class TaxScenariosService {
       title: 'Estrutura PJ merece análise assistida',
       rationale: [
         `Modelo com melhor resultado estimado: ${bestModel}.`,
-        potentialGain > 0
-          ? `Ganho anual estimado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+        potentialGain > 0 && input.hasCrcReview === true
+          ? `Ganho anual revisado contra o modelo atual: R$ ${potentialGain.toLocaleString('pt-BR')}.`
+          : potentialGain > 0
+            ? `Diferença econômica preliminar identificada: R$ ${potentialGain.toLocaleString('pt-BR')}, condicionada à revisão CRC, RBT12, CNAE, município, retenções e documentação fiscal real.`
           : 'A comparação indica necessidade de detalhamento antes de decisão.',
       ],
       requiredEvidence: [

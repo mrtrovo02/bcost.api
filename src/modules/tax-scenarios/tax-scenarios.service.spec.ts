@@ -2,6 +2,21 @@
 
 import { TaxScenariosService } from './tax-scenarios.service.js';
 import { TAX_SCENARIO_REGRESSION_SUITE } from './tax-scenarios.regression-fixtures.js';
+import type {
+  TaxScenarioCalculation,
+  TaxScenarioModel,
+  TaxScenarioRecommendation,
+} from './tax-scenarios.types.js';
+
+type RecommendationBuilder = {
+  buildRecommendation(
+    input: Parameters<TaxScenariosService['simulate']>[0],
+    bestModel: TaxScenarioModel,
+    comparisons: TaxScenarioCalculation[],
+    factorRPercentage: number,
+    annualRevenue: number,
+  ): TaxScenarioRecommendation;
+};
 
 describe('TaxScenariosService', () => {
   let service: TaxScenariosService;
@@ -129,6 +144,39 @@ describe('TaxScenariosService', () => {
 
     expect(result.bestEstimatedModel).toBe('PF');
     expect(result.recommendation.rationale.join(' ')).not.toContain(
+      'Ganho anual estimado',
+    );
+  });
+
+  it('bloqueia promessa de ganho anual quando a oportunidade PJ ainda não tem revisão CRC', () => {
+    const builder = service as unknown as RecommendationBuilder;
+    const recommendation = builder.buildRecommendation(
+      {
+        activity: 'CONSULTING',
+        monthlyRevenue: 30_000,
+        monthlyDeductibleExpenses: 4_000,
+        monthlyPayroll: 20_000,
+        dependents: 1,
+        currentModel: 'LUCRO_PRESUMIDO',
+        hasCrcReview: false,
+      },
+      'SIMPLES_NACIONAL',
+      [
+        buildTaxScenarioCalculation('LUCRO_PRESUMIDO', 220_000),
+        buildTaxScenarioCalculation('SIMPLES_NACIONAL', 280_000),
+      ],
+      55,
+      360_000,
+    );
+
+    expect(recommendation.decision).toBe('PJ_SIMULATION_RECOMMENDED');
+    expect(recommendation.rationale.join(' ')).toContain(
+      'Diferença econômica preliminar identificada',
+    );
+    expect(recommendation.rationale.join(' ')).toContain(
+      'condicionada à revisão CRC',
+    );
+    expect(recommendation.rationale.join(' ')).not.toContain(
       'Ganho anual estimado',
     );
   });
@@ -423,3 +471,23 @@ describe('TaxScenariosService', () => {
     );
   });
 });
+
+function buildTaxScenarioCalculation(
+  model: TaxScenarioModel,
+  netAnnualResult: number,
+): TaxScenarioCalculation {
+  return {
+    model,
+    eligibilityStatus: 'ELIGIBLE',
+    annualRevenue: 360_000,
+    annualDeductibleExpenses: 48_000,
+    annualPayroll: 240_000,
+    taxableBase: 360_000,
+    estimatedTax: 40_000,
+    estimatedEffectiveRate: 11.11,
+    netAnnualResult,
+    monthlyNetResult: Number((netAnnualResult / 12).toFixed(2)),
+    warnings: [],
+    components: [],
+  };
+}
