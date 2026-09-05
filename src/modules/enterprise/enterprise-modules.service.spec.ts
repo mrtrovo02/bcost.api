@@ -215,7 +215,9 @@ describe('EnterpriseModulesService', () => {
 
     for (const item of roadmapItems) {
       expect(item.endpoint).toMatch(/^\/.+/);
-      expect(item.marketReadiness).toBe('ROADMAP_LOCKED');
+      expect(item.marketReadiness).toMatch(
+        /^(ASSISTED_BETA|ROADMAP_LOCKED)$/,
+      );
       expect(item.area).toEqual(expect.any(String));
       expect(item.priority).toMatch(/^(CRITICAL|HIGH|MEDIUM|LOW)$/);
       expect(item.canonicalOwner).toEqual(expect.any(String));
@@ -223,13 +225,27 @@ describe('EnterpriseModulesService', () => {
         /^(SOFTWARE_ONLY|ASSISTED_AUTOMATION|CRC_VALIDATED|HUMAN_LED)$/,
       );
       expect(item.operationalGuardrails?.length).toBeGreaterThan(0);
-      expect(item.launchGate).toMatchObject({
-        status: 'BLOCK',
-        canSell: false,
-      });
-      expect(item.launchGate.blockers).toContain(
-        'módulo em roadmap não pode ser vendido como automação pronta',
-      );
+
+      if (item.marketReadiness === 'ASSISTED_BETA') {
+        expect(item.launchGate).toMatchObject({
+          status: 'WARN',
+          canSell: true,
+        });
+        expect(item.launchGate.requiredEvidence).toContain(
+          'revisão CRC antes da contratação',
+        );
+        expect(item.launchGate.warnings.join(' ')).toContain(
+          'diagnóstico assistido',
+        );
+      } else {
+        expect(item.launchGate).toMatchObject({
+          status: 'BLOCK',
+          canSell: false,
+        });
+        expect(item.launchGate.blockers).toContain(
+          'módulo em roadmap não pode ser vendido como automação pronta',
+        );
+      }
     }
   });
 
@@ -282,12 +298,29 @@ describe('EnterpriseModulesService', () => {
       expect(item.launchGate.canSell).toBe(true);
     }
 
-    for (const lane of [assistedValidation, blockedRoadmap]) {
-      for (const item of lane?.modules ?? []) {
-        expect(item.marketReadiness).toBe('ROADMAP_LOCKED');
-        expect(item.persistence).toBe('ROADMAP');
-        expect(item.launchGate.canSell).toBe(false);
-      }
+    for (const item of assistedValidation?.modules ?? []) {
+      expect(item.marketReadiness).toMatch(/^(ASSISTED_BETA|ROADMAP_LOCKED)$/);
+      expect(item.persistence).toBe('ROADMAP');
+      expect(item.automationBoundary).toMatch(/^(ASSISTED_AUTOMATION|CRC_VALIDATED)$/);
+    }
+
+    expect(assistedValidation?.modules).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          slug: 'tax-scenarios',
+          marketReadiness: 'ASSISTED_BETA',
+          launchGate: expect.objectContaining({
+            status: 'WARN',
+            canSell: true,
+          }),
+        }),
+      ]),
+    );
+
+    for (const item of blockedRoadmap?.modules ?? []) {
+      expect(item.marketReadiness).toBe('ROADMAP_LOCKED');
+      expect(item.persistence).toBe('ROADMAP');
+      expect(item.launchGate.canSell).toBe(false);
     }
 
     for (const lane of lanes) {

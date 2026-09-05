@@ -28,6 +28,7 @@ type RoadmapModuleConfig = {
   area: string;
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   endpoint: string;
+  marketReadiness?: EnterpriseMarketReadiness;
   canonicalOwner?: string;
   automationBoundary?:
     | 'SOFTWARE_ONLY'
@@ -78,15 +79,19 @@ type RoadmapAutomationBoundary = NonNullable<
 
 type EnterpriseCatalogPersistence = 'PRISMA' | 'ROADMAP';
 
-type EnterpriseMarketReadiness = 'SELLABLE' | 'ROADMAP_LOCKED';
+type EnterpriseMarketReadiness =
+  | 'SELLABLE'
+  | 'ASSISTED_BETA'
+  | 'ROADMAP_LOCKED';
 
-type EnterpriseLaunchGateStatus = 'PASS' | 'BLOCK';
+type EnterpriseLaunchGateStatus = 'PASS' | 'WARN' | 'BLOCK';
 
 type EnterpriseLaunchGate = {
   status: EnterpriseLaunchGateStatus;
   canSell: boolean;
   requiredEvidence: string[];
   blockers: string[];
+  warnings: string[];
 };
 
 type EnterpriseCommercialLaneId =
@@ -545,6 +550,7 @@ export class EnterpriseModulesService {
       area: 'Fiscal',
       priority: 'HIGH',
       endpoint: '/tax-scenarios/simulate',
+      marketReadiness: 'ASSISTED_BETA',
       canonicalOwner: 'tax-scenarios',
       automationBoundary: 'ASSISTED_AUTOMATION',
       operationalGuardrails: [
@@ -763,7 +769,8 @@ export class EnterpriseModulesService {
     );
     const assistedValidationModules = catalog.filter(
       (item) =>
-        item.marketReadiness === 'ROADMAP_LOCKED' &&
+        (item.marketReadiness === 'ASSISTED_BETA' ||
+          item.marketReadiness === 'ROADMAP_LOCKED') &&
         this.hasAutomationBoundary(item, assistedBoundaries),
     );
     const blockedRoadmapModules = catalog.filter(
@@ -791,8 +798,8 @@ export class EnterpriseModulesService {
         id: 'assisted-validation',
         title: 'Validação assistida',
         description:
-          'Módulos de roadmap que podem ser discutidos com escopo, evidência e validação humana.',
-        marketReadiness: 'ROADMAP_LOCKED',
+          'Módulos funcionais ou de roadmap controlado que exigem escopo, evidência e validação humana antes da contratação.',
+        marketReadiness: 'ASSISTED_BETA',
         automationBoundaries: assistedBoundaries,
         modules: assistedValidationModules,
         summary: this.summarizeCommercialLaneModules(
@@ -857,7 +864,7 @@ export class EnterpriseModulesService {
       operationalGuardrails: [
         'Endpoint persistido exige autenticação JWT, empresa válida e filtros por companyId antes de expor dados.',
       ],
-      launchGate: this.buildLaunchGate('SELLABLE', true),
+      launchGate: this.buildLaunchGate('SELLABLE', true, 'SOFTWARE_ONLY'),
     };
   }
 
@@ -874,7 +881,7 @@ export class EnterpriseModulesService {
       label: config.label,
       persistence: 'ROADMAP',
       endpoint: config.endpoint,
-      marketReadiness: 'ROADMAP_LOCKED',
+      marketReadiness: config.marketReadiness ?? 'ROADMAP_LOCKED',
       area: config.area,
       priority: config.priority,
       canonicalOwner:
@@ -883,13 +890,18 @@ export class EnterpriseModulesService {
       operationalGuardrails:
         config.operationalGuardrails ??
         this.resolveRoadmapOperationalGuardrails(config, automationBoundary),
-      launchGate: this.buildLaunchGate('ROADMAP_LOCKED', Boolean(config.endpoint)),
+      launchGate: this.buildLaunchGate(
+        config.marketReadiness ?? 'ROADMAP_LOCKED',
+        Boolean(config.endpoint),
+        automationBoundary,
+      ),
     };
   }
 
   private buildLaunchGate(
     readiness: EnterpriseMarketReadiness,
     hasEndpoint: boolean,
+    automationBoundary: RoadmapAutomationBoundary,
   ): EnterpriseLaunchGate {
     const requiredEvidence = [
       'endpoint produtivo',
@@ -899,6 +911,7 @@ export class EnterpriseModulesService {
       'tratamento de erro auditável',
     ];
     const blockers: string[] = [];
+    const warnings: string[] = [];
 
     if (!hasEndpoint) {
       blockers.push('endpoint ausente no catálogo enterprise');
@@ -909,11 +922,33 @@ export class EnterpriseModulesService {
       requiredEvidence.push('integração homologada', 'roteiro operacional assistido');
     }
 
+    if (readiness === 'ASSISTED_BETA') {
+      requiredEvidence.push(
+        'parecer jurídico-fiscal sistêmico',
+        'dossiê de evidências',
+        'revisão CRC antes da contratação',
+      );
+      warnings.push(
+        'módulo pode ser ofertado apenas como diagnóstico assistido, sem promessa de apuração oficial ou economia garantida',
+      );
+    }
+
+    if (
+      ['ASSISTED_AUTOMATION', 'CRC_VALIDATED', 'HUMAN_LED'].includes(
+        automationBoundary,
+      )
+    ) {
+      warnings.push(
+        'serviço regulado exige responsável, trilha de auditoria e evidências antes de execução para cliente real',
+      );
+    }
+
     return {
-      status: blockers.length > 0 ? 'BLOCK' : 'PASS',
+      status: blockers.length > 0 ? 'BLOCK' : warnings.length > 0 ? 'WARN' : 'PASS',
       canSell: blockers.length === 0,
       requiredEvidence,
       blockers,
+      warnings,
     };
   }
 
