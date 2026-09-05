@@ -1,8 +1,11 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   Logger,
+  Optional,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { redactSensitiveHeaders } from '../security/redact-headers.util.js';
 import { TenantContext } from '../tenant/tenant.context.js';
@@ -26,6 +29,11 @@ interface TenantContextRequest {
   traceId?: unknown;
 }
 
+type PrismaRlsContextClient = Pick<
+  PrismaService,
+  'setRlsCompanyContext' | 'clearRlsCompanyContext'
+>;
+
 /**
  * ARQUIVO: src/common/guards/tenant-context.guard.ts
  *
@@ -45,7 +53,10 @@ interface TenantContextRequest {
 export class TenantContextGuard implements CanActivate {
   private readonly logger = new Logger(TenantContextGuard.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Optional()
+    private readonly prisma?: PrismaRlsContextClient,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<TenantContextRequest>();
@@ -55,17 +66,19 @@ export class TenantContextGuard implements CanActivate {
     );
     const rawTraceId = this.getHeader(redactedHeaders, 'x-bcost-trace-id');
 
-    const headerCompanyId = this.toCompanyId(
-      this.getHeader(redactedHeaders, 'x-company-id'),
+    const requestedCompanyIds = this.resolveRequestedCompanyIds(
+      request,
+      redactedHeaders,
     );
+    const distinctRequestedCompanyIds = [...new Set(requestedCompanyIds)];
 
-    const requestCompanyId =
-      this.toCompanyId(request.params?.companyId) ||
-      this.toCompanyId(request.query?.company_id) ||
-      this.toCompanyId(request.query?.companyId) ||
-      this.toCompanyId(request.body?.companyId) ||
-      this.toCompanyId(request.body?.company_id) ||
-      headerCompanyId;
+    if (distinctRequestedCompanyIds.length > 1) {
+      throw new ForbiddenException(
+        'Acesso negado: companyId conflitante entre rota, query, body ou header.',
+      );
+    }
+
+    const requestCompanyId = distinctRequestedCompanyIds[0] ?? null;
 
     const userId = request.user?.id ?? request.user?.sub ?? null;
     const role = request.user?.role || null;
@@ -91,20 +104,7 @@ export class TenantContextGuard implements CanActivate {
       });
     }
 
-    // ✅ ATIVAR RLS NO POSTGRESQL (segunda camada de segurança)
-    // Sem isto, RLS policies não funcionam!
-    if (companyId) {
-      try {
-        await this.prisma.setRlsCompanyContext(companyId);
-      } catch (error) {
-        this.logger.error(
-          `Failed to set RLS context for company ${companyId}`,
-          error,
-        );
-        // Não bloqueia a requisição se RLS falhar
-        // mas loga para debugging
-      }
-    }
+    await this.syncRlsContext(companyId);
 
     this.logger.debug(
       `[TenantContextGuard] userId=${userId ?? 'anonymous'} | companyId=${
@@ -113,6 +113,51 @@ export class TenantContextGuard implements CanActivate {
     );
 
     return true;
+  }
+
+  private resolveRequestedCompanyIds(
+    request: TenantContextRequest,
+    headers: Record<string, unknown>,
+  ): string[] {
+    return [
+      this.toCompanyId(request.params?.companyId),
+      this.toCompanyId(request.query?.company_id),
+      this.toCompanyId(request.query?.companyId),
+      this.toCompanyId(request.body?.companyId),
+      this.toCompanyId(request.body?.company_id),
+      this.toCompanyId(this.getHeader(headers, 'x-company-id')),
+    ].filter((value): value is string => Boolean(value));
+  }
+
+  private async syncRlsContext(companyId: string | null): Promise<void> {
+    if (!this.prisma) {
+      if (companyId && process.env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException(
+          'Contexto de tenant indisponível para aplicar isolamento RLS.',
+        );
+      }
+
+      return;
+    }
+
+    try {
+      if (companyId) {
+        await this.prisma.setRlsCompanyContext(companyId);
+      } else {
+        await this.prisma.clearRlsCompanyContext();
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to sync RLS context for company ${companyId ?? 'none'}`,
+        error,
+      );
+
+      if (process.env.NODE_ENV === 'production') {
+        throw new ServiceUnavailableException(
+          'Contexto de tenant indisponível para aplicar isolamento RLS.',
+        );
+      }
+    }
   }
 
   private getHeader(
