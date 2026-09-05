@@ -6,6 +6,16 @@ import { PrismaService } from '../../database/prisma.service.js';
 const createService = (): EnterpriseModulesService =>
   new EnterpriseModulesService({} as PrismaService);
 
+type EnterpriseModelMock = {
+  findMany: jest.Mock<Promise<unknown[]>, [Record<string, unknown>]>;
+  count: jest.Mock<Promise<number>, [Record<string, unknown>]>;
+};
+
+const createModelMock = (items: unknown[], count: number): EnterpriseModelMock => ({
+  findMany: jest.fn<Promise<unknown[]>, [Record<string, unknown>]>().mockResolvedValue(items),
+  count: jest.fn<Promise<number>, [Record<string, unknown>]>().mockResolvedValue(count),
+});
+
 describe('EnterpriseModulesService', () => {
   it('returns roadmap payload for mapped modules without Prisma persistence yet', async () => {
     const service = createService();
@@ -267,6 +277,58 @@ describe('EnterpriseModulesService', () => {
       });
       expect(item.launchGate.requiredEvidence).toContain('tenant isolation por companyId');
     }
+  });
+
+  it('returns exact Prisma count instead of page size as module total', async () => {
+    const companyModel = createModelMock(
+      [
+        {
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'Empresa A',
+          cnpj: '11222333000144',
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ],
+      37,
+    );
+    const service = new EnterpriseModulesService({
+      company: companyModel,
+    } as unknown as PrismaService);
+
+    const result = await service.list(
+      'companies',
+      '00000000-0000-0000-0000-000000000001',
+      { limit: 1, offset: 20 },
+    );
+
+    expect(result.total).toBe(37);
+    expect(result.items).toHaveLength(1);
+    expect(companyModel.count).toHaveBeenCalledWith({
+      where: {
+        id: '00000000-0000-0000-0000-000000000001',
+        deletedAt: null,
+      },
+    });
+  });
+
+  it('marks module health as degraded when Prisma count fails', async () => {
+    const companyModel = createModelMock([], 0);
+    companyModel.count.mockRejectedValueOnce(new Error('database unavailable'));
+    const service = new EnterpriseModulesService({
+      company: companyModel,
+    } as unknown as PrismaService);
+
+    const result = await service.health(
+      'companies',
+      '00000000-0000-0000-0000-000000000001',
+    );
+
+    expect(result).toMatchObject({
+      slug: 'companies',
+      status: 'DEGRADED',
+      count: 0,
+      error: 'Não foi possível contar registros do módulo no Prisma.',
+    });
   });
 
   it('groups enterprise catalog into commercial lanes without selling roadmap as ready', () => {

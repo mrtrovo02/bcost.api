@@ -147,6 +147,8 @@ type GroupByCountRecord = Record<string, unknown> & {
   };
 };
 
+type EnterpriseModuleHealthStatus = 'OK' | 'DEGRADED';
+
 @Injectable()
 export class EnterpriseModulesService {
   private readonly logger = new Logger(EnterpriseModulesService.name);
@@ -1437,13 +1439,16 @@ export class EnterpriseModulesService {
     const where = this.buildWhere(config, companyId, query);
     const include = this.includeForSlug(slug);
 
-    const rows = await model.findMany({
-      where,
-      ...(include ? { include } : {}),
-      orderBy: config.defaultOrderBy || { createdAt: 'desc' },
-      take: limit + 1,
-      skip: offset,
-    });
+    const [rows, total] = await Promise.all([
+      model.findMany({
+        where,
+        ...(include ? { include } : {}),
+        orderBy: config.defaultOrderBy || { createdAt: 'desc' },
+        take: limit + 1,
+        skip: offset,
+      }),
+      model.count({ where }),
+    ]);
 
     const sliced = rows
       .slice(0, limit)
@@ -1459,7 +1464,7 @@ export class EnterpriseModulesService {
       companyId,
       status: 'OK',
       items: normalizedItems,
-      total: offset + sliced.length,
+      total,
       limit,
       offset,
       hasMore: rows.length > limit,
@@ -1523,25 +1528,42 @@ export class EnterpriseModulesService {
     const where = config.companyWhere(companyId);
 
     let count = 0;
+    let status: EnterpriseModuleHealthStatus = 'OK';
+    let errorMessage: string | undefined;
 
     try {
       count = await model.count({ where });
     } catch (error) {
+      status = 'DEGRADED';
+      errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
-        `[EnterpriseModules] count falhou para ${slug}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        `[EnterpriseModules] count falhou para ${slug}: ${errorMessage}`,
       );
     }
 
-    return {
+    const response: {
+      slug: string;
+      model: string;
+      label: string;
+      companyId: string;
+      status: EnterpriseModuleHealthStatus;
+      count: number;
+      error?: string;
+      generatedAt: string;
+    } = {
       slug,
       model: config.model,
       label: config.label,
       companyId,
-      status: 'OK',
+      status,
       count,
       generatedAt: new Date().toISOString(),
     };
+
+    if (errorMessage) {
+      response.error = 'Não foi possível contar registros do módulo no Prisma.';
+    }
+
+    return response;
   }
 }
