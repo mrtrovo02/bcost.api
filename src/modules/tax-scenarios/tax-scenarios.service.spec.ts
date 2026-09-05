@@ -385,6 +385,24 @@ describe('TaxScenariosService', () => {
     expect(result.preProposal.ctaLabel).toBe('Abrir revisão de compliance');
   });
 
+  it('mantém economia bloqueada para publicidade enquanto houver dossiê documental aberto', () => {
+    const result = service.simulate({
+      activity: 'CREATOR',
+      monthlyRevenue: 5_000,
+      monthlyDeductibleExpenses: 500,
+      monthlyPayroll: 0,
+      dependents: 0,
+      currentModel: 'PF',
+      hasCrcReview: true,
+    });
+
+    expect(result.preProposal.checkoutAllowed).toBe(true);
+    expect(result.legalRiskAssessment.evidenceGate.status).toBe('OPEN');
+    expect(result.legalRiskAssessment.evidenceGate.missingEvidence.length).toBeGreaterThan(0);
+    expect(result.legalRiskAssessment.canAdvertiseSavings).toBe(false);
+    expect(result.legalRiskAssessment.canUseAsOfficialAssessment).toBe(false);
+  });
+
   it('gera scenarioId estável para o mesmo input', () => {
     const input = {
       activity: 'TECHNOLOGY' as const,
