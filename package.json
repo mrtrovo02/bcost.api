@@ -27,6 +27,7 @@
     "postinstall": "prisma generate",
     "test": "jest",
     "test:tax-scenarios": "jest --runInBand src/modules/tax-scenarios/tax-scenarios.service.spec.ts",
+    "test:rls": "jest --runInBand src/database/prisma.rls.integration.spec.ts",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
