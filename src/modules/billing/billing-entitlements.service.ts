@@ -5,7 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, SubscriptionStatus } from '@prisma/client';
 import type { Company } from '@prisma/client';
 import { PrismaService } from '#database/prisma.service.js';
 import {
@@ -75,6 +75,12 @@ export type PlanDefinition = {
 };
 
 export type LimitKey = keyof PlanDefinition['limits'];
+
+const BILLABLE_SUBSCRIPTION_STATUSES: SubscriptionStatus[] = [
+  SubscriptionStatus.ACTIVE,
+  SubscriptionStatus.TRIALING,
+  SubscriptionStatus.PAST_DUE,
+];
 
 interface CompanyRecord extends Pick<
   Company,
@@ -615,6 +621,8 @@ export class BillingEntitlementsService {
     const oldPlan = this.normalizePlan(before.planLevel);
     const newPlan = this.normalizePlan(planLevelInput);
 
+    await this.assertManualPlanChangeAllowed(companyId, oldPlan, newPlan);
+
     const currentSettings = this.isPlainRecord(before.settings)
       ? before.settings
       : {};
@@ -669,6 +677,44 @@ export class BillingEntitlementsService {
       ...(entitlements as Record<string, unknown>),
       generatedAt: new Date().toISOString(),
     });
+  }
+
+  private async assertManualPlanChangeAllowed(
+    companyId: string,
+    oldPlan: PlanLevel,
+    newPlan: PlanLevel,
+  ): Promise<void> {
+    if (oldPlan === newPlan) return;
+
+    const activeSubscription = await this.prisma.subscription.findFirst({
+      where: {
+        companyId,
+        status: {
+          in: BILLABLE_SUBSCRIPTION_STATUSES,
+        },
+      },
+      select: {
+        id: true,
+        planLevel: true,
+        status: true,
+        currentPeriodEnd: true,
+      },
+      orderBy: {
+        updatedAt: 'desc',
+      },
+    });
+
+    if (activeSubscription) {
+      throw new BadRequestException({
+        status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+        message:
+          'Alteração manual de plano bloqueada para empresa com assinatura ativa. Use o portal de cobrança para preservar cobrança, entitlement e auditoria.',
+        companyId,
+        currentPlanLevel: activeSubscription.planLevel,
+        subscriptionStatus: activeSubscription.status,
+        currentPeriodEnd: activeSubscription.currentPeriodEnd,
+      });
+    }
   }
 
   async getPlans() {

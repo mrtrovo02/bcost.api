@@ -21,6 +21,9 @@ type MockPrismaService = {
   auditLog: {
     create: jest.Mock;
   };
+  subscription: {
+    findFirst: jest.Mock;
+  };
 };
 
 describe('BillingEntitlementsService', () => {
@@ -71,6 +74,9 @@ describe('BillingEntitlementsService', () => {
       },
       auditLog: {
         create: jest.fn().mockResolvedValue({ id: 'audit-log-uuid' }),
+      },
+      subscription: {
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     };
 
@@ -304,6 +310,39 @@ describe('BillingEntitlementsService', () => {
         }),
       );
       expect(prismaMock.auditLog.create).toHaveBeenCalled();
+    });
+
+    it('deve bloquear alteração manual quando existe assinatura ativa no gateway', async () => {
+      const adminUser = {
+        id: 'user-admin-1',
+        companyId: 'company-uuid-123',
+        role: 'OWNER',
+      };
+
+      prismaMock.subscription.findFirst.mockResolvedValueOnce({
+        id: 'subscription-001',
+        planLevel: 'PRO',
+        status: 'ACTIVE',
+        currentPeriodEnd: new Date('2026-10-01T00:00:00.000Z'),
+      });
+
+      await expect(
+        service.updatePlan(
+          'company-uuid-123',
+          'ENTERPRISE' satisfies PlanLevel,
+          adminUser satisfies AuthUser,
+          'Upgrade manual indevido',
+        ),
+      ).rejects.toMatchObject({
+        response: expect.objectContaining({
+          status: 'ACTIVE_SUBSCRIPTION_EXISTS',
+          currentPlanLevel: 'PRO',
+          subscriptionStatus: 'ACTIVE',
+        }),
+      });
+
+      expect(prismaMock.company.update).not.toHaveBeenCalled();
+      expect(prismaMock.auditLog.create).not.toHaveBeenCalled();
     });
 
     it('deve negar alteração de plano para papéis sem permissão (ex: MEMBER)', async () => {
