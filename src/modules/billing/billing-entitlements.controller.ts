@@ -18,6 +18,7 @@ import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js'
 import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
 import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
 import { BillingEntitlementsService } from './billing-entitlements.service.js';
+import { CheckFeatureQueryDto } from './dto/check-feature-query.dto.js';
 import { UpdateCompanyPlanDto } from './dto/update-company-plan.dto.js';
 
 @UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
@@ -43,12 +44,12 @@ export class BillingEntitlementsController {
   @Get('features/:companyId/check')
   checkFeature(
     @Param('companyId', new ParseUUIDPipe()) companyId: string,
-    @Query('feature') feature: string,
+    @Query() query: CheckFeatureQueryDto,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.billingEntitlementsService.checkFeature(
       companyId,
-      feature,
+      query.feature,
       req.user,
     );
   }
