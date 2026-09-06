@@ -349,6 +349,20 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('retorna identificador determinístico para rastrear a simulação', () => {
+    const input = {
+      activity: 'SERVICE_PROVIDER' as const,
+      monthlyRevenue: 80_000,
+      monthlyDeductibleExpenses: 8_000,
+      monthlyPayroll: 24_000,
+      dependents: 0,
+      currentModel: 'SIMPLES_NACIONAL' as const,
+    };
+
+    expect(service.simulate(input).scenarioId).toBe(service.scenarioId(input));
+    expect(service.simulate(input).scenarioId).toMatch(/^[a-f0-9]{16}$/);
+  });
+
   it('qualifica a oferta comercial sem permitir venda automática quando PF permanece melhor', () => {
     const result = service.simulate({
       activity: 'SERVICE_PROVIDER',

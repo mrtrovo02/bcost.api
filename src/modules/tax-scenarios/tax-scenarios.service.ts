@@ -194,6 +194,7 @@ export class TaxScenariosService {
 
     return {
       status: 'OK',
+      scenarioId: this.scenarioId(input),
       regressionSuite: {
         version: TAX_SCENARIO_REGRESSION_SUITE.version,
         owner: TAX_SCENARIO_REGRESSION_SUITE.owner,

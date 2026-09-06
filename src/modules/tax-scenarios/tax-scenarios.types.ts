@@ -209,6 +209,7 @@ export type TaxScenarioLegalSourceManifest = {
 
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
+  scenarioId: string;
   regressionSuite: {
     version: string;
     owner: 'tax-scenarios';
