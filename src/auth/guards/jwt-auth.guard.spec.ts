@@ -115,6 +115,30 @@ describe('JwtAuthGuard', () => {
     expect(request.user).toBeUndefined();
   });
 
+  it('does not accept tokens that only resemble the demo token in production', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_DEMO_SESSION = 'true';
+    process.env.ENABLE_DEMO_FALLBACK = 'true';
+
+    const request: TestRequest = {
+      headers: {
+        authorization: 'Bearer demo-local-forged-token',
+        'x-demo-session': 'true',
+      },
+    };
+    const guard = new JwtAuthGuard(createReflector());
+    const parentPrototype = Object.getPrototypeOf(JwtAuthGuard.prototype) as {
+      canActivate: (context: ExecutionContext) => boolean;
+    };
+    const parentCanActivateSpy = jest
+      .spyOn(parentPrototype, 'canActivate')
+      .mockReturnValueOnce(false);
+
+    expect(guard.canActivate(createExecutionContext(request))).toBe(false);
+    expect(parentCanActivateSpy).toHaveBeenCalledTimes(1);
+    expect(request.user).toBeUndefined();
+  });
+
   it('keeps public routes bypassed without requiring demo headers', () => {
     const request: TestRequest = {
       headers: {},

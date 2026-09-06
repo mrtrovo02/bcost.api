@@ -9,6 +9,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator.js';
 
+const DEMO_SESSION_TOKEN = 'demo-token-local';
+
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(private reflector: Reflector) {
@@ -61,8 +63,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const hasDemoToken = demoTokenCandidates.some(
       (candidate) =>
         typeof candidate === 'string' &&
-        candidate.toLowerCase().includes('demo') &&
-        candidate.toLowerCase().includes('local'),
+        candidate.trim().toLowerCase() === DEMO_SESSION_TOKEN,
     );
     const hasDemoHeader = demoSessionHeader === 'true' || demoSessionHeader === '1';
     const isLocalDemoRequest =
