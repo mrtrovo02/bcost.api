@@ -1,0 +1,87 @@
+# bCost API — Diretrizes Mestras para Agentes Codex
+
+## Missao do Produto
+
+Transformar a bCost em uma plataforma SaaS contabil, fiscal e financeira vendavel e monetizavel, competindo com Contabilizei, Dominio, Contimatic e Conta Azul com postura juridicamente defensavel. A bCost vende eficiencia, inteligencia fiscal e operacao assistida; nunca promete apuracao oficial automatica quando o processo depende de portal publico, prefeitura, PGDAS-D, eSocial, SPED, certificado digital, Junta Comercial ou contador responsavel.
+
+A meta do backend e operar como produto vendavel: multi-tenant, auditavel, com modulos reais, contratos de API claros, fallback controlado e trilhas de evidencia.
+
+## Classificacao Obrigatoria de Modulos
+
+Antes de alterar modulo fiscal, contabil, financeiro, comercial ou operacional, classifique o comportamento:
+
+- Operacional por software: API, banco, regra, teste, auditoria e contrato completos.
+- Operacao assistida: depende de contador/CRC, certificado, portal publico, RPA, prefeitura, Receita ou validacao documental. Deve gerar workflow, checklist, evidencia, SLA e revisao humana.
+- Bloqueado para venda: sem evidencia tecnica, legal ou operacional suficiente. Deve ficar desabilitado, somente leitura ou marcado como homologacao no contrato retornado ao frontend.
+
+Nada pode prometer automacao oficial sem lastro. Onde nao ha automacao oficial, o sistema deve abrir workflow assistido.
+
+## Arquitetura Backend
+
+- NestJS, TypeScript strict, SWC, Prisma e PostgreSQL.
+- Nunca relaxar `strict`, `noImplicitAny` ou `strictNullChecks`.
+- Prisma/PostgreSQL com RLS forcado em tabelas tenant-scoped; producao deve usar usuario restrito, sem bypass.
+- Guards em camadas: `AuthGuard`, `TenantGuard`, `CompanyAccessGuard`, `RolesGuard`. Respeitar `@SkipCompanyCheck` apenas onde fizer sentido arquitetural.
+- JWT de acesso curto e evolucao para refresh token em cookie HttpOnly/SameSite=Strict com rotacao e revogacao.
+- Modulos autocontidos: controller, service, repository/prisma, DTOs, testes.
+- Validar toda entrada de API com DTO/class-validator ou schema equivalente ja adotado no modulo.
+- Endpoints criticos de escrita devem considerar idempotencia: billing, webhooks, fechamento fiscal, obrigacoes, pagamentos e workflows.
+- Metricas protegidas por `METRICS_API_KEY`; Swagger em producao deve ficar desligado; logs precisam preservar correlation/trace id.
+
+## Prioridades Da Esteira
+
+P0 — Bloqueadores de vendabilidade:
+- Sessao enterprise robusta: refresh token, rotacao/revogacao, logout global, MFA/TOTP.
+- Observabilidade: Sentry, OpenTelemetry, alertas 5xx, health e metricas protegidas.
+- Limpeza de repositorio: remover backups/dumps soltos, proteger `.env`, certificados e artefatos.
+- Testes e2e de isolamento tenant: provar que empresa A nao le nem escreve dados da empresa B via API e RLS.
+
+P1 — Fechamento mensal:
+- Checklist de fechamento por competencia, periodo travavel, memoria de calculo imutavel, snapshot com hash, aprovacao CRC e dossie de evidencias exportavel.
+- Evoluir DAS, Fator R, obrigacoes, snapshots, protocolos auditaveis e recibos oficiais quando disponiveis.
+
+P2 — Entregas fiscais reais:
+- Priorizar geradores reais e defensaveis de PGDAS-D e SPED Contribuicoes, com aviso de limitacao e versao de regra.
+- Separar explicitamente simulacao e apuracao oficial. Calculo tributario sem base legal, versao de regra, evidencias e revisao CRC nao deve ser tratado como entrega oficial.
+
+P3 — Monetizacao:
+- Suportar checkout, portal, webhooks Stripe, assinaturas, entitlements, paywall, trial e bloqueio real de usuarios inadimplentes.
+
+P4 — Escalabilidade:
+- Paginar listagens, eliminar N+1, usar cache em catalogos estaveis e evitar duplicidade entre modulos basicos e enterprise.
+
+## Regras De Engenharia
+
+- Mudancas incrementais, pequenas e separadas por repo.
+- Nunca enfraquecer seguranca para "fazer funcionar": RLS, guards, CORS restrito e throttling permanecem.
+- Nunca misturar demo com producao. Dados demo somente em sessao/ambiente explicitamente demo.
+- Toda resposta de API deve ser tipada; mudanca de contrato exige atualizar client frontend na mesma rodada quando aplicavel.
+- Toda tabela nova tenant-scoped no schema exige GRANT, ENABLE ROW LEVEL SECURITY e policies na mesma migration.
+- Commits convencionais e com um contexto por commit.
+
+## Definition Of Done
+
+- `npm run typecheck`
+- `npm run lint` quando viavel no repo
+- Teste unitario/direcionado do modulo tocado
+- `npm run build`
+- `npm run release:check` quando a alteracao impactar producao/env
+- Teste de fluxo critico quando tocar auth, tenant, billing ou fechamento
+- Commit e push separado por repo
+- Nota de deploy EC2 com comandos exatos
+
+## Deploy EC2 Backend
+
+```bash
+cd ~/bcost.api
+git pull origin main
+npm ci
+npx prisma migrate deploy
+npx prisma generate
+npm run release:check
+npm run build
+pm2 reload bcost-api --update-env
+pm2 logs bcost-api --lines 80
+```
+
+Variaveis produtivas obrigatorias incluem `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `METRICS_API_KEY`, `FRONTEND_BASE_URL`, `PUBLIC_APP_URL`, chaves Stripe e `CORS_ORIGINS`.
