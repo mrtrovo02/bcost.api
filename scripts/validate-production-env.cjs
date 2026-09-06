@@ -81,6 +81,43 @@ function requirePrefix(name, prefix, message) {
   }
 }
 
+function durationToSeconds(value) {
+  const match = /^(\d+)(ms|s|m|h|d|w|y)$/.exec(value);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multipliers = {
+    ms: 0.001,
+    s: 1,
+    m: 60,
+    h: 3600,
+    d: 86400,
+    w: 604800,
+    y: 31536000,
+  };
+
+  return amount * multipliers[unit];
+}
+
+function requireMaxDuration(name, maxSeconds, message) {
+  const value = valueOf(name);
+  if (!value) {
+    errors.push(`${name}: duração obrigatória para produção.`);
+    return;
+  }
+
+  const seconds = durationToSeconds(value);
+  if (seconds === null) {
+    errors.push(`${name}: use formatos como 15m, 1h, 3600s.`);
+    return;
+  }
+
+  if (seconds > maxSeconds) {
+    errors.push(`${name}: ${message}`);
+  }
+}
+
 function validateProductionEnvironment() {
   requireEquals('NODE_ENV', 'production', 'deve ser production no ambiente oficial.');
   requireNonEmpty('DATABASE_URL', 'conexão PostgreSQL obrigatória.');
@@ -90,6 +127,12 @@ function validateProductionEnvironment() {
   if (valueOf('JWT_SECRET').length > 0 && valueOf('JWT_SECRET').length < 48) {
     errors.push('JWT_SECRET: use segredo forte com pelo menos 48 caracteres em produção.');
   }
+
+  requireMaxDuration(
+    'JWT_EXPIRES_IN',
+    3600,
+    'access token deve expirar em no máximo 1 hora em produção.',
+  );
 
   requireHttpsUrl('FRONTEND_BASE_URL');
   requireHttpsUrl('PUBLIC_APP_URL');

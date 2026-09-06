@@ -15,7 +15,7 @@ import { JwtStrategy } from './jwt.strategy.js';
 import { WsJwtGuard } from './guards/ws-jwt.guard.js';
 import { PrismaModule } from '../database/prisma.module.js';
 
-const DEFAULT_JWT_EXPIRES_IN: StringValue = '1d';
+const DEFAULT_JWT_EXPIRES_IN: StringValue = '15m';
 
 function resolveJwtExpiresIn(configService: ConfigService): StringValue {
   const value = configService.get<string>('JWT_EXPIRES_IN')?.trim();

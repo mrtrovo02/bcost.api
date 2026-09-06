@@ -94,6 +94,9 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
         REDIS_PASSWORD: Joi.string().allow('').default(''),
 
         JWT_SECRET: Joi.string().min(32).required(),
+        JWT_EXPIRES_IN: Joi.string()
+          .pattern(/^(\d+)(ms|s|m|h|d|w|y)$/)
+          .default('15m'),
         FISCAL_API_KEY: Joi.string().allow('').optional(),
 
         ALLOW_SETUP_ADMIN: Joi.string().valid('true', 'false').default('false'),
