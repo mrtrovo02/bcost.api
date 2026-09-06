@@ -41,6 +41,23 @@ function requireHttpsUrl(name) {
   }
 }
 
+function requireRuntimeDatabaseRole() {
+  const value = valueOf('DATABASE_URL');
+
+  if (!value) return;
+
+  try {
+    const username = decodeURIComponent(new URL(value).username);
+    if (username !== 'bcost_app') {
+      errors.push(
+        `DATABASE_URL: use a role de runtime bcost_app sem BYPASSRLS; usuário atual: ${username || '(ausente)'}.`,
+      );
+    }
+  } catch {
+    errors.push('DATABASE_URL: URL inválida para validar a role de runtime.');
+  }
+}
+
 function parseOrigins(raw) {
   return raw
     .replace(/^\[/, '')
@@ -122,6 +139,7 @@ function validateProductionEnvironment() {
   requireEquals('NODE_ENV', 'production', 'deve ser production no ambiente oficial.');
   requireNonEmpty('DATABASE_URL', 'conexão PostgreSQL obrigatória.');
   requireNonEmpty('DIRECT_URL', 'conexão direta obrigatória para Prisma/migrations.');
+  requireRuntimeDatabaseRole();
   requireNonEmpty('JWT_SECRET', 'segredo JWT obrigatório.');
 
   if (valueOf('JWT_SECRET').length > 0 && valueOf('JWT_SECRET').length < 48) {

@@ -9,6 +9,8 @@ import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { PrismaService } from '../../database/prisma.service.js';
 
+type AuthenticatedSocket = Socket & { user?: unknown };
+
 @Injectable()
 export class WsJwtGuard implements CanActivate {
   private readonly logger = new Logger(WsJwtGuard.name);
@@ -20,7 +22,7 @@ export class WsJwtGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
-      const client: Socket = context.switchToWs().getClient();
+      const client = context.switchToWs().getClient<AuthenticatedSocket>();
 
       // No WebSocket, o token costuma vir no header 'Authorization' ou no 'auth' object do handshake
       const headerAuth = client.handshake.headers.authorization;
@@ -67,7 +69,7 @@ export class WsJwtGuard implements CanActivate {
       }
 
       // Injeta o usuário no socket para uso posterior (ex: identificar empresa)
-      client['user'] = payload;
+      client.user = payload;
 
       return true;
     } catch (err) {

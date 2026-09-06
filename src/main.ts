@@ -3,6 +3,7 @@
 import 'reflect-metadata';
 import 'dotenv/config';
 import { randomUUID } from 'crypto';
+import type { IncomingMessage } from 'node:http';
 
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import {
@@ -186,7 +187,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
       // Compatibilidade com proxies (Nginx/ALB) que removem o prefixo `/api`
       // antes de encaminhar para a aplicação. Sem isso, todas as rotas
       // versionadas respondem 404 em produção.
-      rewriteUrl: (req) => {
+      rewriteUrl: (req: IncomingMessage) => {
         const url = req.url ?? '/';
         if (/^\/v\d+(\/|$)/.test(url)) {
           return `/api${url}`;
