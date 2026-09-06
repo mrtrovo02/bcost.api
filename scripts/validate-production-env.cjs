@@ -96,6 +96,7 @@ function validateProductionEnvironment() {
   requireCorsOrigin('https://app.bcost.com.br');
   requireEquals('ENABLE_DEMO_FALLBACK', 'false', 'fallback demo deve ficar desligado em produção.');
   requireEquals('ALLOW_DEMO_SESSION', 'false', 'sessão demo pública deve ficar desligada em produção.');
+  requireEquals('ALLOW_SETUP_ADMIN', 'false', 'setup admin deve ficar desligado em produção.');
   requireEquals('ENABLE_SWAGGER', 'false', 'Swagger público deve ficar desligado em produção.');
 
   requirePrefix(

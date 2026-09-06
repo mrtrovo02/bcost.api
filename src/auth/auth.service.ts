@@ -149,9 +149,15 @@ export class AuthService {
       );
     }
 
-    const defaultPass =
-      this.config.get<string>('SETUP_ADMIN_PASSWORD') || 'admin_bcost_2026';
-    const hashedPassword = await bcrypt.hash(defaultPass, 10);
+    const setupPassword = this.config.get<string>('SETUP_ADMIN_PASSWORD')?.trim();
+
+    if (!setupPassword || setupPassword.length < 16) {
+      throw new ForbiddenException(
+        'SETUP_ADMIN_PASSWORD must be explicitly configured with at least 16 characters.',
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(setupPassword, 10);
     const adminEmail = 'contato@bcost.com.br';
 
     // Garante a existência do usuário Admin
@@ -202,7 +208,7 @@ export class AuthService {
 
     return {
       message: '✅ Usuário Admin e Empresa inicial configurados!',
-      credentials: { email: user.email, password: defaultPass },
+      credentials: { email: user.email },
       user: { id: user.id, name: user.name },
       company: { id: defaultCompany.id, name: defaultCompany.name },
     };

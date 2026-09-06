@@ -98,12 +98,30 @@ describe('AuthService setupAdmin security', () => {
     expect(prisma.user.upsert).not.toHaveBeenCalled();
   });
 
+  it('deve bloquear setupAdmin quando a senha explicita nao esta configurada', async () => {
+    const prisma = createPrisma();
+    const config = createConfig({
+      NODE_ENV: 'development',
+      ALLOW_SETUP_ADMIN: 'true',
+      SETUP_ADMIN_PASSWORD: '',
+    });
+    const service = createService(prisma, config);
+
+    await expect(service.setupAdmin()).rejects.toThrow(
+      'SETUP_ADMIN_PASSWORD must be explicitly configured with at least 16 characters.',
+    );
+
+    expect(prisma.user.upsert).not.toHaveBeenCalled();
+    expect(prisma.company.upsert).not.toHaveBeenCalled();
+    expect(prisma.companyUser.upsert).not.toHaveBeenCalled();
+  });
+
   it('deve permitir setupAdmin apenas fora de producao com flag explicita', async () => {
     const prisma = createPrisma();
     const config = createConfig({
       NODE_ENV: 'development',
       ALLOW_SETUP_ADMIN: 'true',
-      SETUP_ADMIN_PASSWORD: 'admin_bcost_2026',
+      SETUP_ADMIN_PASSWORD: 'admin_bcost_2026_secure',
     });
     const service = createService(prisma, config);
 
@@ -128,6 +146,7 @@ describe('AuthService setupAdmin security', () => {
 
     expect(result.user.id).toBe('user-admin-001');
     expect(result.company.id).toBe('company-admin-001');
+    expect(result.credentials).toEqual({ email: 'contato@bcost.com.br' });
     expect(prisma.companyUser.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         update: { role: CompanyRole.OWNER },
