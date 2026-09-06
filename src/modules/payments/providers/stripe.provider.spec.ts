@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { createHmac } from 'node:crypto';
 import { StripePaymentProvider } from './stripe.provider.js';
 
@@ -95,5 +95,21 @@ describe('StripePaymentProvider', () => {
     expect(() =>
       provider.constructWebhookEvent(payload, 't=1788249600,v1=invalid'),
     ).toThrow(UnauthorizedException);
+  });
+
+  it('rejeita webhook Stripe com JSON invalido apos assinatura valida', () => {
+    const provider = new StripePaymentProvider(
+      createConfig({ STRIPE_WEBHOOK_SECRET: webhookSecret }),
+    );
+    const payload = Buffer.from('{invalid-json');
+    const signature = signPayload(
+      payload,
+      webhookSecret,
+      Math.floor(Date.now() / 1000),
+    );
+
+    expect(() => provider.constructWebhookEvent(payload, signature)).toThrow(
+      BadRequestException,
+    );
   });
 });

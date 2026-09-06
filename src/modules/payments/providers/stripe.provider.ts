@@ -143,7 +143,7 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
   ): PaymentProviderWebhookEvent {
     this.verifyWebhookSignature(rawBody, signatureHeader);
 
-    const payload = JSON.parse(rawBody.toString('utf8')) as StripeObjectRecord;
+    const payload = this.parseWebhookPayload(rawBody);
     const providerEventId = this.requireString(payload.id, 'id');
     const eventType = this.requireString(payload.type, 'type');
     const data = this.toRecord(payload.data);
@@ -281,6 +281,26 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
     }
   }
 
+  private parseWebhookPayload(rawBody: Buffer): StripeObjectRecord {
+    let parsed: unknown;
+
+    try {
+      parsed = JSON.parse(rawBody.toString('utf8')) as unknown;
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      throw new BadRequestException('Payload Stripe inválido para JSON.');
+    }
+
+    if (!this.isStripeObjectRecord(parsed)) {
+      throw new BadRequestException('Payload Stripe deve ser um objeto JSON.');
+    }
+
+    return parsed;
+  }
+
   private requireSecretKey(): string {
     const value = this.config.get<string>('STRIPE_SECRET_KEY');
 
@@ -379,5 +399,9 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
     return value && typeof value === 'object' && !Array.isArray(value)
       ? (value as StripeObjectRecord)
       : {};
+  }
+
+  private isStripeObjectRecord(value: unknown): value is StripeObjectRecord {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
   }
 }
