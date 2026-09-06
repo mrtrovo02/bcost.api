@@ -301,11 +301,11 @@ export class OperationalWorkflowsService {
         allowedTransitions: ['IN_PROGRESS', 'DONE', 'BLOCKED'],
         requiredCapabilities: ['BAAS_PARTNER'],
         blockingReason:
-          'Depende de parceiro regulado, KYC/KYB e contrato de integracao.',
+          'Depende de parceiro regulado, KYC/KYB e contrato de integração.',
       },
       OPEN_FINANCE: {
         id: 'open-finance-consent',
-        title: 'Consentimento e sincronizacao Open Finance',
+        title: 'Consentimento e sincronização Open Finance',
         actor: 'OFFICIAL_INTEGRATION',
         status: 'REQUIRES_INTEGRATION',
         runtimeStatus: 'WAITING_CUSTOMER',

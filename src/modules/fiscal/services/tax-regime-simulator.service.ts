@@ -46,11 +46,11 @@ const MONEY_PRECISION = 2;
 const PRESUMED_PROFIT_ANNUAL_REVENUE_THRESHOLD = 5_000_000;
 
 const OFFICIAL_SOURCES = [
-  'Receita Federal - IRPJ: aliquota geral de 15% e adicional de 10% sobre lucro acima de R$ 20.000,00 por mes.',
-  'Receita Federal - CSLL: aliquota geral de 9% para pessoas juridicas em geral.',
+  'Receita Federal - IRPJ: alíquota geral de 15% e adicional de 10% sobre lucro acima de R$ 20.000,00 por mês.',
+  'Receita Federal - CSLL: alíquota geral de 9% para pessoas jurídicas em geral.',
   'Lei 9.718/1998 e regime cumulativo: PIS 0,65% e Cofins 3% como regra geral no Lucro Presumido.',
-  'Leis 10.637/2002 e 10.833/2003: PIS 1,65% e Cofins 7,6% no regime nao cumulativo como regra geral.',
-  'LC 224/2025: em 2026, acrescimo de 10% nos percentuais de presuncao do Lucro Presumido sobre a parcela da receita bruta anual que exceder R$ 5.000.000,00.',
+  'Leis 10.637/2002 e 10.833/2003: PIS 1,65% e Cofins 7,6% no regime não cumulativo como regra geral.',
+  'LC 224/2025: em 2026, acréscimo de 10% nos percentuais de presunção do Lucro Presumido sobre a parcela da receita bruta anual que exceder R$ 5.000.000,00.',
 ] as const;
 
 @Injectable()

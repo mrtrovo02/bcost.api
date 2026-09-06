@@ -159,7 +159,7 @@ export class PrismaService
     // PostgreSQL RLS esta habilitado por migration para as tabelas criticas de cliente.
     // As policies leem `app.current_company_id`; o escopo principal continua vindo do
     // TenantContextGuard/Prisma Extension. Rotinas fiscais sensiveis devem usar
-    // withRlsCompanyContext para manter o contexto local e atomico na transacao.
+    // withRlsCompanyContext para manter o contexto local e atômico na transação.
     this.connectInBackground();
   }
 

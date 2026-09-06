@@ -54,7 +54,7 @@ export class TaxComplianceService {
           status: 'skipped',
           reason: 'missing_tax_amount',
           message:
-            'Imposto nao provisionado automaticamente sem valor fiscal extraido/informado.',
+            'Imposto não provisionado automaticamente sem valor fiscal extraído ou informado.',
         };
       }
 

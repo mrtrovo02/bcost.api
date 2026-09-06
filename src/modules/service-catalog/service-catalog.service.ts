@@ -23,7 +23,7 @@ export class ServiceCatalogService {
     const service = BCOST_SERVICE_CATALOG.find((item) => item.id === id);
 
     if (!service) {
-      throw new NotFoundException(`Macroservico nao encontrado: ${id}`);
+      throw new NotFoundException(`Macroserviço não encontrado: ${id}`);
     }
 
     return service;
@@ -326,7 +326,7 @@ export class ServiceCatalogService {
           severity: 'WARNING',
           serviceId: service.id,
           message:
-            'Taxas publicas, cartorio, correios, certificado avulso e custos de orgaos publicos nao fazem parte da gratuidade nem da mensalidade base.',
+            'Taxas públicas, cartório, correios, certificado avulso e custos de órgãos públicos não fazem parte da gratuidade nem da mensalidade base.',
         });
       }
 

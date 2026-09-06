@@ -5,16 +5,16 @@ import { MacroServiceDefinition } from './service-catalog.types.js';
 export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   {
     id: 1,
-    name: 'Abertura e Estruturacao de Empresas',
+    name: 'Abertura e Estruturação de Empresas',
     description:
-      'Criacao do CNPJ e definicao inicial da estrutura empresarial.',
+      'Criação do CNPJ e definição inicial da estrutura empresarial.',
     microServices: [
       {
         id: 'company-opening',
         name: 'Abertura de empresa',
         governmentFeesMayApply: true,
         notes: [
-          'A gratuidade cobre honorarios contabeis da plataforma, nao taxas publicas.',
+          'A gratuidade cobre honorários contábeis da plataforma, não taxas públicas.',
         ],
       },
       {
@@ -22,67 +22,67 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
         name: 'Registro de CNPJ',
         governmentFeesMayApply: true,
       },
-      { id: 'legal-nature-definition', name: 'Definicao de natureza juridica' },
+      { id: 'legal-nature-definition', name: 'Definição de natureza jurídica' },
       { id: 'cnae-framing', name: 'Escolha e enquadramento de CNAEs' },
-      { id: 'tax-regime-guidance', name: 'Orientacao sobre regime tributario' },
+      { id: 'tax-regime-guidance', name: 'Orientação sobre regime tributário' },
       {
         id: 'constitutive-acts',
-        name: 'Elaboracao e registro dos atos constitutivos',
+        name: 'Elaboração e registro dos atos constitutivos',
         governmentFeesMayApply: true,
       },
       {
         id: 'municipal-state-registrations',
-        name: 'Inscricoes municipais e estaduais',
+        name: 'Inscrições municipais e estaduais',
         governmentFeesMayApply: true,
         municipalDependency: true,
       },
       {
         id: 'government-fee-guidance',
-        name: 'Orientacao sobre taxas governamentais',
+        name: 'Orientação sobre taxas governamentais',
         governmentFeesMayApply: true,
       },
-      { id: 'opening-onboarding', name: 'Reuniao coletiva de integracao' },
+      { id: 'opening-onboarding', name: 'Reunião coletiva de integração' },
       {
         id: 'opening-tracking',
         name: 'Acompanhamento digital do processo de abertura',
       },
       {
         id: 'mei-to-me-migration',
-        name: 'Desenquadramento/Migracao de MEI para ME',
+        name: 'Desenquadramento/Migração de MEI para ME',
         governmentFeesMayApply: true,
         addOnService: true,
         expertsHonorariumWaivable: true,
       },
       {
         id: 'ltda-ei-to-mei',
-        name: 'Transformacao de Limitada/EI em MEI',
+        name: 'Transformação de Limitada/EI em MEI',
         governmentFeesMayApply: true,
         addOnService: true,
         expertsHonorariumWaivable: true,
       },
-      { id: 'virtual-office', name: 'Escritorio Virtual', addOnService: true },
+      { id: 'virtual-office', name: 'Escritório Virtual', addOnService: true },
     ],
   },
   {
     id: 2,
     name: 'Contabilidade Recorrente',
     description:
-      'Nucleo operacional dos planos mensais para manutencao da conformidade.',
+      'Núcleo operacional dos planos mensais para manutenção da conformidade.',
     microServices: [
       {
         id: 'accounting-bookkeeping',
-        name: 'Escrituracao contabil diaria/mensal',
+        name: 'Escrituração contábil diária/mensal',
       },
       {
         id: 'financial-classification',
-        name: 'Classificacao e lancamento de movimentacoes financeiras',
+        name: 'Classificação e lançamento de movimentações financeiras',
       },
-      { id: 'periodic-accounting', name: 'Apuracao contabil periodica' },
-      { id: 'financial-statements', name: 'Balanco Patrimonial e DRE' },
-      { id: 'accounting-books', name: 'Emissao e guarda de livros contabeis' },
+      { id: 'periodic-accounting', name: 'Apuração contábil periódica' },
+      { id: 'financial-statements', name: 'Balanço Patrimonial e DRE' },
+      { id: 'accounting-books', name: 'Emissão e guarda de livros contábeis' },
       {
         id: 'accounting-obligations',
-        name: 'Entrega de obrigacoes acessorias contabeis',
+        name: 'Entrega de obrigações acessórias contábeis',
         complianceTags: ['ECD', 'ECF', 'SPED'],
         officialSources: [
           { label: 'Portal SPED - ECD/ECF', url: 'https://sped.rfb.gov.br/' },
@@ -115,11 +115,11 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'routine-guidance',
-        name: 'Orientacao sobre rotinas e documentacao exigida',
+        name: 'Orientação sobre rotinas e documentação exigida',
       },
       {
         id: 'daily-compliance',
-        name: 'Regularizacao e manutencao da conformidade diaria',
+        name: 'Regularização e manutenção da conformidade diária',
       },
       {
         id: 'platform-alerts',
@@ -133,17 +133,17 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   },
   {
     id: 3,
-    name: 'Gestao Tributaria e Fiscal',
+    name: 'Gestão Tributária e Fiscal',
     description:
-      'Calculo, emissao, planejamento e controle de obrigacoes tributarias.',
+      'Cálculo, emissão, planejamento e controle de obrigações tributárias.',
     microServices: [
       {
         id: 'tax-planning',
-        name: 'Planejamento tributario para elisao fiscal',
+        name: 'Planejamento tributário para elisão fiscal',
       },
       {
         id: 'tax-assessment',
-        name: 'Apuracao de impostos federais, estaduais e municipais',
+        name: 'Apuração de impostos federais, estaduais e municipais',
         complianceTags: [
           'IRPJ',
           'CSLL',
@@ -168,10 +168,10 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
           'Para 2026, CBS e IBS entram em ambiente de teste com destaque em documentos fiscais conforme orientações e notas técnicas oficiais.',
         ],
       },
-      { id: 'tax-guides', name: 'Emissao e controle de guias tributarias' },
+      { id: 'tax-guides', name: 'Emissão e controle de guias tributárias' },
       {
         id: 'fiscal-accessory-obligations',
-        name: 'Envio de declaracoes e obrigacoes fiscais acessorias',
+        name: 'Envio de declarações e obrigações fiscais acessórias',
         complianceTags: [
           'SPED',
           'DCTFWeb',
@@ -299,11 +299,11 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'withholding-guidance',
-        name: 'Orientacao sobre retencoes tributarias',
+        name: 'Orientação sobre retenções tributárias',
       },
       {
         id: 'fiscal-pendency-regularization',
-        name: 'Consulta e regularizacao de pendencias fiscais',
+        name: 'Consulta e regularização de pendências fiscais',
         addOnService: true,
         expertsHonorariumWaivable: true,
         retroactiveSensitive: true,
@@ -339,7 +339,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'fiscal-certificates',
-        name: 'Emissao de certidoes e documentos fiscais/cadastrais',
+        name: 'Emissão de certidões e documentos fiscais/cadastrais',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -349,11 +349,11 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   },
   {
     id: 4,
-    name: 'Folha de Pagamento e Obrigacoes Trabalhistas',
-    description: 'Gestao de colaboradores, socios e encargos sociais.',
+    name: 'Folha de Pagamento e Obrigações Trabalhistas',
+    description: 'Gestão de colaboradores, sócios e encargos sociais.',
     microServices: [
       { id: 'payroll-processing', name: 'Processamento de folha e holerites' },
-      { id: 'prolabore-guides', name: 'Calculo e guias de pro-labore' },
+      { id: 'prolabore-guides', name: 'Cálculo e guias de pró-labore' },
       { id: 'labor-charges', name: 'INSS, FGTS e IRRF' },
       {
         id: 'employee-lifecycle',
@@ -363,7 +363,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'labor-obligations',
-        name: 'eSocial, DCTFWeb, FGTS Digital e obrigacoes trabalhistas',
+        name: 'eSocial, DCTFWeb, FGTS Digital e obrigações trabalhistas',
         complianceTags: ['eSocial', 'DCTFWeb', 'FGTS Digital', 'INSS', 'IRRF'],
         officialSources: [
           {
@@ -384,12 +384,12 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   },
   {
     id: 5,
-    name: 'Emissao de Notas e Faturamento',
+    name: 'Emissão de Notas e Faturamento',
     description: 'Suporte e automacao do ciclo de faturamento e recebimentos.',
     microServices: [
       {
         id: 'nfse-guidance',
-        name: 'Orientacao tecnica para NFS-e',
+        name: 'Orientação técnica para NFS-e',
         municipalDependency: true,
         complianceTags: ['NFS-e', 'ISS', 'CBS', 'IBS'],
         officialSources: [
@@ -404,7 +404,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'invoice-management',
-        name: 'Emissao e gerenciamento de notas pela plataforma',
+        name: 'Emissão e gerenciamento de notas pela plataforma',
         municipalDependency: true,
         complianceTags: ['NF-e', 'NFC-e', 'NFS-e', 'CT-e', 'CBS', 'IBS'],
         officialSources: [
@@ -429,18 +429,18 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'automatic-reconciliation-dre',
-        name: 'Conciliacao automatica entre extrato e DRE',
+        name: 'Conciliação automática entre extrato e DRE',
       },
     ],
   },
   {
     id: 6,
-    name: 'Conta Bancaria PJ e Servicos Financeiros',
-    description: 'Infraestrutura bancaria digital integrada a contabilidade.',
+    name: 'Conta Bancária PJ e Serviços Financeiros',
+    description: 'Infraestrutura bancária digital integrada à contabilidade.',
     microServices: [
       {
         id: 'free-pj-account',
-        name: 'Abertura e manutencao de Conta Digital PJ gratuita',
+        name: 'Abertura e manutenção de Conta Digital PJ gratuita',
       },
       {
         id: 'free-pix',
@@ -448,40 +448,40 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'automatic-tax-monthly-fee-debit',
-        name: 'Debito automatico de impostos e mensalidade',
+        name: 'Débito automático de impostos e mensalidade',
       },
       {
         id: 'automatic-bank-statement-flow',
-        name: 'Automacao de extratos sem OFX manual',
+        name: 'Automação de extratos sem OFX manual',
       },
-      { id: 'payment-links', name: 'Gestao de cobrancas e links de pagamento' },
+      { id: 'payment-links', name: 'Gestão de cobranças e links de pagamento' },
     ],
   },
   {
     id: 7,
-    name: 'Migracao e Troca de Contador',
+    name: 'Migração e Troca de Contador',
     description:
-      'Transicao de responsabilidade tecnica para empresas existentes.',
+      'Transição de responsabilidade técnica para empresas existentes.',
     microServices: [
       {
         id: 'technical-responsibility-transfer',
-        name: 'Troca de responsabilidade tecnica',
+        name: 'Troca de responsabilidade técnica',
       },
       {
         id: 'prior-accountant-documents',
-        name: 'Coleta e analise de documentos do contador anterior',
+        name: 'Coleta e análise de documentos do contador anterior',
       },
       {
         id: 'initial-regularity-diagnosis',
-        name: 'Diagnostico inicial de regularidade contabil e fiscal',
+        name: 'Diagnóstico inicial de regularidade contábil e fiscal',
       },
       {
         id: 'history-import',
-        name: 'Importacao de historico cadastral e financeiro',
+        name: 'Importação de histórico cadastral e financeiro',
       },
       {
         id: 'prior-period-pendency-guidance',
-        name: 'Orientacao para pendencias anteriores',
+        name: 'Orientação para pendências anteriores',
         retroactiveSensitive: true,
         addOnService: true,
         activeCustomersOnly: true,
@@ -496,7 +496,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
     microServices: [
       {
         id: 'company-name-address-change',
-        name: 'Alteracao de razao social, fantasia ou endereco',
+        name: 'Alteração de razão social, fantasia ou endereço',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -505,7 +505,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'partner-change',
-        name: 'Inclusao, remocao ou substituicao de socios',
+        name: 'Inclusão, remoção ou substituição de sócios',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -521,7 +521,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'legal-nature-change',
-        name: 'Mudanca de natureza juridica',
+        name: 'Mudança de natureza jurídica',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -529,7 +529,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'multi-agency-registration-update',
-        name: 'Atualizacao simultanea Junta, Receita e Prefeituras',
+        name: 'Atualização simultânea Junta, Receita e Prefeituras',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -538,7 +538,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'business-license-update',
-        name: 'Regularizacao e atualizacao de Alvara',
+        name: 'Regularização e atualização de Alvará',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -550,13 +550,13 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   },
   {
     id: 9,
-    name: 'Licencas, Alvaras e Regularizacoes',
+    name: 'Licenças, Alvarás e Regularizações',
     description:
-      'Adequacao operacional perante orgaos municipais e reguladores.',
+      'Adequação operacional perante órgãos municipais e reguladores.',
     microServices: [
       {
         id: 'business-license-issue-renewal',
-        name: 'Emissao e renovacao de Alvara',
+        name: 'Emissão e renovação de Alvará',
         addOnService: true,
         governmentFeesMayApply: true,
         municipalDependency: true,
@@ -594,7 +594,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   {
     id: 10,
     name: 'Certificado Digital',
-    description: 'Identidade digital para assinaturas e obrigacoes fiscais.',
+    description: 'Identidade digital para assinaturas e obrigações fiscais.',
     microServices: [
       { id: 'ecnpj-in-plan', name: 'Inclusao de e-CNPJ em planos elegiveis' },
       {
@@ -610,11 +610,11 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   {
     id: 11,
     name: 'Encerramento e Baixa de Empresa',
-    description: 'Distrato social e encerramento do CNPJ em orgaos publicos.',
+    description: 'Distrato social e encerramento do CNPJ em órgãos públicos.',
     microServices: [
       {
         id: 'dissolution-document',
-        name: 'Elaboracao do Distrato Social',
+        name: 'Elaboração do Distrato Social',
         addOnService: true,
         expertsHonorariumWaivable: true,
         activeCustomersOnly: true,
@@ -642,7 +642,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
   },
   {
     id: 12,
-    name: 'Servicos Societarios e Documentais Avulsos',
+    name: 'Serviços Societários e Documentais Avulsos',
     description: 'Documentos oficiais sob demanda com assinatura do contador.',
     microServices: [
       {
@@ -661,7 +661,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'commercial-board-certificates',
-        name: 'Certidoes Simplificadas e Inteiro Teor',
+        name: 'Certidões Simplificadas e Inteiro Teor',
         addOnService: true,
         expertsHonorariumWaivable: true,
         governmentFeesMayApply: true,
@@ -669,7 +669,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'registry-pendency-opinion',
-        name: 'Parecer sobre pendencias cadastrais',
+        name: 'Parecer sobre pendências cadastrais',
         addOnService: true,
         expertsHonorariumWaivable: true,
         retroactiveSensitive: true,
@@ -684,7 +684,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
     microServices: [
       {
         id: 'brand-viability-guidance',
-        name: 'Orientacao inicial sobre registro no INPI',
+        name: 'Orientação inicial sobre registro no INPI',
         addOnService: true,
       },
       {
@@ -719,7 +719,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
       },
       {
         id: 'experts-addon-honorarium-waiver',
-        name: 'Isencao de honorarios em servicos avulsos no Experts',
+        name: 'Isenção de honorários em serviços avulsos no Experts',
       },
     ],
   },
@@ -744,7 +744,7 @@ export const BCOST_SERVICE_CATALOG: MacroServiceDefinition[] = [
     name: 'Solucoes Especializadas por Segmento',
     description: 'Personalizacao por CNAE e rotina fiscal do segmento.',
     microServices: [
-      { id: 'services-segment', name: 'Prestadores de Servicos' },
+      { id: 'services-segment', name: 'Prestadores de Serviços' },
       { id: 'health-segment', name: 'Saude' },
       {
         id: 'regulated-professions-segment',

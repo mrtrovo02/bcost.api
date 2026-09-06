@@ -33,7 +33,7 @@ export class DigitalCertificatesService {
       where: { id, companyId },
     });
 
-    if (!cert) throw new NotFoundException('Certificate not found');
+    if (!cert) throw new NotFoundException('Certificado não encontrado.');
     return cert;
   }
 

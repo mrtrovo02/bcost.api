@@ -280,7 +280,7 @@ export class AuthService {
       include: {
         companies: {
           // FIX: filtra vinculos com soft delete aplicado E empresas
-          // que tambem nao estejam soft-deleted (evita reativar empresa
+          // que também não estejam soft-deleted (evita reativar empresa
           // ja removida como "ativa" no momento do login).
           where: {
             deletedAt: null,
