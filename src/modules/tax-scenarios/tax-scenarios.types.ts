@@ -183,6 +183,30 @@ export type TaxScenarioLegalRiskAssessment = {
   }[];
 };
 
+export type TaxScenarioLegalSource = {
+  code: string;
+  title: string;
+  sourceType:
+    | 'CONSTITUTIONAL_AMENDMENT'
+    | 'COMPLEMENTARY_LAW'
+    | 'REGULATION'
+    | 'OFFICIAL_PORTAL'
+    | 'TECHNICAL_NOTE'
+    | 'SYSTEM_POLICY';
+  citation: string;
+  calculationRole: string;
+};
+
+export type TaxScenarioLegalSourceManifest = {
+  version: 'tax-scenarios-legal-sources-2026.1';
+  jurisdiction: 'BR';
+  calculationMode: 'ESTIMATIVE_TRIAGE';
+  officialAssessment: false;
+  sources: TaxScenarioLegalSource[];
+  revalidationTriggers: string[];
+  releaseGuardrails: string[];
+};
+
 export type TaxScenarioSimulationResponse = {
   status: 'OK';
   regressionSuite: {
@@ -218,6 +242,7 @@ export type TaxScenarioSimulationResponse = {
   serviceQualification: TaxScenarioServiceQualification;
   preProposal: TaxScenarioPreProposal;
   legalRiskAssessment: TaxScenarioLegalRiskAssessment;
+  legalSourceManifest: TaxScenarioLegalSourceManifest;
   guardrails: string[];
   generatedAt: string;
 };

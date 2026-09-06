@@ -15,6 +15,7 @@ import {
   TaxScenarioPreProposalDocument,
   TaxScenarioRecommendation,
   TaxScenarioLegalRiskAssessment,
+  TaxScenarioLegalSourceManifest,
   TaxScenarioServiceQualification,
   TaxScenarioSimulationResponse,
 } from './tax-scenarios.types.js';
@@ -24,6 +25,73 @@ const SIMPLES_ANNUAL_LIMIT = 4_800_000;
 const FACTOR_R_THRESHOLD = 28;
 const CBS_INFORMATIVE_2026 = 0.009;
 const IBS_INFORMATIVE_2026 = 0.001;
+
+const TAX_SCENARIO_LEGAL_SOURCE_MANIFEST: TaxScenarioLegalSourceManifest = {
+  version: 'tax-scenarios-legal-sources-2026.1',
+  jurisdiction: 'BR',
+  calculationMode: 'ESTIMATIVE_TRIAGE',
+  officialAssessment: false,
+  sources: [
+    {
+      code: 'EC_132_2023',
+      title: 'Reforma tributária constitucional',
+      sourceType: 'CONSTITUTIONAL_AMENDMENT',
+      citation: 'Emenda Constitucional 132/2023',
+      calculationRole:
+        'Base normativa da transição para CBS/IBS e leitura de destaque informativo no ciclo 2026.',
+    },
+    {
+      code: 'LC_214_2025',
+      title: 'Lei Complementar de CBS/IBS',
+      sourceType: 'COMPLEMENTARY_LAW',
+      citation: 'Lei Complementar 214/2025',
+      calculationRole:
+        'Referência para premissas de calibração, governança e necessidade de atualização conforme atos complementares.',
+    },
+    {
+      code: 'LC_123_2006',
+      title: 'Simples Nacional, ME e EPP',
+      sourceType: 'COMPLEMENTARY_LAW',
+      citation: 'Lei Complementar 123/2006',
+      calculationRole:
+        'Limites de receita, fórmula de alíquota efetiva, anexos e regra do Fator R em simulação preliminar.',
+    },
+    {
+      code: 'CGSN_140_2018',
+      title: 'Regulamento do Simples Nacional',
+      sourceType: 'REGULATION',
+      citation: 'Resolução CGSN 140/2018',
+      calculationRole:
+        'Referência operacional para MEI, Simples Nacional, segregações e condicionantes não automatizadas.',
+    },
+    {
+      code: 'RFB_IRPF',
+      title: 'IRPF e livro caixa',
+      sourceType: 'OFFICIAL_PORTAL',
+      citation: 'Receita Federal do Brasil - orientações de IRPF e livro caixa vigentes',
+      calculationRole:
+        'Limita o cenário PF a estimativa preliminar dependente de documentação, retenções e dedutibilidade real.',
+    },
+    {
+      code: 'BCOST_TAX_POLICY',
+      title: 'Política bCost de simulação assistida',
+      sourceType: 'SYSTEM_POLICY',
+      citation: 'Tax by Design bCost - simulador não oficial sem revisão CRC',
+      calculationRole:
+        'Impede uso da simulação como apuração oficial, promessa de economia ou contratação automática sem evidência.',
+    },
+  ],
+  revalidationTriggers: [
+    'Publicação de nova lei complementar, resolução CGSN, ato declaratório, solução de consulta vinculante ou nota técnica de documento fiscal.',
+    'Alteração de CNAE, município, natureza de serviço, retenções, folha, pró-labore, RBT12 ou regime tributário informado pelo cliente.',
+    'Mudança anual de tabela de IRPF, limite aplicável, anexo do Simples, regra municipal de ISS ou política de split/payment tributário.',
+  ],
+  releaseGuardrails: [
+    'Toda resposta deve manter officialAssessment=false enquanto não houver apuração documental e revisão de contador responsável.',
+    'Toda economia estimada deve ser bloqueada para publicidade quando houver regra BLOCKED ou REQUIRES_REVIEW.',
+    'Toda proposta gerada a partir do simulador deve exigir checklist documental e trilha de aceite de escopo.',
+  ],
+};
 
 type SimplesBracket = {
   upperLimit: number;
@@ -176,6 +244,7 @@ export class TaxScenariosService {
       serviceQualification,
       preProposal,
       legalRiskAssessment,
+      legalSourceManifest: TAX_SCENARIO_LEGAL_SOURCE_MANIFEST,
       guardrails: [
         ...(annualRevenue > SIMPLES_ANNUAL_LIMIT
           ? [

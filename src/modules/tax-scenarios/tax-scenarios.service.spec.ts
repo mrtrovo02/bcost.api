@@ -308,6 +308,47 @@ describe('TaxScenariosService', () => {
     );
   });
 
+  it('retorna manifesto de fontes legais versionado para auditoria de release', () => {
+    const result = service.simulate({
+      activity: 'SERVICE_PROVIDER',
+      monthlyRevenue: 80_000,
+      monthlyDeductibleExpenses: 8_000,
+      monthlyPayroll: 24_000,
+      dependents: 0,
+      currentModel: 'SIMPLES_NACIONAL',
+    });
+
+    expect(result.legalSourceManifest).toMatchObject({
+      version: 'tax-scenarios-legal-sources-2026.1',
+      jurisdiction: 'BR',
+      calculationMode: 'ESTIMATIVE_TRIAGE',
+      officialAssessment: false,
+    });
+    expect(result.legalSourceManifest.sources).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'EC_132_2023',
+          sourceType: 'CONSTITUTIONAL_AMENDMENT',
+        }),
+        expect.objectContaining({
+          code: 'LC_214_2025',
+          sourceType: 'COMPLEMENTARY_LAW',
+        }),
+        expect.objectContaining({
+          code: 'LC_123_2006',
+          sourceType: 'COMPLEMENTARY_LAW',
+        }),
+        expect.objectContaining({
+          code: 'BCOST_TAX_POLICY',
+          sourceType: 'SYSTEM_POLICY',
+        }),
+      ]),
+    );
+    expect(result.legalSourceManifest.releaseGuardrails.join(' ')).toContain(
+      'officialAssessment=false',
+    );
+  });
+
   it('qualifica a oferta comercial sem permitir venda automática quando PF permanece melhor', () => {
     const result = service.simulate({
       activity: 'SERVICE_PROVIDER',
