@@ -31,6 +31,7 @@ cd ~/bcost.api
 git pull origin main
 npm ci
 npx prisma generate
+npm run release:check
 npm run build
 pm2 restart bcost-api --update-env
 pm2 logs bcost-api --lines 80
