@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Post,
+  Res,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -29,6 +30,9 @@ import { Public } from '../common/decorators/public.decorator.js';
 import { GetUser } from '../modules/auth/decorators/get-user.decorator.js';
 import { SkipCompanyCheck } from '../common/decorators/skip-company-check.decorator.js';
 import { ThrottleEndpoint } from '../common/decorators/throttle-endpoint.decorator.js';
+import type { FastifyReply } from 'fastify';
+
+const REFRESH_COOKIE = 'bcost_refresh_token';
 
 interface LogoutUser {
   id: string;
@@ -92,8 +96,14 @@ export class AuthController {
     status: 401,
     description: 'Credenciais inválidas ou usuário inativo.',
   })
-  async login(@Body() dto: LoginDto) {
-    return await this.authService.login(dto.email, dto.password);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.attachRefreshCookie(
+      await this.authService.login(dto.email, dto.password),
+      reply,
+    );
   }
 
   @Public()
@@ -104,8 +114,38 @@ export class AuthController {
   @ApiBody({ type: VerifyMfaDto, description: 'Sessão MFA e código TOTP' })
   @ApiResponse({ status: 200, description: 'MFA validado com sucesso.' })
   @ApiResponse({ status: 401, description: 'Sessão ou código MFA inválido.' })
-  async verifyMfa(@Body() dto: VerifyMfaDto) {
-    return this.authService.verifyMFA(dto.mfaSession, dto.otpCode);
+  async verifyMfa(
+    @Body() dto: VerifyMfaDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    return this.attachRefreshCookie(
+      await this.authService.verifyMFA(dto.mfaSession, dto.otpCode),
+      reply,
+    );
+  }
+
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ThrottleEndpoint({ limit: 20, ttl: 60 })
+  @ApiOperation({ summary: 'Renovar a sessão autenticada' })
+  async refresh(
+    @Headers('cookie') cookie: string | undefined,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const refreshToken = this.readRefreshCookie(cookie);
+
+    if (!refreshToken) {
+      throw new BadRequestException({
+        message: 'Cookie de renovação ausente.',
+        code: 'AUTH-REFRESH-MISSING',
+      });
+    }
+
+    return this.attachRefreshCookie(
+      await this.authService.refresh(refreshToken),
+      reply,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -120,6 +160,7 @@ export class AuthController {
     @GetUser() user: LogoutUser,
     @Headers('authorization') authorization: string | undefined,
     @Body() dto: LogoutDto = {},
+    @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     const token = dto.token ?? this.extractBearerToken(authorization);
     const decoded = this.decodeLogoutToken(token);
@@ -146,10 +187,25 @@ export class AuthController {
       new Date(exp * 1000),
     );
 
+    reply.header('set-cookie', this.clearRefreshCookie());
+
     return {
-      message: 'Logged out successfully',
+      message: 'Logout efetuado com sucesso.',
       revokedAt: new Date().toISOString(),
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revogar todas as sessões do usuário' })
+  async logoutAll(
+    @GetUser('id') userId: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    reply.header('set-cookie', this.clearRefreshCookie());
+    return this.authService.logoutAll(userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -204,5 +260,41 @@ export class AuthController {
       jti: typeof payload.jti === 'string' ? payload.jti : undefined,
       exp: typeof payload.exp === 'number' ? payload.exp : undefined,
     };
+  }
+
+  private attachRefreshCookie<T extends object>(
+    response: T,
+    reply: FastifyReply,
+  ): Omit<T, 'refresh_token'> {
+    const refreshToken = (response as { refresh_token?: string }).refresh_token;
+
+    if (refreshToken) {
+      reply.header('set-cookie', this.serializeRefreshCookie(refreshToken));
+    }
+
+    const { refresh_token: _refreshToken, ...publicResponse } = response as T & {
+      refresh_token?: string;
+    };
+    return publicResponse;
+  }
+
+  private readRefreshCookie(cookie: string | undefined): string | null {
+    const value = cookie
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${REFRESH_COOKIE}=`))
+      ?.slice(`${REFRESH_COOKIE}=`.length);
+
+    return value ? decodeURIComponent(value) : null;
+  }
+
+  private serializeRefreshCookie(value: string): string {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return `${REFRESH_COOKIE}=${encodeURIComponent(value)}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${30 * 24 * 60 * 60}${secure}`;
+  }
+
+  private clearRefreshCookie(): string {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return `${REFRESH_COOKIE}=; Path=/api; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
   }
 }

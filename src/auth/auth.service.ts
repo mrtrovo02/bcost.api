@@ -16,7 +16,7 @@ import { PrismaService } from '../database/prisma.service.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { CompanyRole, TaxRegime } from '@prisma/client';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { TwoFAService } from './2fa.service.js';
 
@@ -39,6 +39,7 @@ export interface RegisterResponse {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token?: string;
   user: {
     id: string;
     email: string;
@@ -451,7 +452,69 @@ export class AuthService {
     };
   }
 
-  private generateLoginResponse(user: LoginUserRecord): LoginResponse {
+  async refresh(refreshToken: string): Promise<LoginResponse> {
+    const tokenHash = this.hashRefreshToken(refreshToken);
+    const session = await this.prisma.userSession.findUnique({
+      where: { token: tokenHash },
+      include: {
+        user: {
+          include: {
+            companies: {
+              where: {
+                deletedAt: null,
+                company: { deletedAt: null },
+              },
+              include: { company: true },
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!session || session.expiresAt <= new Date() || !session.user.active) {
+      throw new UnauthorizedException({
+        message: 'Sessão de renovação inválida ou expirada.',
+        code: 'AUTH-REFRESH-INVALID',
+      });
+    }
+
+    if (session.revokedAt) {
+      await this.prisma.userSession.updateMany({
+        where: { userId: session.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException({
+        message: 'Sessão de renovação reutilizada. Faça login novamente.',
+        code: 'AUTH-REFRESH-REUSED',
+      });
+    }
+
+    const revoked = await this.prisma.userSession.updateMany({
+      where: { id: session.id, token: tokenHash, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    if (revoked.count !== 1) {
+      await this.prisma.userSession.updateMany({
+        where: { userId: session.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      throw new UnauthorizedException({
+        message: 'Sessão de renovação reutilizada. Faça login novamente.',
+        code: 'AUTH-REFRESH-REUSED',
+      });
+    }
+
+    return this.generateLoginResponse(session.user);
+  }
+
+  async logoutAll(userId: string): Promise<{ revokedSessions: number }> {
+    const result = await this.prisma.userSession.deleteMany({ where: { userId } });
+    return { revokedSessions: result.count };
+  }
+
+  private async generateLoginResponse(user: LoginUserRecord): Promise<LoginResponse> {
     const ownerEntry = user.companies.find(
       (cu) => cu.role === CompanyRole.OWNER,
     );
@@ -482,8 +545,11 @@ export class AuthService {
       `🔓 Acesso autorizado: ${user.name} [empresas: ${mappedCompanies.length}, ativa: ${activeCompanyId ?? 'nenhuma'}]`,
     );
 
+    const refresh_token = await this.createRefreshToken(user.id);
+
     return {
       access_token,
+      refresh_token,
       user: {
         id: user.id,
         email: user.email,
@@ -492,5 +558,28 @@ export class AuthService {
         companies: mappedCompanies,
       },
     };
+  }
+
+  private async createRefreshToken(userId: string): Promise<string | undefined> {
+    const userSession = (this.prisma as unknown as {
+      userSession?: { create: (args: unknown) => Promise<unknown> };
+    }).userSession;
+
+    if (!userSession) return undefined;
+
+    const refreshToken = randomBytes(48).toString('base64url');
+    await userSession.create({
+      data: {
+        userId,
+        token: this.hashRefreshToken(refreshToken),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return refreshToken;
+  }
+
+  private hashRefreshToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 }
