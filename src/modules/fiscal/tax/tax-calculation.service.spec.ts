@@ -78,6 +78,9 @@ describe('TaxCalculationService', () => {
       ]),
     );
     expect(preview.nextActions.length).toBeGreaterThan(0);
+    expect(preview.evidencePacket.closureProtocol).toMatch(
+      /^BCOST-TAX-2026-07-[A-F0-9]{12}$/,
+    );
     expect(preview.evidencePacket.integrityHash).toMatch(/^[a-f0-9]{64}$/);
     expect(preview.evidencePacket.requiredArtifacts).toEqual(
       expect.arrayContaining([
@@ -154,7 +157,7 @@ describe('TaxCalculationService', () => {
   it('gera obrigação quando gates oficiais estão atendidos', async () => {
     const { service, prisma } = buildService();
 
-    const obligation = await service.closeMonthAndGenerateObligation(
+    const closure = await service.closeMonthAndGenerateObligation(
       'company-1',
       7,
       2026,
@@ -167,7 +170,21 @@ describe('TaxCalculationService', () => {
       },
     );
 
-    expect(obligation).toEqual({ id: 'obligation-1' });
+    expect(closure.obligation).toEqual({ id: 'obligation-1' });
+    expect(closure.auditTrail).toEqual(
+      expect.objectContaining({
+        closureProtocol: expect.stringMatching(
+          /^BCOST-TAX-2026-07-[A-F0-9]{12}$/,
+        ),
+        evidencePacketId: 'tax-preview:company-1:2026-07',
+        integrityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        period: '2026-07',
+      }),
+    );
+    expect(closure.officialEvidence.pendingArtifacts).toEqual([
+      'RECIBO_PGDAS_D',
+      'GUIA_DAS',
+    ]);
     expect(prisma.withRlsCompanyContext).toHaveBeenCalledWith(
       'company-1',
       expect.any(Function),
@@ -177,7 +194,17 @@ describe('TaxCalculationService', () => {
         create: expect.objectContaining({
           inputSnapshot: expect.objectContaining({
             evidencePacket: expect.objectContaining({
+              closureProtocol: expect.stringMatching(
+                /^BCOST-TAX-2026-07-[A-F0-9]{12}$/,
+              ),
               integrityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+            }),
+            auditTrail: expect.objectContaining({
+              period: '2026-07',
+            }),
+            officialEvidence: expect.objectContaining({
+              status: 'AWAITING_GOVERNMENT_RECEIPTS',
+              pendingArtifacts: ['RECIBO_PGDAS_D', 'GUIA_DAS'],
             }),
           }),
         }),

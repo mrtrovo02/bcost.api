@@ -14,6 +14,7 @@ import {
   Prisma,
   InvoiceStatus,
   ObligationStatus,
+  type TaxObligation,
 } from '@prisma/client';
 
 // ---------------------------------------------------------------------------
@@ -68,6 +69,7 @@ export interface MonthlyTaxClosurePreview {
   evidenceRequired: string[];
   evidencePacket: {
     id: string;
+    closureProtocol: string;
     integrityHash: string;
     requiredArtifacts: {
       code: string;
@@ -78,6 +80,21 @@ export interface MonthlyTaxClosurePreview {
   };
   nextActions: string[];
   generatedAt: string;
+}
+
+export interface MonthlyTaxClosureResult {
+  obligation: TaxObligation;
+  auditTrail: {
+    closureProtocol: string;
+    evidencePacketId: string;
+    integrityHash: string;
+    period: string;
+    generatedAt: string;
+  };
+  officialEvidence: {
+    pendingArtifacts: string[];
+    message: string;
+  };
 }
 
 const SIMPLES_TABLES = {
@@ -288,7 +305,7 @@ export class TaxCalculationService {
     year: number,
     userId: string,
     options: MonthlyTaxPreviewOptions = {},
-  ) {
+  ): Promise<MonthlyTaxClosureResult> {
     const period = `${year}-${String(month).padStart(2, '0')}`;
     const obligationName = `Guia DAS - Simples Nacional - ${period}`;
 
@@ -326,6 +343,17 @@ export class TaxCalculationService {
 
     const calc = preview.calculation;
     const dueDate = new Date(year, month, 20); // Vencimento padrão: dia 20
+    const closureGeneratedAt = new Date().toISOString();
+    const auditTrail: MonthlyTaxClosureResult['auditTrail'] = {
+      closureProtocol: preview.evidencePacket.closureProtocol,
+      evidencePacketId: preview.evidencePacket.id,
+      integrityHash: preview.evidencePacket.integrityHash,
+      period,
+      generatedAt: closureGeneratedAt,
+    };
+    const pendingArtifacts = preview.evidencePacket.requiredArtifacts
+      .filter((artifact) => artifact.status !== 'READY')
+      .map((artifact) => artifact.code);
     const inputSnapshot = {
       calculation: {
         ...calc,
@@ -333,6 +361,14 @@ export class TaxCalculationService {
       },
       gates: preview.gates,
       evidencePacket: preview.evidencePacket,
+      auditTrail,
+      officialEvidence: {
+        pendingArtifacts,
+        status:
+          pendingArtifacts.length > 0
+            ? 'AWAITING_GOVERNMENT_RECEIPTS'
+            : 'READY_FOR_ARCHIVE',
+      },
     } as unknown as Prisma.InputJsonValue;
 
     return this.prisma.withRlsCompanyContext(companyId, async (tx) => {
@@ -365,7 +401,17 @@ export class TaxCalculationService {
         },
       });
 
-      return obligation;
+      return {
+        obligation,
+        auditTrail,
+        officialEvidence: {
+          pendingArtifacts,
+          message:
+            pendingArtifacts.length > 0
+              ? 'Obrigação interna gerada. Anexe recibo PGDAS-D e guia DAS oficiais após transmissão para concluir o dossiê.'
+              : 'Dossiê de fechamento pronto para arquivo auditável.',
+        },
+      };
     });
   }
 
@@ -602,6 +648,11 @@ export class TaxCalculationService {
 
     return {
       id: `tax-preview:${companyId}:${calculation.period}`,
+      closureProtocol: `BCOST-TAX-${calculation.period}-${createHash('sha256')
+        .update(`${companyId}:${calculation.period}`)
+        .digest('hex')
+        .slice(0, 12)
+        .toUpperCase()}`,
       integrityHash: createHash('sha256')
         .update(JSON.stringify(evidenceInput))
         .digest('hex'),

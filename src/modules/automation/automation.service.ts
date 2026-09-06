@@ -66,7 +66,7 @@ export class AutomationService implements OnModuleInit {
           data: {
             status: JobStatus.COMPLETED,
             progress: 100,
-            result: result as Prisma.InputJsonValue,
+            result: result as unknown as Prisma.InputJsonValue,
             completedAt: new Date(),
           },
         });
@@ -132,7 +132,7 @@ export class AutomationService implements OnModuleInit {
           data: {
             status: JobStatus.COMPLETED,
             progress: 100,
-            result: result as Prisma.InputJsonValue,
+            result: result as unknown as Prisma.InputJsonValue,
             completedAt: new Date(),
           },
         });

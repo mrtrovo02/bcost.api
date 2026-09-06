@@ -494,7 +494,7 @@ export class FiscalController {
     const targetMonth = parseOptionalPositiveInt(month, 0, 'month');
     const targetYear = parseOptionalPositiveInt(year, 0, 'year');
 
-    const obligation = await this.taxService.closeMonthAndGenerateObligation(
+    const closure = await this.taxService.closeMonthAndGenerateObligation(
       companyId,
       targetMonth,
       targetYear,
@@ -517,7 +517,9 @@ export class FiscalController {
 
     return {
       status: 'closed',
-      obligation,
+      obligation: closure.obligation,
+      auditTrail: closure.auditTrail,
+      officialEvidence: closure.officialEvidence,
       snapshotId: snapshot.id,
       integrityHash: snapshot.integrityHash,
     };
