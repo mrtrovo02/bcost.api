@@ -110,10 +110,10 @@ function validateProductionEnvironment() {
   );
   requirePrefix('STRIPE_PRICE_PRO', 'price_', 'price id do plano PRO obrigatório.');
   requirePrefix('STRIPE_PRICE_ENTERPRISE', 'price_', 'price id do plano ENTERPRISE obrigatório.');
-
-  if (!valueOf('METRICS_API_KEY')) {
-    warnings.push('METRICS_API_KEY: recomendado para proteger métricas operacionais.');
-  }
+  requireNonEmpty(
+    'METRICS_API_KEY',
+    'obrigatório para proteger /metrics e sustentar observabilidade/SLA em produção.',
+  );
 }
 
 validateProductionEnvironment();

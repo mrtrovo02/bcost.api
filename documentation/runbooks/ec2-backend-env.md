@@ -14,6 +14,7 @@ ENABLE_SWAGGER=false
 ENABLE_DEMO_FALLBACK=false
 ALLOW_DEMO_SESSION=false
 ALLOW_SETUP_ADMIN=false
+METRICS_API_KEY=<segredo-forte-para-prometheus-ou-operacao>
 ```
 
 ## Regras de segurança
@@ -21,6 +22,7 @@ ALLOW_SETUP_ADMIN=false
 - `JWT_SECRET` deve ter no mínimo 32 caracteres e não deve ser reutilizado em desenvolvimento.
 - `DATABASE_URL` deve apontar para a conexão transacional da aplicação.
 - `DIRECT_URL` deve apontar para a conexão usada por Prisma/migrations.
+- `METRICS_API_KEY` é obrigatório para impedir exposição pública de telemetria em `/metrics`.
 - Em produção, origens CORS com `http://` são descartadas pelo bootstrap.
 - Sessão demo em produção exige token demo e `x-demo-session=true`; não use em ambiente com clientes reais sem segregação validada.
 
