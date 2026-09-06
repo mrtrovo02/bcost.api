@@ -1,11 +1,16 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { MetricsController } from './metrics.controller.js';
 
 describe('MetricsController', () => {
-  const createController = (metricsApiKey = '') =>
+  const createController = (metricsApiKey = '', nodeEnv = 'development') =>
     new MetricsController({
-      get: jest.fn().mockReturnValue(metricsApiKey),
-    } as any);
+      get: jest.fn((key: string) => {
+        if (key === 'METRICS_API_KEY') return metricsApiKey;
+        if (key === 'NODE_ENV') return nodeEnv;
+        return undefined;
+      }),
+    } as Pick<ConfigService, 'get'> as ConfigService);
 
   it('returns Prometheus metrics when no API key is configured', async () => {
     const controller = createController();
@@ -29,5 +34,11 @@ describe('MetricsController', () => {
     const metrics = await controller.getMetrics('secret-key');
 
     expect(typeof metrics).toBe('string');
+  });
+
+  it('fails closed in production when no metrics API key is configured', async () => {
+    const controller = createController('', 'production');
+
+    await expect(controller.getMetrics()).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
