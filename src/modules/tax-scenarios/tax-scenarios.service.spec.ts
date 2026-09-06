@@ -569,6 +569,28 @@ describe('TaxScenariosService', () => {
         );
       },
     );
+
+    it.each(TAX_SCENARIO_REGRESSION_SUITE.fixtures)(
+      'bloqueia uso oficial e publicidade de economia sem dossiê fechado em $id',
+      (fixture) => {
+        const result = service.simulate(fixture.input);
+        const reviewedRules = result.complianceTrail.rules.filter(
+          (rule) =>
+            rule.status === 'BLOCKED' ||
+            rule.status === 'REQUIRES_REVIEW',
+        );
+
+        expect(result.complianceTrail.officialAssessment).toBe(false);
+        expect(result.legalRiskAssessment.canUseAsOfficialAssessment).toBe(false);
+
+        if (reviewedRules.length > 0) {
+          expect(result.legalRiskAssessment.canAdvertiseSavings).toBe(false);
+          expect(result.legalRiskAssessment.findings.length).toBe(
+            reviewedRules.length,
+          );
+        }
+      },
+    );
   });
 });
 
