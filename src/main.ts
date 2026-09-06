@@ -453,10 +453,15 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     fastifyInstance.get(
       '/metrics',
       async (request: FastifyRequest, reply: FastifyReply) => {
-        const metricsApiKey = config.get<string>('METRICS_API_KEY');
+        const metricsApiKey = config.get<string>('METRICS_API_KEY')?.trim() ?? '';
+        const isProduction = config.get<string>('NODE_ENV') === 'production';
         const providedApiKey = (request.headers as ExtendedHeaders)[
           'x-api-key'
         ];
+
+        if (isProduction && !metricsApiKey) {
+          return reply.status(401).send({ error: 'Unauthorized' });
+        }
 
         if (metricsApiKey && providedApiKey !== metricsApiKey) {
           return reply.status(401).send({ error: 'Unauthorized' });
