@@ -10,6 +10,7 @@ import {
 import { Observable, tap } from 'rxjs';
 import { FastifyReply, FastifyRequest } from 'fastify';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Histogram } from 'prom-client';
 import { contextStorage } from '../context/context.storage.js';
 import { AuditEventPayload, AuditJsonObject } from '../audit/audit.types.js';
 
@@ -49,6 +50,12 @@ function redactSensitiveHeaders(headers: Record<string, unknown> = {}) {
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger(LoggingInterceptor.name);
+  private readonly httpLatencyHistogram = new Histogram({
+    name: 'bcost_http_request_duration_seconds',
+    help: 'Duracao das requisicoes HTTP da API bCost em segundos.',
+    labelNames: ['method', 'status'] as const,
+    buckets: [0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10],
+  });
 
   constructor(private readonly eventEmitter: EventEmitter2) {}
 
@@ -90,6 +97,7 @@ export class LoggingInterceptor implements NestInterceptor {
         next: () => {
           const responseTime = Date.now() - startedAt;
           const statusCode = reply.statusCode;
+          this.recordLatency(method, statusCode, responseTime);
 
           this.logger.log(
             `[${traceId}] ${method} ${url} ${statusCode} - ${responseTime}ms`,
@@ -120,6 +128,7 @@ export class LoggingInterceptor implements NestInterceptor {
         error: (error: HttpErrorLike) => {
           const responseTime = Date.now() - startedAt;
           const statusCode = error?.status || error?.statusCode || 500;
+          this.recordLatency(method, statusCode, responseTime);
 
           this.logger.error(
             `[${traceId}] ${method} ${url} ERROR ${statusCode} - ${responseTime}ms - ${error?.message}`,
@@ -142,6 +151,17 @@ export class LoggingInterceptor implements NestInterceptor {
           });
         },
       }),
+    );
+  }
+
+  private recordLatency(
+    method: string,
+    statusCode: number,
+    responseTimeMs: number,
+  ): void {
+    this.httpLatencyHistogram.observe(
+      { method: method.toUpperCase(), status: String(statusCode) },
+      responseTimeMs / 1000,
     );
   }
 
