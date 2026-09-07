@@ -48,9 +48,10 @@ function requireRuntimeDatabaseRole() {
 
   try {
     const username = decodeURIComponent(new URL(value).username);
-    if (username !== 'bcost_app') {
+    const isRuntimeRole = username === 'bcost_app' || username.startsWith('bcost_app.');
+    if (!isRuntimeRole) {
       errors.push(
-        `DATABASE_URL: use a role de runtime bcost_app sem BYPASSRLS; usuário atual: ${username || '(ausente)'}.`,
+        `DATABASE_URL: use a role de runtime bcost_app sem BYPASSRLS; usuário informado: ${username || '(ausente)'}.`,
       );
     }
   } catch {

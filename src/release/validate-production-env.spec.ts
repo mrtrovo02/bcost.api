@@ -12,7 +12,7 @@ const scriptPath = resolve(process.cwd(), 'scripts', 'validate-production-env.cj
 const baseEnv: NodeJS.ProcessEnv = {
   ...process.env,
   NODE_ENV: 'production',
-  DATABASE_URL: 'postgresql://bcost:bcost@localhost:5432/bcost',
+  DATABASE_URL: 'postgresql://bcost_app:bcost@localhost:5432/bcost',
   DIRECT_URL: 'postgresql://bcost:bcost@localhost:5432/bcost',
   JWT_SECRET: 'bcost-release-check-secret-with-more-than-forty-eight-characters',
   JWT_EXPIRES_IN: '15m',
@@ -75,5 +75,25 @@ describe('validate-production-env release gate', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('ENABLE_SWAGGER');
+  });
+
+  it('aceita o usuário bcost_app com sufixo de projeto do pooler Supabase', () => {
+    const result = runReleaseCheck({
+      DATABASE_URL:
+        'postgresql://bcost_app.fwzwaacloubaabmcdpik:secret@aws-1-sa-east-1.pooler.supabase.com:6543/postgres',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Release check aprovado');
+  });
+
+  it('rejeita usuários administrativos na DATABASE_URL', () => {
+    const result = runReleaseCheck({
+      DATABASE_URL: 'postgresql://postgres:secret@localhost:5432/bcost',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('DATABASE_URL');
+    expect(result.stderr).toContain('postgres');
   });
 });
