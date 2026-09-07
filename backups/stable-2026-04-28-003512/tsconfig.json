@@ -5,7 +5,6 @@
     "moduleResolution": "NodeNext",
     "target": "ES2023",
     "lib": ["ES2023"],
-    "baseUrl": "./",
     "rootDir": "src",
     "outDir": "./dist",
 
