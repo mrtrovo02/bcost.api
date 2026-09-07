@@ -128,6 +128,32 @@ function requirePrefix(name, prefix, message) {
   }
 }
 
+function isBetaReleaseStage() {
+  return valueOf('RELEASE_STAGE') === 'beta';
+}
+
+function requireOfficialStripeConfiguration() {
+  if (isBetaReleaseStage()) {
+    warnings.push(
+      'STRIPE: RELEASE_STAGE=beta permite deploy controlado sem Stripe live; nao use para venda oficial.',
+    );
+    return;
+  }
+
+  requirePrefix(
+    'STRIPE_SECRET_KEY',
+    'sk_live_',
+    'use uma chave live do Stripe para monetização oficial.',
+  );
+  requirePrefix(
+    'STRIPE_WEBHOOK_SECRET',
+    'whsec_',
+    'use o signing secret do endpoint webhook do Stripe.',
+  );
+  requirePrefix('STRIPE_PRICE_PRO', 'price_', 'price id do plano PRO obrigatório.');
+  requirePrefix('STRIPE_PRICE_ENTERPRISE', 'price_', 'price id do plano ENTERPRISE obrigatório.');
+}
+
 function durationToSeconds(value) {
   const match = /^(\d+)(ms|s|m|h|d|w|y)$/.exec(value);
   if (!match) return null;
@@ -191,18 +217,7 @@ function validateProductionEnvironment() {
   requireEquals('ALLOW_SETUP_ADMIN', 'false', 'setup admin deve ficar desligado em produção.');
   requireEquals('ENABLE_SWAGGER', 'false', 'Swagger público deve ficar desligado em produção.');
 
-  requirePrefix(
-    'STRIPE_SECRET_KEY',
-    'sk_live_',
-    'use uma chave live do Stripe para monetização oficial.',
-  );
-  requirePrefix(
-    'STRIPE_WEBHOOK_SECRET',
-    'whsec_',
-    'use o signing secret do endpoint webhook do Stripe.',
-  );
-  requirePrefix('STRIPE_PRICE_PRO', 'price_', 'price id do plano PRO obrigatório.');
-  requirePrefix('STRIPE_PRICE_ENTERPRISE', 'price_', 'price id do plano ENTERPRISE obrigatório.');
+  requireOfficialStripeConfiguration();
   requireNonEmpty(
     'METRICS_API_KEY',
     'obrigatório para proteger /metrics e sustentar observabilidade/SLA em produção.',

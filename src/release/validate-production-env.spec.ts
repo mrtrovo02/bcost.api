@@ -120,4 +120,33 @@ describe('validate-production-env release gate', () => {
     expect(result.stderr).toContain('DIRECT_URL');
     expect(result.stderr).toContain('Session Pooler na porta 5432');
   });
+
+  it('permite beta controlado sem Stripe live mantendo os demais gates criticos', () => {
+    const result = runReleaseCheck({
+      RELEASE_STAGE: 'beta',
+      STRIPE_SECRET_KEY: '',
+      STRIPE_WEBHOOK_SECRET: '',
+      STRIPE_PRICE_PRO: '',
+      STRIPE_PRICE_ENTERPRISE: '',
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Release check aprovado');
+    expect(result.stderr).toContain('RELEASE_STAGE=beta');
+  });
+
+  it('nao permite que o beta controlado enfraqueca a role de runtime', () => {
+    const result = runReleaseCheck({
+      RELEASE_STAGE: 'beta',
+      DATABASE_URL: 'postgresql://postgres:secret@localhost:5432/bcost',
+      STRIPE_SECRET_KEY: '',
+      STRIPE_WEBHOOK_SECRET: '',
+      STRIPE_PRICE_PRO: '',
+      STRIPE_PRICE_ENTERPRISE: '',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('DATABASE_URL');
+    expect(result.stderr).toContain('postgres');
+  });
 });
