@@ -10,6 +10,7 @@ import { HttpAdapterHost } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { contextStorage } from '../context/context.storage.js';
 import { PrismaService } from '../../database/prisma.service.js';
+import { Counter } from 'prom-client';
 import {
   redactDeep,
   redactSensitiveHeaders,
@@ -38,6 +39,11 @@ const SCANNER_404_PATTERNS = [
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(GlobalExceptionFilter.name);
+  private readonly http5xxCounter = new Counter({
+    name: 'bcost_http_5xx_total',
+    help: 'Total de respostas HTTP 5xx emitidas pela API bCost.',
+    labelNames: ['method', 'status'] as const,
+  });
 
   constructor(
     private readonly httpAdapterHost: HttpAdapterHost,
@@ -67,6 +73,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const method = request.method ?? 'UNKNOWN';
     const url = request.url ?? httpAdapter.getRequestUrl(request);
     const isScannerNotFound = this.isScannerNotFound(status, method, url);
+
+    if (status >= 500 && status < 600) {
+      this.http5xxCounter.inc({ method, status: String(status) });
+    }
 
     // 1. Log para Observabilidade
     if (isScannerNotFound) {
