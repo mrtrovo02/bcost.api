@@ -59,6 +59,35 @@ function requireRuntimeDatabaseRole() {
   }
 }
 
+function requireMigrationDatabaseUrl() {
+  const runtimeUrl = valueOf('DATABASE_URL');
+  const migrationUrl = valueOf('DIRECT_URL');
+
+  if (!migrationUrl) return;
+
+  if (runtimeUrl && runtimeUrl === migrationUrl) {
+    errors.push(
+      'DIRECT_URL: deve ser uma conexão de migration diferente da DATABASE_URL de runtime.',
+    );
+    return;
+  }
+
+  try {
+    const parsed = new URL(migrationUrl);
+    const isTransactionPooler =
+      parsed.hostname.includes('pooler.supabase.com') && parsed.port === '6543';
+    const hasPgBouncerParam = parsed.searchParams.get('pgbouncer') === 'true';
+
+    if (isTransactionPooler || hasPgBouncerParam) {
+      errors.push(
+        'DIRECT_URL: use conexão direta ou Supabase Session Pooler na porta 5432, sem pgbouncer=true.',
+      );
+    }
+  } catch {
+    errors.push('DIRECT_URL: URL inválida para validar conexão de migrations.');
+  }
+}
+
 function parseOrigins(raw) {
   return raw
     .replace(/^\[/, '')
@@ -141,6 +170,7 @@ function validateProductionEnvironment() {
   requireNonEmpty('DATABASE_URL', 'conexão PostgreSQL obrigatória.');
   requireNonEmpty('DIRECT_URL', 'conexão direta obrigatória para Prisma/migrations.');
   requireRuntimeDatabaseRole();
+  requireMigrationDatabaseUrl();
   requireNonEmpty('JWT_SECRET', 'segredo JWT obrigatório.');
 
   if (valueOf('JWT_SECRET').length > 0 && valueOf('JWT_SECRET').length < 48) {

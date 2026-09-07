@@ -96,4 +96,28 @@ describe('validate-production-env release gate', () => {
     expect(result.stderr).toContain('DATABASE_URL');
     expect(result.stderr).toContain('postgres');
   });
+
+  it('rejeita DIRECT_URL igual a DATABASE_URL para evitar migrations pelo runtime pooler', () => {
+    const url =
+      'postgresql://bcost_app.fwzwaacloubaabmcdpik:secret@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true';
+    const result = runReleaseCheck({
+      DATABASE_URL: url,
+      DIRECT_URL: url,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('DIRECT_URL');
+    expect(result.stderr).toContain('diferente da DATABASE_URL');
+  });
+
+  it('rejeita DIRECT_URL no transaction pooler do Supabase', () => {
+    const result = runReleaseCheck({
+      DIRECT_URL:
+        'postgresql://postgres.fwzwaacloubaabmcdpik:secret@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('DIRECT_URL');
+    expect(result.stderr).toContain('Session Pooler na porta 5432');
+  });
 });
