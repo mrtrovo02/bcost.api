@@ -1,4 +1,4 @@
-import { Controller, Get, Headers } from '@nestjs/common';
+import { Controller, Get, Header, Headers } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { register } from 'prom-client';
 import {
@@ -11,6 +11,7 @@ export class MetricsController {
   constructor(private readonly config: ConfigService) {}
 
   @Get()
+  @Header('Content-Type', register.contentType)
   async getMetrics(
     @Headers(METRICS_API_KEY_HEADER) apiKey?: string | string[],
   ): Promise<string> {
