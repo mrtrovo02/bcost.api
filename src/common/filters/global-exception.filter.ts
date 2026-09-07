@@ -23,6 +23,11 @@ type HttpRequestLike = {
   headers?: Record<string, unknown>;
 };
 
+type HttpResponseLike = {
+  header?: (name: string, value: string) => void;
+  setHeader?: (name: string, value: string) => void;
+};
+
 const SCANNER_404_PATTERNS = [
   /(?:^|\/)\.env(?:[./_-][\w.-]+)?(?:$|\?)/i,
   /(?:^|\/)\.git(?:\/|$|\?)/i,
@@ -54,7 +59,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const { httpAdapter } = this.httpAdapterHost;
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<HttpRequestLike>();
-    const response = ctx.getResponse();
+    const response = ctx.getResponse<HttpResponseLike>();
 
     // Recupera o contexto da esteira (AsyncLocalStorage)
     const store = contextStorage.getStore();
@@ -129,12 +134,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     // 3. Resposta Padronizada (Contrato Enterprise)
+    this.setProblemDetailsHeader(response);
+
+    const detail = this.extractClientMessage(message);
     const responseBody = {
+      type: this.resolveProblemType(status),
+      title: this.resolveProblemTitle(status),
+      status,
+      detail,
+      instance: httpAdapter.getRequestUrl(request),
+      traceId: requestId,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: httpAdapter.getRequestUrl(request),
       requestId: requestId, // ID de rastreio para o suporte
-      message: this.extractClientMessage(message),
+      message: detail,
     };
 
     httpAdapter.reply(response, responseBody, status);
@@ -162,6 +176,39 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     return message;
+  }
+
+  private resolveProblemType(status: number): string {
+    if (status >= 500) return 'https://docs.bcost.com.br/problems/internal-server-error';
+    if (status === HttpStatus.UNAUTHORIZED) return 'https://docs.bcost.com.br/problems/unauthorized';
+    if (status === HttpStatus.FORBIDDEN) return 'https://docs.bcost.com.br/problems/forbidden';
+    if (status === HttpStatus.NOT_FOUND) return 'https://docs.bcost.com.br/problems/not-found';
+    if (status === HttpStatus.UNPROCESSABLE_ENTITY) {
+      return 'https://docs.bcost.com.br/problems/validation-error';
+    }
+
+    return 'https://docs.bcost.com.br/problems/http-error';
+  }
+
+  private resolveProblemTitle(status: number): string {
+    if (status >= 500) return 'Internal Server Error';
+    if (status === HttpStatus.UNAUTHORIZED) return 'Unauthorized';
+    if (status === HttpStatus.FORBIDDEN) return 'Forbidden';
+    if (status === HttpStatus.NOT_FOUND) return 'Not Found';
+    if (status === HttpStatus.UNPROCESSABLE_ENTITY) return 'Validation Error';
+
+    return 'HTTP Error';
+  }
+
+  private setProblemDetailsHeader(response: HttpResponseLike): void {
+    if (typeof response.header === 'function') {
+      response.header('content-type', 'application/problem+json; charset=utf-8');
+      return;
+    }
+
+    if (typeof response.setHeader === 'function') {
+      response.setHeader('content-type', 'application/problem+json; charset=utf-8');
+    }
   }
 
   private serializeMessage(message: unknown): Prisma.InputJsonValue {

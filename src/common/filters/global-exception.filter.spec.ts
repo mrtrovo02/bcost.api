@@ -12,6 +12,7 @@ describe('GlobalExceptionFilter observability', () => {
 
   it('increments the Prometheus counter for HTTP 5xx responses', async () => {
     const reply = jest.fn();
+    const header = jest.fn();
     const httpAdapter = {
       getRequestUrl: jest.fn().mockReturnValue('/api/v1/test'),
       reply,
@@ -32,16 +33,26 @@ describe('GlobalExceptionFilter observability', () => {
     const host = {
       switchToHttp: () => ({
         getRequest: () => request,
-        getResponse: () => ({}),
+        getResponse: () => ({ header }),
       }),
     };
 
     await filter.catch(new Error('database unavailable'), host as never);
 
     expect(reply).toHaveBeenCalledWith(
-      {},
-      expect.objectContaining({ statusCode: 500 }),
+      expect.objectContaining({ header }),
+      expect.objectContaining({
+        type: 'https://docs.bcost.com.br/problems/internal-server-error',
+        title: 'Internal Server Error',
+        status: 500,
+        statusCode: 500,
+        traceId: 'N/A',
+      }),
       500,
+    );
+    expect(header).toHaveBeenCalledWith(
+      'content-type',
+      'application/problem+json; charset=utf-8',
     );
     const metrics = await register.metrics();
     expect(metrics).toContain('bcost_http_5xx_total');
