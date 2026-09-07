@@ -26,14 +26,17 @@ git status --short
 git fetch --all --prune
 git checkout main
 git pull origin main
-npm ci
+npm ci --include=dev
 npx prisma generate
 npx prisma migrate deploy
+npm run release:check
 npm run test:tax-scenarios
 npm run build
 pm2 restart bcost-api --update-env
 pm2 logs bcost-api --lines 80
 ```
+
+Para beta controlado antes do Stripe live, substitua `npm run release:check` por `RELEASE_STAGE=beta npm run release:check`. Esse modo libera somente as chaves live do Stripe; os gates de role `bcost_app`, `DIRECT_URL`, CORS, demo desligada, Swagger desligado, JWT e `METRICS_API_KEY` continuam obrigatórios.
 
 Frontend:
 
@@ -43,7 +46,7 @@ git status --short
 git fetch --all --prune
 git checkout main
 git pull origin main
-npm ci
+npm ci --include=dev
 rm -rf .next
 npm run test:tax-scenarios
 npm run build
@@ -82,7 +85,7 @@ scp -i ./ssh-nestjs-prod.pem deploy-YYYYMMDDHHMMSS.zip ec2-user@18.118.161.27:/h
 ssh -i ./ssh-nestjs-prod.pem ec2-user@18.118.161.27
 cd /home/ec2-user/bcost
 unzip -o deploy-YYYYMMDDHHMMSS.zip
-cd bcost.api && npm ci && npx prisma migrate deploy && npm run test:tax-scenarios && npm run build
+cd bcost.api && npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && RELEASE_STAGE=beta npm run release:check && npm run test:tax-scenarios && npm run build
 cd ../bcost-web && npm ci && rm -rf .next && npm run test:tax-scenarios && npm run build
 pm2 restart all
 ```

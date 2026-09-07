@@ -129,7 +129,16 @@ function requirePrefix(name, prefix, message) {
 }
 
 function isBetaReleaseStage() {
-  return valueOf('RELEASE_STAGE') === 'beta';
+  return (valueOf('RELEASE_STAGE') || 'official') === 'beta';
+}
+
+function requireReleaseStage() {
+  const releaseStage = valueOf('RELEASE_STAGE') || 'official';
+  const allowedStages = new Set(['official', 'beta']);
+
+  if (!allowedStages.has(releaseStage)) {
+    errors.push('RELEASE_STAGE: use official para venda produtiva ou beta para piloto controlado.');
+  }
 }
 
 function requireOfficialStripeConfiguration() {
@@ -192,6 +201,7 @@ function requireMaxDuration(name, maxSeconds, message) {
 }
 
 function validateProductionEnvironment() {
+  requireReleaseStage();
   requireEquals('NODE_ENV', 'production', 'deve ser production no ambiente oficial.');
   requireNonEmpty('DATABASE_URL', 'conexão PostgreSQL obrigatória.');
   requireNonEmpty('DIRECT_URL', 'conexão direta obrigatória para Prisma/migrations.');

@@ -135,6 +135,15 @@ describe('validate-production-env release gate', () => {
     expect(result.stderr).toContain('RELEASE_STAGE=beta');
   });
 
+  it('rejeita RELEASE_STAGE desconhecido para evitar deploy com gate ambiguo', () => {
+    const result = runReleaseCheck({ RELEASE_STAGE: 'preview' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('RELEASE_STAGE');
+    expect(result.stderr).toContain('official');
+    expect(result.stderr).toContain('beta');
+  });
+
   it('nao permite que o beta controlado enfraqueca a role de runtime', () => {
     const result = runReleaseCheck({
       RELEASE_STAGE: 'beta',
