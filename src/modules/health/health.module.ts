@@ -1,11 +1,9 @@
-import { MetricsController } from './metrics.controller';
-('use strict');
-
 import { Module } from '@nestjs/common';
 import { TerminusModule } from '@nestjs/terminus';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CacheModule } from '@nestjs/cache-manager';
 import { HealthController } from './health.controller.js';
+import { MetricsController } from './metrics.controller.js';
 import { HealthService } from './health.service.js';
 import { PerformanceAuditService } from './tasks/performance-audit.service.js';
 import { ExternalNotifierService } from '../notifications/external-notifier.service.js';
@@ -33,4 +31,4 @@ import { CompanyCacheInterceptor } from '../../common/interceptors/company-cache
   ],
   exports: [HealthService],
 })
-export class HealthModule {} // ✅ O nome da classe deve ser exatamente este.
+export class HealthModule {}

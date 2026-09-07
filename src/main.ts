@@ -28,6 +28,7 @@ import { AppModule } from './app.module.js';
 import { PrismaModule } from './database/prisma.module.js';
 import { PrismaService } from './database/prisma.service.js';
 import { HealthService } from './modules/health/health.service.js';
+import { assertMetricsAccess } from './modules/health/metrics-access.util.js';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter.js';
 import {
   resolveCorsOriginsFromConfig,
@@ -454,17 +455,13 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     fastifyInstance.get(
       '/metrics',
       async (request: FastifyRequest, reply: FastifyReply) => {
-        const metricsApiKey = config.get<string>('METRICS_API_KEY')?.trim() ?? '';
-        const isProduction = config.get<string>('NODE_ENV') === 'production';
         const providedApiKey = (request.headers as ExtendedHeaders)[
           'x-api-key'
         ];
 
-        if (isProduction && !metricsApiKey) {
-          return reply.status(401).send({ error: 'Unauthorized' });
-        }
-
-        if (metricsApiKey && providedApiKey !== metricsApiKey) {
+        try {
+          assertMetricsAccess(config, providedApiKey);
+        } catch {
           return reply.status(401).send({ error: 'Unauthorized' });
         }
 

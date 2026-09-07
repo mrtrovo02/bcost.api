@@ -36,6 +36,14 @@ describe('MetricsController', () => {
     expect(typeof metrics).toBe('string');
   });
 
+  it('accepts the first metrics API key value when the header is parsed as an array', async () => {
+    const controller = createController('secret-key');
+
+    const metrics = await controller.getMetrics(['secret-key', 'legacy-key']);
+
+    expect(typeof metrics).toBe('string');
+  });
+
   it('fails closed in production when no metrics API key is configured', async () => {
     const controller = createController('', 'production');
 
