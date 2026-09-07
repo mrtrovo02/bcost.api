@@ -40,6 +40,15 @@ export interface RegisterResponse {
 export interface LoginResponse {
   access_token: string;
   refresh_token?: string;
+  companyId: string | null;
+  activeCompanyId: string | null;
+  companies: Array<{
+    id: string;
+    name: string;
+    cnpj: string;
+    role: CompanyRole;
+    taxRegime: string;
+  }>;
   user: {
     id: string;
     email: string;
@@ -550,6 +559,9 @@ export class AuthService {
     return {
       access_token,
       refresh_token,
+      companyId: activeCompanyId,
+      activeCompanyId,
+      companies: mappedCompanies,
       user: {
         id: user.id,
         email: user.email,

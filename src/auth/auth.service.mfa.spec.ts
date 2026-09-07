@@ -105,6 +105,31 @@ describe('AuthService MFA flow', () => {
     );
   });
 
+  it('deve emitir contrato de login retrocompativel com empresa no topo para usuarios sem MFA', async () => {
+    const userWithoutMfa = {
+      ...user,
+      twoFactor: false,
+      twoFactorPending: false,
+    };
+    mockPrisma.user.findUnique.mockResolvedValue(userWithoutMfa);
+    mockJwtService.sign.mockReturnValue('access-token');
+
+    const response = await service.login(
+      'mfa@bcost.com.br',
+      'admin_bcost_2026',
+    );
+
+    if (response.access_token === null) {
+      throw new Error('MFA não deveria ser exigido neste cenário.');
+    }
+
+    expect(response.access_token).toBe('access-token');
+    expect(response.companyId).toBe('company-mfa-001');
+    expect(response.activeCompanyId).toBe('company-mfa-001');
+    expect(response.companies).toHaveLength(1);
+    expect(response.user.activeCompanyId).toBe('company-mfa-001');
+  });
+
   it('deve validar MFA e emitir token JWT definitivo com companyId', async () => {
     mockJwtService.verify.mockReturnValue({
       sub: user.id,
@@ -122,6 +147,15 @@ describe('AuthService MFA flow', () => {
     const response = await service.verifyMFA('mfa-session-token', '123456');
 
     expect(response.access_token).toBe('access-token');
+    expect(response.companyId).toBe('company-mfa-001');
+    expect(response.activeCompanyId).toBe('company-mfa-001');
+    expect(response.companies).toEqual([
+      expect.objectContaining({
+        id: 'company-mfa-001',
+        name: 'bCost MFA Ltda',
+        role: CompanyRole.OWNER,
+      }),
+    ]);
     expect(response.user.activeCompanyId).toBe('company-mfa-001');
     expect(response.user.companies).toHaveLength(1);
     expect(mockJwtService.sign).toHaveBeenCalledWith(
