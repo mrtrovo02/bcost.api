@@ -19,6 +19,7 @@ import {
 @Injectable()
 export class CompanyService {
   private readonly logger = new Logger(CompanyService.name);
+  private static readonly COMPANY_LIST_LIMIT = 100;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -151,6 +152,7 @@ export class CompanyService {
     return this.prisma.company.findMany({
       where: {
         active: true,
+        deletedAt: null,
         users: {
           some: {
             userId,
@@ -158,7 +160,20 @@ export class CompanyService {
           },
         },
       },
+      select: {
+        id: true,
+        name: true,
+        cnpj: true,
+        taxRegime: true,
+        cnae: true,
+        anexo: true,
+        active: true,
+        planLevel: true,
+        createdAt: true,
+        updatedAt: true,
+      },
       orderBy: { name: 'asc' },
+      take: CompanyService.COMPANY_LIST_LIMIT,
     });
   }
 
@@ -169,6 +184,8 @@ export class CompanyService {
     const company = await this.prisma.company.findFirst({
       where: {
         id,
+        active: true,
+        deletedAt: null,
         users: {
           some: { userId, deletedAt: null },
         },

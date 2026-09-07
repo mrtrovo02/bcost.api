@@ -173,6 +173,37 @@ describe('CompanyService', () => {
     );
   });
 
+  it('lista apenas empresas ativas vinculadas ao usuario com limite e payload publico', async () => {
+    await service.findAll(userId);
+
+    expect(prisma.company.findMany).toHaveBeenCalledWith({
+      where: {
+        active: true,
+        deletedAt: null,
+        users: {
+          some: {
+            userId,
+            deletedAt: null,
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        cnpj: true,
+        taxRegime: true,
+        cnae: true,
+        anexo: true,
+        active: true,
+        planLevel: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      orderBy: { name: 'asc' },
+      take: 100,
+    });
+  });
+
   it('nega update para usuario sem papel de gestao', async () => {
     prisma.companyUser.findFirst.mockResolvedValueOnce({
       role: CompanyRole.VIEWER,
