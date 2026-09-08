@@ -15,6 +15,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../database/prisma.service.js';
 import { TokenBlacklistService } from './token-blacklist.service.js';
+import type { FastifyRequest } from 'fastify';
 
 // ---------------------------------------------------------------------------
 // Interfaces exportadas
@@ -84,6 +85,28 @@ export interface AuthenticatedUser {
 }
 
 /**
+ * Extrai o access token do cookie HttpOnly `bcost_access_token`.
+ *
+ * FASE 1 (HttpOnly hardening): mecanismo novo, imune a leitura via JS
+ * (mitiga XSS). Usado como fallback quando não há header Authorization —
+ * ver ordem de extractors no construtor da strategy abaixo.
+ */
+function extractFromAccessTokenCookie(request: FastifyRequest): string | null {
+  const cookieHeader = request?.headers?.cookie;
+  if (!cookieHeader) return null;
+
+  const match = cookieHeader
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('bcost_access_token='));
+
+  if (!match) return null;
+
+  const value = match.slice('bcost_access_token='.length);
+  return value ? decodeURIComponent(value) : null;
+}
+
+/**
  * JwtStrategy: Componente crítico de segurança do motor bCost.
  *
  * PADRÃO DE PRODUÇÃO 2026:
@@ -104,6 +127,13 @@ export interface AuthenticatedUser {
  * 2. Empresa onde o usuário é OWNER
  * 3. Primeira empresa disponível
  * 4. null (usuário sem empresa — acesso a rotas @Public() apenas)
+ *
+ * FASE 1 (HttpOnly hardening) aplicada:
+ * O extractor de JWT agora aceita o token tanto via header Authorization
+ * (compatibilidade com o frontend atual, que ainda lê de localStorage)
+ * quanto via cookie HttpOnly bcost_access_token (novo mecanismo, imune a
+ * XSS). Quando o frontend migrar para depender só do cookie, o extractor
+ * de header pode ser removido (Fase 2).
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -126,7 +156,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        extractFromAccessTokenCookie,
+      ]),
       ignoreExpiration: false,
       secretOrKey: secret,
     });

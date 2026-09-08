@@ -33,6 +33,7 @@ import { ThrottleEndpoint } from '../common/decorators/throttle-endpoint.decorat
 import type { FastifyReply } from 'fastify';
 
 const REFRESH_COOKIE = 'bcost_refresh_token';
+const ACCESS_COOKIE = 'bcost_access_token';
 
 interface LogoutUser {
   id: string;
@@ -187,7 +188,10 @@ export class AuthController {
       new Date(exp * 1000),
     );
 
-    reply.header('set-cookie', this.clearRefreshCookie());
+    reply.header('set-cookie', [
+      this.clearRefreshCookie(),
+      this.clearAccessTokenCookie(),
+    ]);
 
     return {
       message: 'Logout efetuado com sucesso.',
@@ -204,7 +208,10 @@ export class AuthController {
     @GetUser('id') userId: string,
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    reply.header('set-cookie', this.clearRefreshCookie());
+    reply.header('set-cookie', [
+      this.clearRefreshCookie(),
+      this.clearAccessTokenCookie(),
+    ]);
     return this.authService.logoutAll(userId);
   }
 
@@ -232,8 +239,12 @@ export class AuthController {
   async switchCompany(
     @GetUser('id') userId: string,
     @Body() dto: SwitchCompanyDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
   ) {
-    return this.authService.switchCompany(userId, dto.companyId);
+    return this.attachRefreshCookie(
+      await this.authService.switchCompany(userId, dto.companyId),
+      reply,
+    );
   }
 
   private extractBearerToken(authorization: string | undefined): string | null {
@@ -262,14 +273,33 @@ export class AuthController {
     };
   }
 
+  /**
+   * Anexa os cookies HttpOnly de sessão (refresh + access token) à resposta.
+   *
+   * FASE 1 (HttpOnly hardening): o access token agora também é entregue
+   * via cookie HttpOnly, assinado pelo servidor — imune a leitura via JS
+   * (mitiga XSS). O corpo da resposta continua trazendo access_token em
+   * texto por compatibilidade com o frontend atual (que ainda anexa
+   * "Authorization: Bearer" via header lido de localStorage). Quando o
+   * frontend migrar para depender só do cookie, o access_token pode ser
+   * removido do corpo da resposta (Fase 2).
+   */
   private attachRefreshCookie<T extends object>(
     response: T,
     reply: FastifyReply,
   ): Omit<T, 'refresh_token'> {
     const refreshToken = (response as { refresh_token?: string }).refresh_token;
+    const accessToken = (response as { access_token?: string }).access_token;
 
+    const cookies: string[] = [];
     if (refreshToken) {
-      reply.header('set-cookie', this.serializeRefreshCookie(refreshToken));
+      cookies.push(this.serializeRefreshCookie(refreshToken));
+    }
+    if (accessToken) {
+      cookies.push(this.serializeAccessTokenCookie(accessToken));
+    }
+    if (cookies.length > 0) {
+      reply.header('set-cookie', cookies);
     }
 
     const { refresh_token: _refreshToken, ...publicResponse } = response as T & {
@@ -296,5 +326,24 @@ export class AuthController {
   private clearRefreshCookie(): string {
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     return `${REFRESH_COOKIE}=; Path=/api; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
+  }
+
+  /**
+   * Cookie HttpOnly do access token (Fase 1 do hardening de sessão).
+   *
+   * Path='/' (não '/api', diferente do refresh) porque o access token
+   * também precisa ser lido pelo middleware do frontend (proxy.ts, que
+   * roda em '/dashboard/*', fora do prefixo '/api'). Max-Age curto (15
+   * min) alinhado à expiração real do JWT — o refresh cookie é quem
+   * sustenta a sessão longa via renovação.
+   */
+  private serializeAccessTokenCookie(value: string): string {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return `${ACCESS_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${15 * 60}${secure}`;
+  }
+
+  private clearAccessTokenCookie(): string {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    return `${ACCESS_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
   }
 }
