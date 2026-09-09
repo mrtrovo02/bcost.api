@@ -86,6 +86,16 @@ export interface SwitchCompanyResponse {
   user: LoginResponse['user'];
 }
 
+export interface AuthProfileResponse {
+  id: string;
+  email: string;
+  name: string;
+  companyId: string | null;
+  activeCompanyId: string | null;
+  companies: LoginResponse['companies'];
+  user: LoginResponse['user'];
+}
+
 /**
  * Payload que será assinado dentro do JWT.
  *
@@ -415,6 +425,64 @@ export class AuthService {
       where: { id },
       select: { id: true, email: true, name: true, active: true },
     });
+  }
+
+  async getProfile(
+    userId: string,
+    preferredCompanyId?: string | null,
+  ): Promise<AuthProfileResponse> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        companies: {
+          where: {
+            deletedAt: null,
+            company: { deletedAt: null, active: true },
+          },
+          include: { company: true },
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!user || !user.active) {
+      throw new UnauthorizedException({
+        message: 'Sessão inválida ou usuário inativo.',
+        code: 'AUTH-PROFILE-UNAUTHORIZED',
+      });
+    }
+
+    const preferredEntry = preferredCompanyId
+      ? user.companies.find((cu) => cu.companyId === preferredCompanyId)
+      : null;
+    const ownerEntry = user.companies.find(
+      (cu) => cu.role === CompanyRole.OWNER,
+    );
+    const activeEntry = preferredEntry ?? ownerEntry ?? user.companies[0] ?? null;
+    const activeCompanyId = activeEntry?.companyId ?? null;
+    const mappedCompanies = user.companies.map((cu) => ({
+      id: cu.company.id,
+      name: cu.company.name,
+      cnpj: cu.company.cnpj,
+      role: cu.role,
+      taxRegime: cu.company.taxRegime,
+    }));
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      companyId: activeCompanyId,
+      activeCompanyId,
+      companies: mappedCompanies,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        activeCompanyId,
+        companies: mappedCompanies,
+      },
+    };
   }
 
   // ---------------------------------------------------------------------------

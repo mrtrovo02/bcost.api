@@ -224,8 +224,11 @@ export class AuthController {
   @ApiOperation({ summary: 'Obter perfil do usuário autenticado' })
   @ApiResponse({ status: 200, description: 'Perfil retornado.' })
   @ApiResponse({ status: 401, description: 'Não autorizado.' })
-  getProfile(@GetUser() user: unknown) {
-    return user;
+  getProfile(
+    @GetUser('id') userId: string,
+    @GetUser('companyId') companyId?: string | null,
+  ) {
+    return this.authService.getProfile(userId, companyId);
   }
 
   @UseGuards(JwtAuthGuard)
