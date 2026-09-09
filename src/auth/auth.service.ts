@@ -307,7 +307,7 @@ export class AuthService {
           // ja removida como "ativa" no momento do login).
           where: {
             deletedAt: null,
-            company: { deletedAt: null },
+            company: { deletedAt: null, active: true },
           },
           include: { company: true },
           orderBy: { createdAt: 'asc' },
@@ -386,7 +386,7 @@ export class AuthService {
         companies: {
           where: {
             deletedAt: null,
-            company: { deletedAt: null },
+            company: { deletedAt: null, active: true },
           },
           include: { company: true },
           orderBy: { createdAt: 'asc' },
@@ -499,7 +499,7 @@ export class AuthService {
         companies: {
           where: {
             deletedAt: null,
-            company: { deletedAt: null },
+            company: { deletedAt: null, active: true },
           },
           include: { company: true },
           orderBy: { createdAt: 'asc' },
@@ -532,7 +532,7 @@ export class AuthService {
             companies: {
               where: {
                 deletedAt: null,
-                company: { deletedAt: null },
+                company: { deletedAt: null, active: true },
               },
               include: { company: true },
               orderBy: { createdAt: 'asc' },
