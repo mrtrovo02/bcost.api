@@ -110,10 +110,19 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
 
         FRONTEND_BASE_URL: Joi.string().uri().optional(),
         PUBLIC_APP_URL: Joi.string().uri().optional(),
-        STRIPE_SECRET_KEY: Joi.string().allow('').optional(),
-        STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),
-        STRIPE_PRICE_PRO: Joi.string().allow('').optional(),
-        STRIPE_PRICE_ENTERPRISE: Joi.string().allow('').optional(),
+        STRIPE_SECRET_KEY: Joi.string()
+          .allow('')
+          .pattern(/^sk_(test|live)_/)
+          .optional(),
+        STRIPE_WEBHOOK_SECRET: Joi.string()
+          .allow('')
+          .pattern(/^whsec_/)
+          .optional(),
+        STRIPE_PRICE_PRO: Joi.string().allow('').pattern(/^price_/).optional(),
+        STRIPE_PRICE_ENTERPRISE: Joi.string()
+          .allow('')
+          .pattern(/^price_/)
+          .optional(),
 
         ENABLE_SWAGGER: Joi.string().valid('true', 'false').default('false'),
         CORS_ORIGINS: Joi.string().allow('').default(''),

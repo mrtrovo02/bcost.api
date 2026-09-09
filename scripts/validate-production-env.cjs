@@ -152,7 +152,7 @@ function requireOfficialStripeConfiguration() {
   requirePrefix(
     'STRIPE_SECRET_KEY',
     'sk_live_',
-    'use uma chave live do Stripe para monetização oficial.',
+    'use uma secret key live do Stripe iniciada por sk_live_; chaves pk_live_ sao publicaveis e nao podem ficar no backend.',
   );
   requirePrefix(
     'STRIPE_WEBHOOK_SECRET',

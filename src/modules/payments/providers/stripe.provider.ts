@@ -310,6 +310,12 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
       );
     }
 
+    if (!/^sk_(test|live)_/.test(value)) {
+      throw new ServiceUnavailableException(
+        'STRIPE_SECRET_KEY inválida: use a secret key da Stripe iniciada por sk_test_ ou sk_live_. Chaves pk_* são publicáveis e não podem ser usadas no backend.',
+      );
+    }
+
     return value;
   }
 
@@ -321,6 +327,12 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
     if (!value) {
       throw new ServiceUnavailableException(
         `${envKey} não configurado para checkout.`,
+      );
+    }
+
+    if (!value.startsWith('price_')) {
+      throw new ServiceUnavailableException(
+        `${envKey} inválido: use o Price ID da Stripe iniciado por price_.`,
       );
     }
 

@@ -144,6 +144,16 @@ describe('validate-production-env release gate', () => {
     expect(result.stderr).toContain('beta');
   });
 
+  it('rejeita chave publicavel pk_live como segredo Stripe do backend', () => {
+    const result = runReleaseCheck({
+      STRIPE_SECRET_KEY: 'stripe___fixture',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('STRIPE_SECRET_KEY');
+    expect(result.stderr).toContain('sk_live_');
+  });
+
   it('rejeita configuracao demo parcial para evitar ambiente misto', () => {
     const result = runReleaseCheck({
       ENABLE_DEMO_FALLBACK: 'true',
