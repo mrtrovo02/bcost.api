@@ -154,6 +154,19 @@ describe('validate-production-env release gate', () => {
     expect(result.stderr).toContain('sk_live_');
   });
 
+  it('rejeita restricted key rk como segredo Stripe sem imprimir o valor sensivel', () => {
+    const restrictedKey =
+      'stripe___fixture';
+    const result = runReleaseCheck({
+      STRIPE_SECRET_KEY: restrictedKey,
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('STRIPE_SECRET_KEY');
+    expect(result.stderr).toContain('sk_live_');
+    expect(result.stderr).not.toContain(restrictedKey);
+  });
+
   it('rejeita configuracao demo parcial para evitar ambiente misto', () => {
     const result = runReleaseCheck({
       ENABLE_DEMO_FALLBACK: 'true',

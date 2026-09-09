@@ -113,15 +113,34 @@ import { TaxScenariosModule } from './modules/tax-scenarios/tax-scenarios.module
         STRIPE_SECRET_KEY: Joi.string()
           .allow('')
           .pattern(/^sk_(test|live)_/)
+          .messages({
+            'string.pattern.base':
+              'STRIPE_SECRET_KEY deve iniciar com sk_test_ ou sk_live_. Chaves pk_* e rk_* não são aceitas no backend.',
+          })
           .optional(),
         STRIPE_WEBHOOK_SECRET: Joi.string()
           .allow('')
           .pattern(/^whsec_/)
+          .messages({
+            'string.pattern.base':
+              'STRIPE_WEBHOOK_SECRET deve iniciar com whsec_.',
+          })
           .optional(),
-        STRIPE_PRICE_PRO: Joi.string().allow('').pattern(/^price_/).optional(),
+        STRIPE_PRICE_PRO: Joi.string()
+          .allow('')
+          .pattern(/^price_/)
+          .messages({
+            'string.pattern.base':
+              'STRIPE_PRICE_PRO deve iniciar com price_.',
+          })
+          .optional(),
         STRIPE_PRICE_ENTERPRISE: Joi.string()
           .allow('')
           .pattern(/^price_/)
+          .messages({
+            'string.pattern.base':
+              'STRIPE_PRICE_ENTERPRISE deve iniciar com price_.',
+          })
           .optional(),
 
         ENABLE_SWAGGER: Joi.string().valid('true', 'false').default('false'),
