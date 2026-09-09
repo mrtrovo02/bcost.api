@@ -34,6 +34,7 @@ import type { FastifyReply } from 'fastify';
 
 const REFRESH_COOKIE = 'bcost_refresh_token';
 const ACCESS_COOKIE = 'bcost_access_token';
+const SHARED_COOKIE_DOMAIN = '.bcost.com.br';
 
 interface LogoutUser {
   id: string;
@@ -191,6 +192,7 @@ export class AuthController {
     reply.header('set-cookie', [
       this.clearRefreshCookie(),
       this.clearAccessTokenCookie(),
+      this.clearSharedAccessTokenCookie(),
     ]);
 
     return {
@@ -211,6 +213,7 @@ export class AuthController {
     reply.header('set-cookie', [
       this.clearRefreshCookie(),
       this.clearAccessTokenCookie(),
+      this.clearSharedAccessTokenCookie(),
     ]);
     return this.authService.logoutAll(userId);
   }
@@ -339,11 +342,24 @@ export class AuthController {
    */
   private serializeAccessTokenCookie(value: string): string {
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
-    return `${ACCESS_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${15 * 60}${secure}`;
+    const domain =
+      process.env.NODE_ENV === 'production'
+        ? `; Domain=${SHARED_COOKIE_DOMAIN}`
+        : '';
+    return `${ACCESS_COOKIE}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${15 * 60}${secure}${domain}`;
   }
 
   private clearAccessTokenCookie(): string {
     const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
     return `${ACCESS_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}`;
+  }
+
+  private clearSharedAccessTokenCookie(): string {
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    const domain =
+      process.env.NODE_ENV === 'production'
+        ? `; Domain=${SHARED_COOKIE_DOMAIN}`
+        : '';
+    return `${ACCESS_COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${secure}${domain}`;
   }
 }
