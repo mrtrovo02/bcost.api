@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { contextStorage } from '../context/context.storage.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { Counter } from 'prom-client';
@@ -40,6 +41,8 @@ const SCANNER_404_PATTERNS = [
   /(?:^|\/)(adminfuns|makeasmtp|chosen|simple|shell|vendor|owa)\b/i,
   /^\/\/+/,
 ] as const;
+
+const BCOST_TRACE_HEADER = 'x-bcost-trace-id';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -74,7 +77,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? exception.getResponse()
         : 'Internal Server Error';
 
-    const requestId = store?.requestId || 'N/A';
+    const requestId = this.resolveTraceId(store?.requestId, request.headers);
     const method = request.method ?? 'UNKNOWN';
     const url = request.url ?? httpAdapter.getRequestUrl(request);
     const isScannerNotFound = this.isScannerNotFound(status, method, url);
@@ -134,7 +137,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     }
 
     // 3. Resposta Padronizada (Contrato Enterprise)
-    this.setProblemDetailsHeader(response);
+    this.setProblemDetailsHeaders(response, requestId);
 
     const detail = this.extractClientMessage(message);
     const responseBody = {
@@ -180,9 +183,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private resolveProblemType(status: number): string {
     if (status >= 500) return 'https://docs.bcost.com.br/problems/internal-server-error';
+    if (status === HttpStatus.BAD_REQUEST) return 'https://docs.bcost.com.br/problems/bad-request';
     if (status === HttpStatus.UNAUTHORIZED) return 'https://docs.bcost.com.br/problems/unauthorized';
     if (status === HttpStatus.FORBIDDEN) return 'https://docs.bcost.com.br/problems/forbidden';
     if (status === HttpStatus.NOT_FOUND) return 'https://docs.bcost.com.br/problems/not-found';
+    if (status === HttpStatus.CONFLICT) return 'https://docs.bcost.com.br/problems/conflict';
     if (status === HttpStatus.UNPROCESSABLE_ENTITY) {
       return 'https://docs.bcost.com.br/problems/validation-error';
     }
@@ -192,22 +197,43 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private resolveProblemTitle(status: number): string {
     if (status >= 500) return 'Internal Server Error';
+    if (status === HttpStatus.BAD_REQUEST) return 'Bad Request';
     if (status === HttpStatus.UNAUTHORIZED) return 'Unauthorized';
     if (status === HttpStatus.FORBIDDEN) return 'Forbidden';
     if (status === HttpStatus.NOT_FOUND) return 'Not Found';
+    if (status === HttpStatus.CONFLICT) return 'Conflict';
     if (status === HttpStatus.UNPROCESSABLE_ENTITY) return 'Validation Error';
 
     return 'HTTP Error';
   }
 
-  private setProblemDetailsHeader(response: HttpResponseLike): void {
+  private resolveTraceId(
+    contextRequestId: string | undefined,
+    headers: Record<string, unknown> | undefined,
+  ): string {
+    if (contextRequestId) return contextRequestId;
+
+    const rawTraceId = headers?.[BCOST_TRACE_HEADER];
+    if (typeof rawTraceId === 'string' && rawTraceId.trim().length > 0) {
+      return rawTraceId;
+    }
+
+    return randomUUID();
+  }
+
+  private setProblemDetailsHeaders(
+    response: HttpResponseLike,
+    traceId: string,
+  ): void {
     if (typeof response.header === 'function') {
       response.header('content-type', 'application/problem+json; charset=utf-8');
+      response.header(BCOST_TRACE_HEADER, traceId);
       return;
     }
 
     if (typeof response.setHeader === 'function') {
       response.setHeader('content-type', 'application/problem+json; charset=utf-8');
+      response.setHeader(BCOST_TRACE_HEADER, traceId);
     }
   }
 
