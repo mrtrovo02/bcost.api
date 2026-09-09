@@ -163,6 +163,17 @@ function requireOfficialStripeConfiguration() {
   requirePrefix('STRIPE_PRICE_ENTERPRISE', 'price_', 'price id do plano ENTERPRISE obrigatório.');
 }
 
+function requireDemoFlagsConsistency() {
+  const demoFallback = valueOf('ENABLE_DEMO_FALLBACK');
+  const demoSession = valueOf('ALLOW_DEMO_SESSION');
+
+  if (demoFallback !== demoSession) {
+    errors.push(
+      'DEMO: ENABLE_DEMO_FALLBACK e ALLOW_DEMO_SESSION devem ser habilitados ou desabilitados juntos para evitar sessão demonstrativa parcial.',
+    );
+  }
+}
+
 function durationToSeconds(value) {
   const match = /^(\d+)(ms|s|m|h|d|w|y)$/.exec(value);
   if (!match) return null;
@@ -222,6 +233,7 @@ function validateProductionEnvironment() {
   requireHttpsUrl('FRONTEND_BASE_URL');
   requireHttpsUrl('PUBLIC_APP_URL');
   requireCorsOrigin('https://app.bcost.com.br');
+  requireDemoFlagsConsistency();
   requireEquals('ENABLE_DEMO_FALLBACK', 'false', 'fallback demo deve ficar desligado em produção.');
   requireEquals('ALLOW_DEMO_SESSION', 'false', 'sessão demo pública deve ficar desligada em produção.');
   requireEquals('ALLOW_SETUP_ADMIN', 'false', 'setup admin deve ficar desligado em produção.');

@@ -144,6 +144,17 @@ describe('validate-production-env release gate', () => {
     expect(result.stderr).toContain('beta');
   });
 
+  it('rejeita configuracao demo parcial para evitar ambiente misto', () => {
+    const result = runReleaseCheck({
+      ENABLE_DEMO_FALLBACK: 'true',
+      ALLOW_DEMO_SESSION: 'false',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('DEMO');
+    expect(result.stderr).toContain('devem ser habilitados ou desabilitados juntos');
+  });
+
   it('nao permite que o beta controlado enfraqueca a role de runtime', () => {
     const result = runReleaseCheck({
       RELEASE_STAGE: 'beta',
