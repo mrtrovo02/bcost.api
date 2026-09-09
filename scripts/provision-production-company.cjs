@@ -8,6 +8,35 @@ dotenv.config();
 
 const CONFIRMATION_VALUE = 'LINK_COMPANY';
 
+function provisioningDatabaseUrl() {
+  return process.env.BCOST_PROVISION_DATABASE_URL?.trim() || process.env.DIRECT_URL?.trim() || null;
+}
+
+function createPrismaClient() {
+  const url = provisioningDatabaseUrl();
+
+  if (!url) {
+    return new PrismaClient();
+  }
+
+  return new PrismaClient({
+    datasources: {
+      db: { url },
+    },
+  });
+}
+
+function databaseMode() {
+  const url = provisioningDatabaseUrl();
+
+  if (!url) {
+    return 'runtime';
+  }
+
+  const username = new URL(url).username;
+  return username.startsWith('bcost_app') ? 'runtime-override' : 'provisioning';
+}
+
 function onlyDigits(value) {
   return String(value ?? '').replace(/\D/g, '');
 }
@@ -79,7 +108,7 @@ async function main() {
     throw new Error('BCOST_PROVISION_COMPANY_CNPJ inválido.');
   }
 
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
 
   try {
     const user = await prisma.user.findUnique({
@@ -109,6 +138,7 @@ async function main() {
         role,
       },
       shouldRevokeSessions,
+      databaseMode: databaseMode(),
     };
 
     console.log(JSON.stringify(preview, null, 2));
