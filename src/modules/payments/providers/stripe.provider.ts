@@ -240,6 +240,12 @@ export class StripePaymentProvider implements PaymentProviderAdapter {
       );
     }
 
+    if (!secret.startsWith('whsec_')) {
+      throw new ServiceUnavailableException(
+        'STRIPE_WEBHOOK_SECRET inválido: use o signing secret do endpoint webhook Stripe iniciado por whsec_.',
+      );
+    }
+
     if (!signatureHeader) {
       throw new UnauthorizedException('Assinatura Stripe ausente.');
     }

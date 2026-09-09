@@ -35,6 +35,7 @@ function signPayload(
 
 describe('StripePaymentProvider', () => {
   const webhookSecret = 'whsec_test_secret';
+  const invalidWebhookSecret = 'stripe_endpoint_secret_without_prefix';
 
   it('verifica assinatura e normaliza evento de assinatura Stripe', () => {
     const provider = new StripePaymentProvider(
@@ -114,6 +115,28 @@ describe('StripePaymentProvider', () => {
 
     expect(() => provider.constructWebhookEvent(payload, signature)).toThrow(
       BadRequestException,
+    );
+  });
+
+  it('rejeita webhook quando o signing secret Stripe esta mal configurado', () => {
+    const provider = new StripePaymentProvider(
+      createConfig({ STRIPE_WEBHOOK_SECRET: invalidWebhookSecret }),
+    );
+    const payload = Buffer.from(
+      JSON.stringify({
+        id: 'evt_bad_config',
+        type: 'checkout.session.completed',
+        data: { object: { id: 'cs_live_123' } },
+      }),
+    );
+    const signature = signPayload(
+      payload,
+      invalidWebhookSecret,
+      Math.floor(Date.now() / 1000),
+    );
+
+    expect(() => provider.constructWebhookEvent(payload, signature)).toThrow(
+      ServiceUnavailableException,
     );
   });
 
