@@ -80,7 +80,10 @@ export type AuthLoginResponse = LoginResponse | MfaRequiredResponse;
 
 export interface SwitchCompanyResponse {
   access_token: string;
-  activeCompanyId: string;
+  activeCompanyId: string | null;
+  companyId: string | null;
+  companies: LoginResponse['companies'];
+  user: LoginResponse['user'];
 }
 
 /**
@@ -422,43 +425,33 @@ export class AuthService {
     userId: string,
     companyId: string,
   ): Promise<SwitchCompanyResponse> {
-    const [user, membership] = await Promise.all([
-      this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { id: true, email: true, active: true },
-      }),
-      this.prisma.companyUser.findFirst({
-        where: { userId, companyId, deletedAt: null },
-        select: {
-          companyId: true,
-          role: true,
-          company: { select: { id: true, active: true } },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        companies: {
+          where: {
+            deletedAt: null,
+            company: { deletedAt: null },
+          },
+          include: { company: true },
+          orderBy: { createdAt: 'asc' },
         },
-      }),
-    ]);
+      },
+    });
 
     if (!user || !user.active) {
       throw new UnauthorizedException('Usuário inativo ou inexistente.');
     }
 
+    const membership = user.companies.find(
+      (entry) => entry.companyId === companyId,
+    );
+
     if (!membership || !membership.company || !membership.company.active) {
       throw new UnauthorizedException('Empresa inválida ou sem vínculo ativo.');
     }
 
-    const payload: JwtSignPayload = {
-      sub: user.id,
-      email: user.email,
-      companyId: membership.companyId,
-      role: membership.role,
-      jti: randomUUID(),
-    };
-
-    const access_token = this.jwtService.sign(payload);
-
-    return {
-      access_token,
-      activeCompanyId: membership.companyId,
-    };
+    return this.generateLoginResponse(user, membership.companyId);
   }
 
   async refresh(refreshToken: string): Promise<LoginResponse> {
@@ -523,11 +516,17 @@ export class AuthService {
     return { revokedSessions: result.count };
   }
 
-  private async generateLoginResponse(user: LoginUserRecord): Promise<LoginResponse> {
+  private async generateLoginResponse(
+    user: LoginUserRecord,
+    preferredCompanyId?: string | null,
+  ): Promise<LoginResponse> {
+    const preferredEntry = preferredCompanyId
+      ? user.companies.find((cu) => cu.companyId === preferredCompanyId)
+      : null;
     const ownerEntry = user.companies.find(
       (cu) => cu.role === CompanyRole.OWNER,
     );
-    const activeEntry = ownerEntry ?? user.companies[0] ?? null;
+    const activeEntry = preferredEntry ?? ownerEntry ?? user.companies[0] ?? null;
 
     const activeCompanyId = activeEntry?.companyId ?? null;
     const activeRole = activeEntry?.role ?? null;
