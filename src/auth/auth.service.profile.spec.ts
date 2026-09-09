@@ -59,6 +59,7 @@ describe('AuthService getProfile', () => {
       id: 'user-amanda',
       email: 'amandacontabil@bcost.com.br',
       name: 'Amanda Narvaes',
+      role: CompanyRole.MANAGER,
       companyId: 'company-amel',
       activeCompanyId: 'company-amel',
       companies: [
@@ -74,6 +75,7 @@ describe('AuthService getProfile', () => {
         id: 'user-amanda',
         email: 'amandacontabil@bcost.com.br',
         name: 'Amanda Narvaes',
+        role: CompanyRole.MANAGER,
         activeCompanyId: 'company-amel',
         companies: [
           {

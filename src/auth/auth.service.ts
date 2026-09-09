@@ -90,10 +90,11 @@ export interface AuthProfileResponse {
   id: string;
   email: string;
   name: string;
+  role: CompanyRole | null;
   companyId: string | null;
   activeCompanyId: string | null;
   companies: LoginResponse['companies'];
-  user: LoginResponse['user'];
+  user: LoginResponse['user'] & { role: CompanyRole | null };
 }
 
 /**
@@ -460,6 +461,7 @@ export class AuthService {
     );
     const activeEntry = preferredEntry ?? ownerEntry ?? user.companies[0] ?? null;
     const activeCompanyId = activeEntry?.companyId ?? null;
+    const activeRole = activeEntry?.role ?? null;
     const mappedCompanies = user.companies.map((cu) => ({
       id: cu.company.id,
       name: cu.company.name,
@@ -472,6 +474,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
+      role: activeRole,
       companyId: activeCompanyId,
       activeCompanyId,
       companies: mappedCompanies,
@@ -479,6 +482,7 @@ export class AuthService {
         id: user.id,
         email: user.email,
         name: user.name,
+        role: activeRole,
         activeCompanyId,
         companies: mappedCompanies,
       },
