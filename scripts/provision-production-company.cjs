@@ -1,5 +1,6 @@
 'use strict';
 
+const { createHash } = require('node:crypto');
 const { PrismaClient, CompanyRole, TaxRegime } = require('@prisma/client');
 const dotenv = require('dotenv');
 
@@ -34,6 +35,24 @@ function enumValue(enumObject, value, fallback) {
     return enumObject[normalized];
   }
   return enumObject[fallback];
+}
+
+function formatUuidFromBytes(bytes) {
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+function deterministicCompanyId(cnpj) {
+  const bytes = createHash('sha256')
+    .update(`bcost:company:${cnpj}`)
+    .digest()
+    .subarray(0, 16);
+
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+  return formatUuidFromBytes(bytes);
 }
 
 function requiredEnv(name) {
@@ -76,11 +95,13 @@ async function main() {
       where: { cnpj },
       select: { id: true, name: true, active: true, deletedAt: true },
     });
+    const targetCompanyId = existingCompany?.id ?? deterministicCompanyId(cnpj);
 
     const preview = {
       mode: confirm === CONFIRMATION_VALUE ? 'apply' : 'dry-run',
       user: { id: user.id, email: user.email, name: user.name },
       company: {
+        id: targetCompanyId,
         existingId: existingCompany?.id ?? null,
         name: companyName,
         cnpjSuffix: cnpj.slice(-6),
@@ -98,6 +119,10 @@ async function main() {
     }
 
     const result = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT set_config('app.current_company_id', ${targetCompanyId}, true)
+      `;
+
       const company = await tx.company.upsert({
         where: { cnpj },
         update: {
@@ -109,6 +134,7 @@ async function main() {
           deletedAt: null,
         },
         create: {
+          id: targetCompanyId,
           name: companyName,
           cnpj,
           taxRegime,
