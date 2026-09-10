@@ -22,8 +22,11 @@ import { CompanyService } from './company.service.js';
 import { CreateCompanyDto } from './dto/create-company.dto.js';
 import { UpdateCompanyDto } from './dto/update-company.dto.js';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import type { AuthenticatedUser } from '../../auth/jwt.strategy.js';
 import { GetUser } from '../auth/decorators/get-user.decorator.js';
 import { SkipCompanyCheck } from '../../common/decorators/skip-company-check.decorator.js';
+
+type SessionCompany = AuthenticatedUser['companies'][number];
 
 @ApiTags('Company')
 @ApiBearerAuth()
@@ -46,7 +49,17 @@ export class CompanyController {
   @SkipCompanyCheck()
   @ApiOperation({ summary: 'Listar todas as empresas' })
   @ApiResponse({ status: 200, description: 'Lista de empresas retornada.' })
-  findAll(@GetUser('id') userId: string) {
+  findAll(
+    @GetUser('id') userId: string,
+    @GetUser('companies') sessionCompanies?: SessionCompany[],
+  ) {
+    if (Array.isArray(sessionCompanies) && sessionCompanies.length > 0) {
+      return sessionCompanies.map((company) => ({
+        ...company,
+        active: true,
+      }));
+    }
+
     return this.companyService.findAll(userId);
   }
 
