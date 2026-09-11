@@ -45,12 +45,21 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+.venv/
+venv/
 
 # Runtime data
 pids
 *.pid
 *.seed
 *.pid.lock
+
+# Local backups and generated operational snapshots
+backups/
+_safe_backups/
+*.backup
+*.bak
+*.old
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
