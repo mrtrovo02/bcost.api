@@ -24,6 +24,7 @@
     "prisma:seed": "node scripts/run-prisma-seed.cjs",
     "provision:company": "node scripts/provision-production-company.cjs",
     "release:check": "node scripts/validate-production-env.cjs",
+    "security:scan": "node scripts/check-versioned-secrets.cjs",
     "infra:local": "docker compose -f docker-compose.local.yml up -d postgres redis",
     "postinstall": "prisma generate",
     "test": "jest",

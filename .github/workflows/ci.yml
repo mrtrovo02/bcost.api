@@ -55,15 +55,7 @@ jobs:
         run: npm ci
 
       - name: Block unsafe committed configuration
-        run: |
-          if grep -RIn --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage --exclude='.env.local.example' 'ALLOW_SETUP_ADMIN=true' .; then
-            echo "ERROR: ALLOW_SETUP_ADMIN=true cannot be versioned."
-            exit 1
-          fi
-          if grep -RInE --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage '(rk|sk)_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}' .; then
-            echo "ERROR: Stripe-like secret detected in versioned files."
-            exit 1
-          fi
+        run: npm run security:scan
 
       - name: Generate Prisma Client
         run: npm run prisma:generate
