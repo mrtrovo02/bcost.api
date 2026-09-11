@@ -80,6 +80,10 @@ type PgStatUserTableHealthRow = {
   idx_scan: bigint | number;
 };
 
+type DatabasePerformanceViewAccessRow = {
+  can_read: boolean | null;
+};
+
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
@@ -184,6 +188,27 @@ export class HealthService {
     };
   }
 
+  private async canReadDatabasePerformanceView(): Promise<boolean> {
+    try {
+      const rows = await this.prisma.$queryRaw<DatabasePerformanceViewAccessRow[]>`
+        SELECT COALESCE(
+          has_table_privilege(current_user, 'public.v_database_performance', 'SELECT'),
+          false
+        ) AS can_read
+        WHERE to_regclass('public.v_database_performance') IS NOT NULL
+      `;
+
+      return rows[0]?.can_read === true;
+    } catch (error) {
+      this.logger.warn(
+        `View de performance indisponível para a role atual: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    }
+  }
+
   /**
    * Obtém métricas de eficiência de índices e saúde geral do banco.
    * Diferencial 2026: Diagnóstico proativo de lentidão antes de afetar o cliente.
@@ -191,31 +216,35 @@ export class HealthService {
    */
   async getDatabaseMetrics(companyId?: string): Promise<HealthMetricsResponse> {
     try {
-      const [metrics, dbVersionInfo] = await Promise.allSettled([
-        this.prisma.$queryRaw<DbPerformanceMetric[]>`
-          SELECT 
-            tabela,
-            buscas_sequenciais,
-            buscas_por_indice,
-            total_linhas,
-            eficiencia_indice_percentual
-          FROM v_database_performance
-        `,
+      const [canReadMetrics, dbVersionInfo] = await Promise.all([
+        this.canReadDatabasePerformanceView(),
         this.prisma.$queryRaw<{ version: string }[]>`SELECT version()`,
       ]);
 
-      const metricsResult = metrics.status === 'fulfilled' ? metrics.value : [];
-      const versionResult =
-        dbVersionInfo.status === 'fulfilled' ? dbVersionInfo.value : [];
+      const metricsResult = canReadMetrics
+        ? await this.prisma.$queryRaw<DbPerformanceMetric[]>`
+            SELECT 
+              tabela,
+              buscas_sequenciais,
+              buscas_por_indice,
+              total_linhas,
+              eficiencia_indice_percentual
+            FROM v_database_performance
+          `
+        : [];
+
+      const versionResult = dbVersionInfo;
 
       const hasBottleneck = metricsResult.some(
         (m) => Number(m.eficiencia_indice_percentual) < 80,
       );
-      const status = hasBottleneck ? 'warning' : 'healthy';
+      const status = !canReadMetrics || hasBottleneck ? 'warning' : 'healthy';
 
-      if (metrics.status === 'rejected') {
+      if (!canReadMetrics) {
         this.logger.warn(
-          `⚠️ Métricas do banco indisponíveis${companyId ? ` para a empresa ${companyId}` : ''}: ${String(metrics.reason)}`,
+          `Métricas da view v_database_performance indisponíveis para a role atual${
+            companyId ? ` na empresa ${companyId}` : ''
+          }. A readiness permanece válida sem este diagnóstico opcional.`,
         );
       }
 

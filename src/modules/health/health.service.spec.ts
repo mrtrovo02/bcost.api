@@ -1,10 +1,18 @@
 import { HealthService } from './health.service.js';
 
+type PrismaHealthMock = {
+  isHealthy: jest.Mock<Promise<boolean>, []>;
+  $queryRaw: jest.Mock<Promise<unknown>, TemplateStringsArray[]>;
+};
+
 describe('HealthService runtime diagnostics', () => {
+  const createPrismaMock = (isHealthy = true): PrismaHealthMock => ({
+    isHealthy: jest.fn<Promise<boolean>, []>().mockResolvedValue(isHealthy),
+    $queryRaw: jest.fn<Promise<unknown>, TemplateStringsArray[]>(),
+  });
+
   const createService = (isHealthy = true) =>
-    new HealthService({
-      isHealthy: jest.fn().mockResolvedValue(isHealthy),
-    } as any);
+    new HealthService(createPrismaMock(isHealthy) as never);
 
   it('reports Node runtime diagnostics from core APIs', async () => {
     const service = createService();
@@ -105,5 +113,44 @@ describe('HealthService runtime diagnostics', () => {
 
     expect(readiness.status).toBe('not_ready');
     expect(readiness.checks.database).toBe('down');
+  });
+
+  it('does not query performance view when the current database role lacks select privilege', async () => {
+    const prisma = createPrismaMock();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ can_read: false }])
+      .mockResolvedValueOnce([{ version: 'PostgreSQL 16' }]);
+
+    const service = new HealthService(prisma as never);
+    const response = await service.getDatabaseMetrics('company-1');
+
+    expect(response.status).toBe('warning');
+    expect(response.metrics).toEqual([]);
+    expect(response.dbVersion).toBe('PostgreSQL 16');
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(2);
+  });
+
+  it('queries performance view only after privilege check succeeds', async () => {
+    const prisma = createPrismaMock();
+    prisma.$queryRaw
+      .mockResolvedValueOnce([{ can_read: true }])
+      .mockResolvedValueOnce([{ version: 'PostgreSQL 16' }])
+      .mockResolvedValueOnce([
+        {
+          tabela: 'invoices',
+          buscas_sequenciais: 1,
+          buscas_por_indice: 10,
+          total_linhas: 100,
+          eficiencia_indice_percentual: 90,
+        },
+      ]);
+
+    const service = new HealthService(prisma as never);
+    const response = await service.getDatabaseMetrics('company-1');
+
+    expect(response.status).toBe('healthy');
+    expect(response.metrics).toHaveLength(1);
+    expect(response.metrics[0]?.tabela).toBe('invoices');
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
   });
 });
