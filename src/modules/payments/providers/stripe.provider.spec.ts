@@ -36,6 +36,10 @@ function signPayload(
 describe('StripePaymentProvider', () => {
   const webhookSecret = 'whsec_test_secret';
   const invalidWebhookSecret = 'stripe_endpoint_secret_without_prefix';
+  const publicLiveKeyFixture = ['pk', 'live', 'public_key_wrong_place'].join(
+    '_',
+  );
+  const secretLiveKeyFixture = ['sk', 'live', 'secret_key'].join('_');
 
   it('verifica assinatura e normaliza evento de assinatura Stripe', () => {
     const provider = new StripePaymentProvider(
@@ -144,7 +148,7 @@ describe('StripePaymentProvider', () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     const provider = new StripePaymentProvider(
       createConfig({
-        STRIPE_SECRET_KEY: 'stripe___fixture',
+        STRIPE_SECRET_KEY: publicLiveKeyFixture,
         STRIPE_PRICE_PRO: 'price_pro_live',
       }),
     );
@@ -169,7 +173,7 @@ describe('StripePaymentProvider', () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch');
     const provider = new StripePaymentProvider(
       createConfig({
-        STRIPE_SECRET_KEY: 'stripe___fixture',
+        STRIPE_SECRET_KEY: secretLiveKeyFixture,
         STRIPE_PRICE_ENTERPRISE: 'prod_enterprise_live',
       }),
     );

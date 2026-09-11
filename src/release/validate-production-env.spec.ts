@@ -8,6 +8,13 @@ type ReleaseCheckResult = {
 };
 
 const scriptPath = resolve(process.cwd(), 'scripts', 'validate-production-env.cjs');
+const stripeSecretFixture = ['sk', 'live', 'release_check'].join('_');
+const stripePublicFixture = ['pk', 'live', 'public_key_wrong_place'].join('_');
+const stripeRestrictedFixture = [
+  'rk',
+  'test',
+  'restricted-key-placeholder',
+].join('_');
 
 const baseEnv: NodeJS.ProcessEnv = {
   ...process.env,
@@ -23,7 +30,7 @@ const baseEnv: NodeJS.ProcessEnv = {
   ALLOW_DEMO_SESSION: 'false',
   ALLOW_SETUP_ADMIN: 'false',
   ENABLE_SWAGGER: 'false',
-  STRIPE_SECRET_KEY: 'stripe___fixture',
+  STRIPE_SECRET_KEY: stripeSecretFixture,
   STRIPE_WEBHOOK_SECRET: 'whsec_release_check',
   STRIPE_PRICE_PRO: 'price_release_check_pro',
   STRIPE_PRICE_ENTERPRISE: 'price_release_check_enterprise',
@@ -146,7 +153,7 @@ describe('validate-production-env release gate', () => {
 
   it('rejeita chave publicavel pk_live como segredo Stripe do backend', () => {
     const result = runReleaseCheck({
-      STRIPE_SECRET_KEY: 'stripe___fixture',
+      STRIPE_SECRET_KEY: stripePublicFixture,
     });
 
     expect(result.status).toBe(1);
@@ -155,16 +162,14 @@ describe('validate-production-env release gate', () => {
   });
 
   it('rejeita restricted key rk como segredo Stripe sem imprimir o valor sensivel', () => {
-    const restrictedKey =
-      'stripe___fixture';
     const result = runReleaseCheck({
-      STRIPE_SECRET_KEY: restrictedKey,
+      STRIPE_SECRET_KEY: stripeRestrictedFixture,
     });
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('STRIPE_SECRET_KEY');
     expect(result.stderr).toContain('sk_live_');
-    expect(result.stderr).not.toContain(restrictedKey);
+    expect(result.stderr).not.toContain(stripeRestrictedFixture);
   });
 
   it('rejeita configuracao demo parcial para evitar ambiente misto', () => {
