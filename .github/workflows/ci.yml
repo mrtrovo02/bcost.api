@@ -1,32 +1,90 @@
-name: CI Professional Workflow
-on: [push, pull_request]
+name: bCost API CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bcost-api-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  security-checks:
+  verify:
+    name: Release Gates, Tests and Build
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 20
 
-      - name: Block unsafe setup-admin flag
+    env:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://bcost_app:bcost@localhost:5432/bcost
+      DIRECT_URL: postgresql://bcost:bcost@localhost:5432/bcost
+      JWT_SECRET: bcost-ci-release-secret-with-more-than-forty-eight-characters
+      JWT_EXPIRES_IN: 15m
+      FRONTEND_BASE_URL: https://app.bcost.com.br
+      PUBLIC_APP_URL: https://app.bcost.com.br
+      CORS_ORIGINS: https://bcost.com.br,https://www.bcost.com.br,https://app.bcost.com.br
+      ENABLE_DEMO_FALLBACK: "false"
+      ALLOW_DEMO_SESSION: "false"
+      ALLOW_SETUP_ADMIN: "false"
+      ENABLE_SWAGGER: "false"
+      RELEASE_STAGE: beta
+      STRIPE_SECRET_KEY: ""
+      STRIPE_WEBHOOK_SECRET: ""
+      STRIPE_PRICE_PRO: ""
+      STRIPE_PRICE_ENTERPRISE: ""
+      METRICS_API_KEY: bcost-ci-metrics-key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Block unsafe committed configuration
         run: |
-          if grep -RIn --exclude-dir=node_modules --exclude-dir=dist --exclude='.env.local.example' 'ALLOW_SETUP_ADMIN=true' .; then
-            echo "ERROR: ALLOW_SETUP_ADMIN=true cannot be versioned for production readiness."
+          if grep -RIn --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage --exclude='.env.local.example' 'ALLOW_SETUP_ADMIN=true' .; then
+            echo "ERROR: ALLOW_SETUP_ADMIN=true cannot be versioned."
+            exit 1
+          fi
+          if grep -RInE --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage '(rk|sk)_(test|live)_[A-Za-z0-9]{20,}|whsec_[A-Za-z0-9]{20,}' .; then
+            echo "ERROR: Stripe-like secret detected in versioned files."
             exit 1
           fi
 
-  build:
-    needs: security-checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22' # Versão estável em 2026
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run prisma:generate
-      - run: npm run lint
-      - run: npm run test # Garante que nada quebrou
-      - run: npm run typecheck
-      - run: npm run build
+      - name: Generate Prisma Client
+        run: npm run prisma:generate
+
+      - name: Validate Prisma schema
+        run: npm run prisma:validate
+
+      - name: Validate production environment contract
+        run: npm run release:check
+
+      - name: Run release gate tests
+        run: npm test -- --runInBand src/release/validate-production-env.spec.ts
+
+      - name: Run auth/session tests
+        run: npm test -- --runInBand src/auth/guards/jwt-auth.guard.spec.ts src/auth/guards/tenant-context.guard.spec.ts src/auth/auth.controller.security.spec.ts
+
+      - name: Run observability tests
+        run: npm run test:observability
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
