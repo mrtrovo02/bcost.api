@@ -56,10 +56,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const demoSessionHeader = Array.isArray(demoHeader)
       ? demoHeader[0]
       : demoHeader;
-    const demoSessionAllowed =
-      process.env.NODE_ENV !== 'production' ||
-      process.env.ALLOW_DEMO_SESSION === 'true' ||
-      process.env.ENABLE_DEMO_FALLBACK === 'true';
+    const demoSessionAllowed = process.env.NODE_ENV !== 'production';
     const hasDemoToken = demoTokenCandidates.some(
       (candidate) =>
         typeof candidate === 'string' &&
@@ -67,10 +64,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     );
     const hasDemoHeader = demoSessionHeader === 'true' || demoSessionHeader === '1';
     const isLocalDemoRequest =
-      demoSessionAllowed &&
-      (process.env.NODE_ENV === 'production'
-        ? hasDemoToken && hasDemoHeader
-        : hasDemoToken || hasDemoHeader);
+      demoSessionAllowed && (hasDemoToken || hasDemoHeader);
 
     if (isLocalDemoRequest) {
       request.user = {

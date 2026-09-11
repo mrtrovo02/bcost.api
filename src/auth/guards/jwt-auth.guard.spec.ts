@@ -45,7 +45,7 @@ describe('JwtAuthGuard', () => {
     process.env.ENABLE_DEMO_FALLBACK = originalEnableDemoFallback;
   });
 
-  it('accepts controlled demo sessions in production when demo fallback is enabled', () => {
+  it('never accepts demo session bypass in production even when fallback flags are enabled', () => {
     process.env.NODE_ENV = 'production';
     process.env.ALLOW_DEMO_SESSION = 'false';
     process.env.ENABLE_DEMO_FALLBACK = 'true';
@@ -57,15 +57,16 @@ describe('JwtAuthGuard', () => {
       },
     };
     const guard = new JwtAuthGuard(createReflector());
+    const parentPrototype = Object.getPrototypeOf(JwtAuthGuard.prototype) as {
+      canActivate: (context: ExecutionContext) => boolean;
+    };
+    const parentCanActivateSpy = jest
+      .spyOn(parentPrototype, 'canActivate')
+      .mockReturnValueOnce(false);
 
-    expect(guard.canActivate(createExecutionContext(request))).toBe(true);
-    expect(request.user).toEqual({
-      id: 'demo-user',
-      email: 'demo@bcost.local',
-      companyId: 'demo-001',
-      activeCompanyId: 'demo-001',
-      role: 'OWNER',
-    });
+    expect(guard.canActivate(createExecutionContext(request))).toBe(false);
+    expect(parentCanActivateSpy).toHaveBeenCalledTimes(1);
+    expect(request.user).toBeUndefined();
   });
 
   it('does not accept demo session headers in production when demo fallback is disabled', () => {
@@ -147,5 +148,27 @@ describe('JwtAuthGuard', () => {
 
     expect(guard.canActivate(createExecutionContext(request))).toBe(true);
     expect(request.user).toBeUndefined();
+  });
+
+  it('accepts local demo sessions outside production for development fixtures', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.ALLOW_DEMO_SESSION = 'false';
+    process.env.ENABLE_DEMO_FALLBACK = 'false';
+
+    const request: TestRequest = {
+      headers: {
+        authorization: 'Bearer demo-token-local',
+      },
+    };
+    const guard = new JwtAuthGuard(createReflector());
+
+    expect(guard.canActivate(createExecutionContext(request))).toBe(true);
+    expect(request.user).toEqual({
+      id: 'demo-user',
+      email: 'demo@bcost.local',
+      companyId: 'demo-001',
+      activeCompanyId: 'demo-001',
+      role: 'OWNER',
+    });
   });
 });
