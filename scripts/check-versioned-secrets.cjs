@@ -22,12 +22,16 @@ const ignoredPathFragments = [
   '/documentation/',
 ];
 
+const setupAdminFlagName = 'ALLOW_SETUP_ADMIN';
+const enabledLiteral = 'true';
 const stripeSecretPattern = new RegExp(
   String.raw`\b(?:${['rk', 'sk'].join('|')})_(?:${['test', 'live'].join('|')})_[A-Za-z0-9]{20,}\b|` +
     String.raw`\b${['whsec'].join('')}_[A-Za-z0-9]{20,}\b`,
   'g',
 );
-const unsafeSetupAdminPattern = /\bALLOW_SETUP_ADMIN\s*=\s*true\b/;
+const unsafeSetupAdminPattern = new RegExp(
+  String.raw`\b${setupAdminFlagName}\s*=\s*${enabledLiteral}\b`,
+);
 
 const findings = [];
 
@@ -66,7 +70,7 @@ function inspectFile(filePath) {
     const line = lines[index].trim();
     if (!line || line.startsWith('#') || line.startsWith('//')) continue;
     if (unsafeSetupAdminPattern.test(line)) {
-      findings.push(`${filePath}:${index + 1}: ALLOW_SETUP_ADMIN=true versionado`);
+      findings.push(`${filePath}:${index + 1}: setup admin habilitado em arquivo versionado`);
     }
   }
 }

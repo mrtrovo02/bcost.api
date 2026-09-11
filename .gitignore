@@ -61,6 +61,23 @@ _safe_backups/
 *.bak
 *.old
 
+# Generated documentation output
+documentation/classes/
+documentation/controllers/
+documentation/fonts/
+documentation/graph/
+documentation/guards/
+documentation/images/
+documentation/injectables/
+documentation/interfaces/
+documentation/js/
+documentation/miscellaneous/
+documentation/modules/
+documentation/styles/
+documentation/template-playground/
+documentation/template-playground-app/
+documentation/*.html
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
