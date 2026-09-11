@@ -11,6 +11,7 @@ interface MockPrismaService {
   user: {
     findUnique: jest.Mock;
   };
+  withRlsUserContext: jest.Mock;
 }
 
 describe('AuthService getProfile', () => {
@@ -22,6 +23,11 @@ describe('AuthService getProfile', () => {
       user: {
         findUnique: jest.fn(),
       },
+      withRlsUserContext: jest
+        .fn()
+        .mockImplementation((_userId: string, handler: (tx: unknown) => unknown) =>
+          handler(prisma),
+        ),
     };
 
     service = new AuthService(
@@ -55,6 +61,10 @@ describe('AuthService getProfile', () => {
 
     const response = await service.getProfile('user-amanda', 'company-amel');
 
+    expect(prisma.withRlsUserContext).toHaveBeenCalledWith(
+      'user-amanda',
+      expect.any(Function),
+    );
     expect(response).toEqual({
       id: 'user-amanda',
       email: 'amandacontabil@bcost.com.br',

@@ -14,11 +14,20 @@ interface MockDelegate {
   deleteMany: jest.Mock;
 }
 
+interface MockUserDelegate {
+  findUnique: jest.Mock;
+}
+
 describe('AuthService refresh sessions', () => {
   let service: AuthService;
   let userSession: MockDelegate;
+  let userDelegate: MockUserDelegate;
   let jwtService: { sign: jest.Mock };
-  let prisma: { userSession: MockDelegate };
+  let prisma: {
+    userSession: MockDelegate;
+    user: MockUserDelegate;
+    withRlsUserContext: jest.Mock;
+  };
 
   const user = {
     id: 'user-refresh-001',
@@ -49,7 +58,18 @@ describe('AuthService refresh sessions', () => {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     };
-    prisma = { userSession };
+    userDelegate = {
+      findUnique: jest.fn().mockResolvedValue(user),
+    };
+    prisma = {
+      userSession,
+      user: userDelegate,
+      withRlsUserContext: jest
+        .fn()
+        .mockImplementation((_userId: string, handler: (tx: unknown) => unknown) =>
+          handler(prisma),
+        ),
+    };
     jwtService = { sign: jest.fn().mockReturnValue('access-token') };
 
     service = new AuthService(
@@ -74,6 +94,16 @@ describe('AuthService refresh sessions', () => {
 
     expect(response.access_token).toBe('access-token');
     expect(response.refresh_token).toEqual(expect.any(String));
+    expect(prisma.withRlsUserContext).toHaveBeenCalledWith(
+      user.id,
+      expect.any(Function),
+    );
+    expect(jwtService.sign).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: 'company-refresh-001',
+        role: CompanyRole.OWNER,
+      }),
+    );
     expect(userSession.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: 'session-old', revokedAt: null }),

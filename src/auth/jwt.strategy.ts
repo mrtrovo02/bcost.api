@@ -184,39 +184,41 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     // 1. Verifica existência e status do usuário em tempo real.
     //    Essencial para revogação imediata: mesmo com token válido,
     //    usuário desativado recebe 401 instantaneamente.
-    const user = await this.prisma.user.findUnique({
-      where: { id: payload.sub },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        active: true,
-        // FIX: busca empresas para resolver empresa ativa e validar o companyId do token
-        companies: {
-          select: {
-            companyId: true,
-            role: true,
-            company: {
-              select: {
-                id: true,
-                name: true,
-                cnpj: true,
-                taxRegime: true,
+    const user = await this.prisma.withRlsUserContext(payload.sub, (tx) =>
+      tx.user.findUnique({
+        where: { id: payload.sub },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          active: true,
+          // FIX: busca empresas para resolver empresa ativa e validar o companyId do token
+          companies: {
+            select: {
+              companyId: true,
+              role: true,
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                  cnpj: true,
+                  taxRegime: true,
+                },
               },
             },
-          },
-          // Filtra empresas com soft delete aplicado
-          where: {
-            deletedAt: null,
-            company: {
-              active: true,
+            // Filtra empresas com soft delete aplicado
+            where: {
               deletedAt: null,
+              company: {
+                active: true,
+                deletedAt: null,
+              },
             },
+            orderBy: { createdAt: 'asc' },
           },
-          orderBy: { createdAt: 'asc' },
         },
-      },
-    });
+      }),
+    );
 
     if (!user) {
       throw new UnauthorizedException(

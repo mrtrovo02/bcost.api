@@ -29,6 +29,13 @@ const RLS_RUNTIME_GRANTS_MIGRATION_PATH = join(
   '20260903001000_grant_bcost_app_runtime_privileges',
   'migration.sql',
 );
+const RLS_USER_CONTEXT_MIGRATION_PATH = join(
+  process.cwd(),
+  'prisma',
+  'migrations',
+  '20260911000000_allow_user_membership_rls_context',
+  'migration.sql',
+);
 const PRISMA_SERVICE_PATH = join(
   process.cwd(),
   'src',
@@ -94,6 +101,7 @@ describe('PostgreSQL RLS policies', () => {
     RLS_RUNTIME_GRANTS_MIGRATION_PATH,
     'utf8',
   );
+  const userContextSql = readFileSync(RLS_USER_CONTEXT_MIGRATION_PATH, 'utf8');
 
   it('deve criar a funcao de contexto usando TEXT conforme schema Prisma atual', () => {
     expect(migrationSql).toContain(
@@ -125,6 +133,22 @@ describe('PostgreSQL RLS policies', () => {
     expect(migrationSql).toContain(
       'WITH CHECK ("id" = public.get_current_company_id())',
     );
+  });
+
+  it('deve permitir leitura de company_users pelo proprio usuario antes da empresa ativa', () => {
+    expect(userContextSql).toContain(
+      'CREATE OR REPLACE FUNCTION public.get_current_user_id()',
+    );
+    expect(userContextSql).toContain(
+      "current_setting('app.current_user_id', true)",
+    );
+    expect(userContextSql).toContain(
+      'DROP POLICY IF EXISTS company_users_read_policy ON "company_users"',
+    );
+    expect(userContextSql).toContain(
+      '"companyId" = public.get_current_company_id()',
+    );
+    expect(userContextSql).toContain('"userId" = public.get_current_user_id()');
   });
 
   it('deve criar policies de leitura, criacao e atualizacao por companyId', () => {

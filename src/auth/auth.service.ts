@@ -15,7 +15,7 @@ import {
 import { PrismaService } from '../database/prisma.service.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { CompanyRole, TaxRegime } from '@prisma/client';
+import { CompanyRole, Prisma, TaxRegime } from '@prisma/client';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { ConfigService } from '@nestjs/config';
 import { TwoFAService } from './2fa.service.js';
@@ -126,6 +126,7 @@ interface LoginCompanyMembership {
     id: string;
     name: string;
     cnpj: string;
+    active?: boolean;
     taxRegime: TaxRegime;
   };
 }
@@ -140,6 +141,8 @@ interface LoginUserRecord {
   twoFactorPending: boolean;
   companies: LoginCompanyMembership[];
 }
+
+type AuthPrismaReader = Pick<Prisma.TransactionClient, 'user'> | PrismaService;
 
 @Injectable()
 export class AuthService {
@@ -287,6 +290,35 @@ export class AuthService {
   // 3. LOGIN COM RESOLUÇÃO DE MULTI-TENANCY
   // ---------------------------------------------------------------------------
 
+  private sessionUserInclude() {
+    return {
+      companies: {
+        where: {
+          deletedAt: null,
+          company: { deletedAt: null, active: true },
+        },
+        include: { company: true },
+        orderBy: { createdAt: 'asc' as const },
+      },
+    };
+  }
+
+  private async findSessionUser(
+    reader: AuthPrismaReader,
+    userId: string,
+  ): Promise<LoginUserRecord | null> {
+    return reader.user.findUnique({
+      where: { id: userId },
+      include: this.sessionUserInclude(),
+    }) as Promise<LoginUserRecord | null>;
+  }
+
+  private async loadSessionUser(userId: string): Promise<LoginUserRecord | null> {
+    return this.prisma.withRlsUserContext(userId, (tx) =>
+      this.findSessionUser(tx, userId),
+    );
+  }
+
   /**
    * FIX CRÍTICO: O JWT agora inclui companyId e role no payload.
    *
@@ -301,19 +333,6 @@ export class AuthService {
   async login(email: string, password: string): Promise<AuthLoginResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
-      include: {
-        companies: {
-          // FIX: filtra vinculos com soft delete aplicado E empresas
-          // que também não estejam soft-deleted (evita reativar empresa
-          // ja removida como "ativa" no momento do login).
-          where: {
-            deletedAt: null,
-            company: { deletedAt: null, active: true },
-          },
-          include: { company: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
     });
 
     // Validação de existência e status
@@ -359,7 +378,15 @@ export class AuthService {
       };
     }
 
-    return this.generateLoginResponse(user);
+    const sessionUser = await this.loadSessionUser(user.id);
+    if (!sessionUser || !sessionUser.active) {
+      throw new UnauthorizedException({
+        message: 'Sessão inválida ou usuário inativo.',
+        code: 'AUTH-SESSION-USER-INVALID',
+      });
+    }
+
+    return this.generateLoginResponse(sessionUser);
   }
 
   async verifyMFA(mfaSession: string, otpCode: string): Promise<LoginResponse> {
@@ -381,19 +408,7 @@ export class AuthService {
       });
     }
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: mfaPayload.sub },
-      include: {
-        companies: {
-          where: {
-            deletedAt: null,
-            company: { deletedAt: null, active: true },
-          },
-          include: { company: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
+    const user = await this.loadSessionUser(mfaPayload.sub);
 
     if (!user || !user.active || !user.twoFactor || user.twoFactorPending) {
       throw new UnauthorizedException({
@@ -432,19 +447,7 @@ export class AuthService {
     userId: string,
     preferredCompanyId?: string | null,
   ): Promise<AuthProfileResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        companies: {
-          where: {
-            deletedAt: null,
-            company: { deletedAt: null, active: true },
-          },
-          include: { company: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
+    const user = await this.loadSessionUser(userId);
 
     if (!user || !user.active) {
       throw new UnauthorizedException({
@@ -497,19 +500,7 @@ export class AuthService {
     userId: string,
     companyId: string,
   ): Promise<SwitchCompanyResponse> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        companies: {
-          where: {
-            deletedAt: null,
-            company: { deletedAt: null, active: true },
-          },
-          include: { company: true },
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-    });
+    const user = await this.loadSessionUser(userId);
 
     if (!user || !user.active) {
       throw new UnauthorizedException('Usuário inativo ou inexistente.');
@@ -532,16 +523,7 @@ export class AuthService {
       where: { token: tokenHash },
       include: {
         user: {
-          include: {
-            companies: {
-              where: {
-                deletedAt: null,
-                company: { deletedAt: null, active: true },
-              },
-              include: { company: true },
-              orderBy: { createdAt: 'asc' },
-            },
-          },
+          select: { id: true, active: true },
         },
       },
     });
@@ -580,7 +562,15 @@ export class AuthService {
       });
     }
 
-    return this.generateLoginResponse(session.user);
+    const sessionUser = await this.loadSessionUser(session.userId);
+    if (!sessionUser || !sessionUser.active) {
+      throw new UnauthorizedException({
+        message: 'Sessão de renovação inválida ou usuário inativo.',
+        code: 'AUTH-REFRESH-USER-INVALID',
+      });
+    }
+
+    return this.generateLoginResponse(sessionUser);
   }
 
   async logoutAll(userId: string): Promise<{ revokedSessions: number }> {

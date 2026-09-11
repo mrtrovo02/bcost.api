@@ -91,6 +91,9 @@ type SetConfigResult = Array<{ set_config: string }>;
 type RlsTransactionHandler<T> = (
   transaction: Prisma.TransactionClient,
 ) => Promise<T>;
+type RlsUserTransactionHandler<T> = (
+  transaction: Prisma.TransactionClient,
+) => Promise<T>;
 
 @Injectable()
 export class PrismaService
@@ -348,6 +351,22 @@ export class PrismaService
     `;
   }
 
+  async setRlsUserContext(userId: string): Promise<void> {
+    TenantContext.patch({ userId });
+
+    await this.$queryRaw<SetConfigResult>`
+      SELECT set_config('app.current_user_id', ${userId}, false)
+    `;
+  }
+
+  async clearRlsUserContext(): Promise<void> {
+    TenantContext.patch({ userId: undefined });
+
+    await this.$queryRaw<SetConfigResult>`
+      SELECT set_config('app.current_user_id', '', false)
+    `;
+  }
+
   async withRlsCompanyContext<T>(
     companyId: string,
     handler: RlsTransactionHandler<T>,
@@ -361,6 +380,25 @@ export class PrismaService
     return this.$transaction(async (transaction) => {
       await transaction.$executeRaw`
         SELECT set_config('app.current_company_id', ${normalizedCompanyId}, true)
+      `;
+
+      return handler(transaction);
+    });
+  }
+
+  async withRlsUserContext<T>(
+    userId: string,
+    handler: RlsUserTransactionHandler<T>,
+  ): Promise<T> {
+    const normalizedUserId = userId.trim();
+
+    if (!normalizedUserId) {
+      throw new Error('userId is required to open an RLS user transaction.');
+    }
+
+    return this.$transaction(async (transaction) => {
+      await transaction.$executeRaw`
+        SELECT set_config('app.current_user_id', ${normalizedUserId}, true)
       `;
 
       return handler(transaction);

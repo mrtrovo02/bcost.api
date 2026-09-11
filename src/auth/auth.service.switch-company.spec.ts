@@ -14,6 +14,7 @@ interface MockPrismaService {
   userSession: {
     create: jest.Mock;
   };
+  withRlsUserContext: jest.Mock;
 }
 
 describe('AuthService switchCompany', () => {
@@ -29,6 +30,11 @@ describe('AuthService switchCompany', () => {
       userSession: {
         create: jest.fn().mockResolvedValue({ id: 'session-switch-001' }),
       },
+      withRlsUserContext: jest
+        .fn()
+        .mockImplementation((_userId: string, handler: (tx: unknown) => unknown) =>
+          handler(prisma),
+        ),
     };
     jwtService = {
       sign: jest.fn().mockReturnValue('access-token-company-b'),
@@ -79,6 +85,10 @@ describe('AuthService switchCompany', () => {
 
     const response = await service.switchCompany('user-amanda', 'company-amel');
 
+    expect(prisma.withRlsUserContext).toHaveBeenCalledWith(
+      'user-amanda',
+      expect.any(Function),
+    );
     expect(response.access_token).toBe('access-token-company-b');
     expect(response.companyId).toBe('company-amel');
     expect(response.activeCompanyId).toBe('company-amel');
