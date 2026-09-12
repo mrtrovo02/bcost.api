@@ -51,6 +51,14 @@ P3 — Monetizacao:
 P4 — Escalabilidade:
 - Paginar listagens, eliminar N+1, usar cache em catalogos estaveis e evitar duplicidade entre modulos basicos e enterprise.
 
+P5 — Pre-producao comercial rapida:
+- Antes de novos modulos comerciais, priorizar deploy repetivel, smoke test pos-deploy, rollback documentado, CI completo com cobertura medida e higiene operacional.
+- Concluir migracao para sessao baseada em cookie HttpOnly/Secure/SameSite=Strict; token real nao deve depender de `localStorage`.
+- Endurecer CSP gradualmente e manter Swagger, demo publica e metricas protegidas/desabilitadas conforme ambiente produtivo.
+- Definir estrategia de LICENSE/visibilidade dos repositorios antes de venda publica ampla.
+- Documentar runbooks de incidente, LGPD basica, SLO beta, backup/restore e contatos de escalacao.
+- Trilha enterprise pos-beta: IaC, pinagem SHA de GitHub Actions, assinatura/attestation de imagem, cliente OpenAPI gerado e refatoracao gradual de services grandes.
+
 ## Regras De Engenharia
 
 - Mudancas incrementais, pequenas e separadas por repo.
