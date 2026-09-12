@@ -58,41 +58,17 @@ jobs:
         run: npm audit --audit-level=high
         continue-on-error: true
 
-      - name: Block unsafe committed configuration
-        run: npm run security:scan
-
-      - name: Generate Prisma Client
-        run: npm run prisma:generate
-
-      - name: Validate Prisma schema
-        run: npm run prisma:validate
-
-      - name: Validate production environment contract
-        run: npm run release:check
+      - name: Run predeploy production gate
+        run: npm run predeploy:full
 
       - name: Run release gate tests
         run: npm test -- --runInBand src/release/validate-production-env.spec.ts src/release/provision-production-company.spec.ts src/release/payroll-enterprise-query-limits.spec.ts src/release/notifications-enterprise-query-limits.spec.ts src/release/banking-enterprise-query-limits.spec.ts src/release/audit-intelligence-enterprise-query-limits.spec.ts src/release/automation-jobs-enterprise-query-limits.spec.ts
-
-      - name: Run auth/session tests
-        run: npm test -- --runInBand src/auth/guards/jwt-auth.guard.spec.ts src/auth/guards/tenant-context.guard.spec.ts src/auth/auth.controller.security.spec.ts
 
       - name: Run tenant and business security tests
         run: npm run test:security
 
       - name: Run RLS policy contract tests
         run: npm test -- --runInBand src/database/prisma.rls.spec.ts
-
-      - name: Run tax scenario calculation tests
-        run: npm run test:tax-scenarios
-
-      - name: Run observability tests
-        run: npm run test:observability
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
 
   rls-integration:
     name: PostgreSQL RLS Integration

@@ -20,6 +20,8 @@ Describe the change and the production risk it reduces.
 
 ## Validation
 
+- [ ] `npm run predeploy:code`
+- [ ] `npm run predeploy:full` when production env variables are available
 - [ ] `npm run security:scan`
 - [ ] `npm run typecheck`
 - [ ] focused tests for changed module
