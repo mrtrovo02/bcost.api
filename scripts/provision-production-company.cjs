@@ -37,6 +37,20 @@ function databaseMode() {
   return username.startsWith('bcost_app') ? 'runtime-override' : 'provisioning';
 }
 
+function assertProvisioningDatabaseRole() {
+  const mode = databaseMode();
+
+  if (mode === 'runtime-override') {
+    throw new Error(
+      [
+        'Provisionamento produtivo bloqueado: a conexão informada usa a role runtime bcost_app.',
+        'Use BCOST_PROVISION_DATABASE_URL ou DIRECT_URL com uma role administrativa sem BYPASSRLS apenas para esta rotina operacional.',
+        'A aplicação deve continuar usando DATABASE_URL com bcost_app para preservar isolamento RLS em runtime.',
+      ].join(' '),
+    );
+  }
+}
+
 function onlyDigits(value) {
   return String(value ?? '').replace(/\D/g, '');
 }
@@ -106,6 +120,10 @@ async function main() {
 
   if (!isValidCnpj(cnpj)) {
     throw new Error('BCOST_PROVISION_COMPANY_CNPJ inválido.');
+  }
+
+  if (confirm === CONFIRMATION_VALUE) {
+    assertProvisioningDatabaseRole();
   }
 
   const prisma = createPrismaClient();
