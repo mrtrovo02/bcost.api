@@ -109,6 +109,10 @@ type EnrichedPayrollEntry = Omit<
 
 @Injectable()
 export class PayrollEnterpriseService {
+  private static readonly PAGE_LIMIT_DEFAULT = 100;
+  private static readonly PAGE_LIMIT_MAX = 500;
+  private static readonly SUMMARY_LIMIT_MAX = 5000;
+
   private readonly logger = new Logger(PayrollEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -741,7 +745,10 @@ export class PayrollEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || PayrollEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      PayrollEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
 
     const rows = await this.employeeModel.findMany({
@@ -916,7 +923,10 @@ export class PayrollEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || PayrollEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      PayrollEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
 
     const rows = await this.payrollModel.findMany({
@@ -1017,7 +1027,10 @@ export class PayrollEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || PayrollEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      PayrollEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
 
     const rows = await this.payrollEntryModel.findMany({
@@ -1345,12 +1358,18 @@ export class PayrollEnterpriseService {
     this.validateCompanyAccess(companyId, user);
 
     const [employees, payrolls, entries] = await Promise.all([
-      this.employeeModel.findMany({ where: { companyId } }),
-      this.payrollModel.findMany({ where: { companyId }, take: 5000 }),
+      this.employeeModel.findMany({
+        where: { companyId },
+        take: PayrollEnterpriseService.SUMMARY_LIMIT_MAX,
+      }),
+      this.payrollModel.findMany({
+        where: { companyId },
+        take: PayrollEnterpriseService.SUMMARY_LIMIT_MAX,
+      }),
       this.payrollEntryModel.findMany({
         where: { payroll: { companyId } },
         include: { employee: true, payroll: true },
-        take: 5000,
+        take: PayrollEnterpriseService.SUMMARY_LIMIT_MAX,
       }),
     ]);
 
