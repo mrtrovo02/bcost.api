@@ -61,7 +61,7 @@ jobs:
           output: bcost-api-sbom.xml
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bcost-api-sbom
           path: bcost-api-sbom.xml
