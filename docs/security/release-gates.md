@@ -8,6 +8,8 @@
 - `npm run release:check`
 - `npm test -- --runInBand src/release/validate-production-env.spec.ts`
 - `npm run test:security`
+- `npm test -- --runInBand src/database/prisma.rls.spec.ts`
+- CI: `PostgreSQL RLS Integration` com migrations, seed mínimo e `npm run test:rls`
 - `npm run test:tax-scenarios`
 - `npm run test:observability`
 - `npm run typecheck`
