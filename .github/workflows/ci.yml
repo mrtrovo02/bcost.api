@@ -30,15 +30,15 @@ jobs:
       FRONTEND_BASE_URL: https://app.bcost.com.br
       PUBLIC_APP_URL: https://app.bcost.com.br
       CORS_ORIGINS: https://bcost.com.br,https://www.bcost.com.br,https://app.bcost.com.br
-      ENABLE_DEMO_FALLBACK: "false"
-      ALLOW_DEMO_SESSION: "false"
-      ALLOW_SETUP_ADMIN: "false"
-      ENABLE_SWAGGER: "false"
+      ENABLE_DEMO_FALLBACK: 'false'
+      ALLOW_DEMO_SESSION: 'false'
+      ALLOW_SETUP_ADMIN: 'false'
+      ENABLE_SWAGGER: 'false'
       RELEASE_STAGE: beta
-      STRIPE_SECRET_KEY: ""
-      STRIPE_WEBHOOK_SECRET: ""
-      STRIPE_PRICE_PRO: ""
-      STRIPE_PRICE_ENTERPRISE: ""
+      STRIPE_SECRET_KEY: ''
+      STRIPE_WEBHOOK_SECRET: ''
+      STRIPE_PRICE_PRO: ''
+      STRIPE_PRICE_ENTERPRISE: ''
       METRICS_API_KEY: bcost-ci-metrics-key
 
     steps:
@@ -71,7 +71,7 @@ jobs:
         run: npm run release:check
 
       - name: Run release gate tests
-        run: npm test -- --runInBand src/release/validate-production-env.spec.ts src/release/provision-production-company.spec.ts src/release/payroll-enterprise-query-limits.spec.ts src/release/notifications-enterprise-query-limits.spec.ts src/release/banking-enterprise-query-limits.spec.ts
+        run: npm test -- --runInBand src/release/validate-production-env.spec.ts src/release/provision-production-company.spec.ts src/release/payroll-enterprise-query-limits.spec.ts src/release/notifications-enterprise-query-limits.spec.ts src/release/banking-enterprise-query-limits.spec.ts src/release/audit-intelligence-enterprise-query-limits.spec.ts
 
       - name: Run auth/session tests
         run: npm test -- --runInBand src/auth/guards/jwt-auth.guard.spec.ts src/auth/guards/tenant-context.guard.spec.ts src/auth/auth.controller.security.spec.ts

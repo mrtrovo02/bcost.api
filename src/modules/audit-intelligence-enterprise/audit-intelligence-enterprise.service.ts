@@ -73,6 +73,11 @@ type AuditFindFirstModel = AuditReadableModel & {
 
 @Injectable()
 export class AuditIntelligenceEnterpriseService {
+  private static readonly PAGE_LIMIT_DEFAULT = 100;
+  private static readonly PAGE_LIMIT_MAX = 500;
+  private static readonly LOOKBACK_DEFAULT = 300;
+  private static readonly LOOKBACK_MAX = 3000;
+
   private readonly logger = new Logger(AuditIntelligenceEnterpriseService.name);
 
   private readonly executiveCache = new Map<
@@ -611,8 +616,24 @@ export class AuditIntelligenceEnterpriseService {
     this.validateCompanyAccess(companyId, user);
 
     const company = await this.ensureCompany(companyId);
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
-    const lookback = Math.min(Math.max(Number(query.lookback || 300), 1), 3000);
+    const limit = Math.min(
+      Math.max(
+        Number(
+          query.limit || AuditIntelligenceEnterpriseService.PAGE_LIMIT_DEFAULT,
+        ),
+        1,
+      ),
+      AuditIntelligenceEnterpriseService.PAGE_LIMIT_MAX,
+    );
+    const lookback = Math.min(
+      Math.max(
+        Number(
+          query.lookback || AuditIntelligenceEnterpriseService.LOOKBACK_DEFAULT,
+        ),
+        1,
+      ),
+      AuditIntelligenceEnterpriseService.LOOKBACK_MAX,
+    );
     const includeSamples = query.includeSamples === 'true';
     const includeRecommendations = query.includeRecommendations !== 'false';
     const includeRaw = query.includeRaw === 'true';
@@ -708,8 +729,8 @@ export class AuditIntelligenceEnterpriseService {
     return [
       'audit-intelligence-executive',
       companyId,
-      `lookback=${query.lookback ?? 300}`,
-      `limit=${query.limit ?? 10}`,
+      `lookback=${query.lookback ?? AuditIntelligenceEnterpriseService.LOOKBACK_DEFAULT}`,
+      `limit=${query.limit ?? AuditIntelligenceEnterpriseService.PAGE_LIMIT_DEFAULT}`,
       `includeRecommendations=${query.includeRecommendations ?? 'true'}`,
     ].join('|');
   }
