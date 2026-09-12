@@ -1,0 +1,22 @@
+bCost Proprietary License
+
+Copyright (c) 2026 bCost.
+All rights reserved.
+
+This repository and all source code, documentation, configuration, scripts,
+database schemas, migrations, tests, and related assets are proprietary and
+confidential intellectual property of bCost and its authorized owner(s).
+
+No permission is granted to copy, modify, publish, distribute, sublicense,
+sell, host, deploy, reverse engineer, or create derivative works from this
+software without prior written authorization from bCost.
+
+Access to this repository, including public or private read access, does not
+grant any license to use the software commercially or operationally.
+
+Authorized collaborators may use this code only for bCost development,
+security review, deployment, audit, and maintenance activities explicitly
+approved by the repository owner.
+
+Any third-party open source dependencies remain governed by their respective
+licenses.

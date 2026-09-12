@@ -2,6 +2,10 @@
 
 API fiscal/financeira com NestJS, Prisma e PostgreSQL. Suporta automação de DFe, conciliação bancária, faturamento, compliance e notificações em tempo real.
 
+**Licença e propriedade**
+
+Código proprietário da bCost. Nenhum direito de uso, cópia, distribuição, hospedagem, exploração comercial ou criação de trabalhos derivados é concedido sem autorização prévia por escrito. Consulte `LICENSE`.
+
 **Stack**
 - Node.js + NestJS (Fastify)
 - Prisma + PostgreSQL
