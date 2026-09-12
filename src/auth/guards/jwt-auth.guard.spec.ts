@@ -150,7 +150,7 @@ describe('JwtAuthGuard', () => {
     expect(request.user).toBeUndefined();
   });
 
-  it('accepts local demo sessions outside production for development fixtures', () => {
+  it('delegates demo-like tokens to passport even outside production', () => {
     process.env.NODE_ENV = 'development';
     process.env.ALLOW_DEMO_SESSION = 'false';
     process.env.ENABLE_DEMO_FALLBACK = 'false';
@@ -161,14 +161,15 @@ describe('JwtAuthGuard', () => {
       },
     };
     const guard = new JwtAuthGuard(createReflector());
+    const parentPrototype = Object.getPrototypeOf(JwtAuthGuard.prototype) as {
+      canActivate: (context: ExecutionContext) => boolean;
+    };
+    const parentCanActivateSpy = jest
+      .spyOn(parentPrototype, 'canActivate')
+      .mockReturnValueOnce(false);
 
-    expect(guard.canActivate(createExecutionContext(request))).toBe(true);
-    expect(request.user).toEqual({
-      id: 'demo-user',
-      email: 'demo@bcost.local',
-      companyId: 'demo-001',
-      activeCompanyId: 'demo-001',
-      role: 'OWNER',
-    });
+    expect(guard.canActivate(createExecutionContext(request))).toBe(false);
+    expect(parentCanActivateSpy).toHaveBeenCalledTimes(1);
+    expect(request.user).toBeUndefined();
   });
 });

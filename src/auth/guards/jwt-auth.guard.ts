@@ -9,8 +9,6 @@ import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../../common/decorators/public.decorator.js';
 
-const DEMO_SESSION_TOKEN = 'demo-token-local';
-
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(private reflector: Reflector) {
@@ -28,52 +26,6 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     ]);
 
     if (isPublic) {
-      return true;
-    }
-
-    const request = context.switchToHttp().getRequest<{
-      headers?: Record<string, string | string[] | undefined>;
-      user?: {
-        id: string;
-        email: string;
-        companyId?: string | null;
-        activeCompanyId?: string | null;
-        role?: string | null;
-      };
-    }>();
-    const authHeader = request?.headers?.authorization;
-    const authorizationValue = Array.isArray(authHeader)
-      ? authHeader[0]
-      : authHeader;
-    const normalizedAuthToken =
-      typeof authorizationValue === 'string' ? authorizationValue.trim() : '';
-    const demoTokenCandidates = [
-      normalizedAuthToken,
-      normalizedAuthToken.replace(/^Bearer\s+/i, ''),
-      normalizedAuthToken.toLowerCase().replace(/^bearer\s+/i, ''),
-    ];
-    const demoHeader = request?.headers?.['x-demo-session'];
-    const demoSessionHeader = Array.isArray(demoHeader)
-      ? demoHeader[0]
-      : demoHeader;
-    const demoSessionAllowed = process.env.NODE_ENV !== 'production';
-    const hasDemoToken = demoTokenCandidates.some(
-      (candidate) =>
-        typeof candidate === 'string' &&
-        candidate.trim().toLowerCase() === DEMO_SESSION_TOKEN,
-    );
-    const hasDemoHeader = demoSessionHeader === 'true' || demoSessionHeader === '1';
-    const isLocalDemoRequest =
-      demoSessionAllowed && (hasDemoToken || hasDemoHeader);
-
-    if (isLocalDemoRequest) {
-      request.user = {
-        id: 'demo-user',
-        email: 'demo@bcost.local',
-        companyId: 'demo-001',
-        activeCompanyId: 'demo-001',
-        role: 'OWNER',
-      };
       return true;
     }
 
