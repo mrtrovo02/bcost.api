@@ -94,6 +94,11 @@ type BankingCandidatesResult = {
 
 @Injectable()
 export class BankingEnterpriseService {
+  private static readonly PAGE_LIMIT_DEFAULT = 100;
+  private static readonly PAGE_LIMIT_MAX = 500;
+  private static readonly RECONCILIATION_CANDIDATE_LIMIT = 50;
+  private static readonly SUMMARY_TRANSACTION_LIMIT = 5000;
+
   private readonly logger = new Logger(BankingEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -644,7 +649,10 @@ export class BankingEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || BankingEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      BankingEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
     const where = this.buildAccountsWhere(companyId, query);
 
@@ -854,7 +862,10 @@ export class BankingEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || BankingEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      BankingEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
     const where = this.buildTransactionsWhere(companyId, query);
 
@@ -1198,7 +1209,7 @@ export class BankingEnterpriseService {
         include: {
           customer: true,
         },
-        take: 50,
+        take: BankingEnterpriseService.RECONCILIATION_CANDIDATE_LIMIT,
         orderBy: {
           issuedAt: 'desc',
         },
@@ -1248,7 +1259,7 @@ export class BankingEnterpriseService {
             lte: new Prisma.Decimal(txAmount + amountTolerance),
           },
         },
-        take: 50,
+        take: BankingEnterpriseService.RECONCILIATION_CANDIDATE_LIMIT,
         orderBy: {
           dueDate: 'desc',
         },
@@ -1522,7 +1533,10 @@ export class BankingEnterpriseService {
     this.validateCompanyAccess(companyId, user);
     this.validateWritePermission(user);
 
-    const limit = Math.min(Math.max(Number(dto.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(dto.limit || BankingEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      BankingEnterpriseService.PAGE_LIMIT_MAX,
+    );
 
     const transactions = await this.bankTransactionModel.findMany({
       where: {
@@ -1750,7 +1764,7 @@ export class BankingEnterpriseService {
         where: {
           companyId,
         },
-        take: 5000,
+        take: BankingEnterpriseService.SUMMARY_TRANSACTION_LIMIT,
       }),
     ]);
 
