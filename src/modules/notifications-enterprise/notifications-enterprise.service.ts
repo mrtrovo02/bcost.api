@@ -76,6 +76,12 @@ type WebhookSummaryItem = Pick<WebhookConfig, 'active' | 'events'>;
 
 @Injectable()
 export class NotificationsEnterpriseService {
+  private static readonly PAGE_LIMIT_DEFAULT = 100;
+  private static readonly PAGE_LIMIT_MAX = 500;
+  private static readonly NOTIFICATION_SUMMARY_LIMIT = 5000;
+  private static readonly WEBHOOK_SUMMARY_LIMIT = 1000;
+  private static readonly WEBHOOK_DISPATCH_LIMIT = 100;
+
   private readonly logger = new Logger(NotificationsEnterpriseService.name);
 
   constructor(private readonly prisma: PrismaService) {}
@@ -491,12 +497,12 @@ export class NotificationsEnterpriseService {
       this.notificationLogModel.findMany({
         where: { companyId },
         orderBy: { createdAt: 'desc' },
-        take: 5000,
+        take: NotificationsEnterpriseService.NOTIFICATION_SUMMARY_LIMIT,
       }),
       this.webhookConfigModel.findMany({
         where: { companyId },
         orderBy: { createdAt: 'desc' },
-        take: 1000,
+        take: NotificationsEnterpriseService.WEBHOOK_SUMMARY_LIMIT,
       }),
     ]);
 
@@ -517,7 +523,10 @@ export class NotificationsEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || NotificationsEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      NotificationsEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
 
     const rows = await this.notificationLogModel.findMany({
@@ -741,7 +750,10 @@ export class NotificationsEnterpriseService {
   ) {
     this.validateCompanyAccess(companyId, user);
 
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(Number(query.limit || NotificationsEnterpriseService.PAGE_LIMIT_DEFAULT), 1),
+      NotificationsEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
 
     const rows = await this.webhookConfigModel.findMany({
@@ -1043,7 +1055,7 @@ export class NotificationsEnterpriseService {
         events: { has: event },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: NotificationsEnterpriseService.WEBHOOK_DISPATCH_LIMIT,
     });
 
     const results: WebhookDeliveryResult[] = [];
