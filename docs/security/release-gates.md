@@ -2,6 +2,9 @@
 
 ## Gates bloqueantes
 
+- `npm run predeploy:check`
+- `npm run predeploy:full` quando o ambiente local/EC2 tiver memoria suficiente para build
+- `npm run predeploy:code` para validar codigo fora do ambiente produtivo sem exigir segredos reais
 - `npm run security:scan`
 - `npm run prisma:generate`
 - `npm run prisma:validate`
@@ -14,6 +17,8 @@
 - `npm run test:observability`
 - `npm run typecheck`
 - `npm run build`
+
+`predeploy:check` e `predeploy:full` sao os comandos preferenciais para EC2 e ambientes com variaveis produtivas. `predeploy:code` e o comando preferencial para validação local/CI sem segredos reais. A lista detalhada acima permanece como contrato auditorio do que esses comandos cobrem.
 
 ## Gates informativos
 
