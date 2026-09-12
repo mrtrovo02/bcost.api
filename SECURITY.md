@@ -23,3 +23,9 @@ Report suspected vulnerabilities privately to the repository owner and include:
 - Secrets must come from environment variables or a managed secret store.
 - `.env`, certificates, database dumps, and customer documents must never be committed.
 - Security fixes must pass release checks, focused tests, typecheck, build, and the versioned secret scan before deployment.
+
+## Incident Response
+
+For production incidents, follow [docs/runbooks/incident-response.md](docs/runbooks/incident-response.md).
+
+Treat authentication failures, tenant isolation regressions, RLS failures, billing/payment errors, fiscal calculation defects, and deploy regressions as high-priority incidents until proven otherwise.
