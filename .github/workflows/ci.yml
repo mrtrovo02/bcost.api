@@ -79,6 +79,9 @@ jobs:
       - name: Run tenant and business security tests
         run: npm run test:security
 
+      - name: Run RLS policy contract tests
+        run: npm test -- --runInBand src/database/prisma.rls.spec.ts
+
       - name: Run tax scenario calculation tests
         run: npm run test:tax-scenarios
 
