@@ -141,6 +141,12 @@ jobs:
       - name: Deploy migrations
         run: npm run prisma:migrate
 
+      - name: Prepare runtime RLS role
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d bcost <<'SQL'
+          ALTER ROLE bcost_app WITH PASSWORD 'bcost' NOBYPASSRLS;
+          SQL
+
       - name: Seed RLS companies
         run: |
           PGPASSWORD=postgres psql -h localhost -U postgres -d bcost <<'SQL'
