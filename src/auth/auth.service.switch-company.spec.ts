@@ -67,6 +67,7 @@ describe('AuthService switchCompany', () => {
             cnpj: '11111111000191',
             active: true,
             taxRegime: TaxRegime.SIMPLES_NACIONAL,
+            planLevel: 'FREE',
           },
         },
         {
@@ -78,6 +79,7 @@ describe('AuthService switchCompany', () => {
             cnpj: '22222222000191',
             active: true,
             taxRegime: TaxRegime.LUCRO_PRESUMIDO,
+            planLevel: 'PRO',
           },
         },
       ],
@@ -107,6 +109,8 @@ describe('AuthService switchCompany', () => {
           id: 'company-amel',
           name: 'Amel Contabilidade Digital LTDA',
           role: CompanyRole.MANAGER,
+          active: true,
+          planLevel: 'PRO',
         }),
       ]),
     );

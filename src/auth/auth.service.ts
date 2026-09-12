@@ -48,6 +48,8 @@ export interface LoginResponse {
     cnpj: string;
     role: CompanyRole;
     taxRegime: string;
+    active: boolean;
+    planLevel: string;
   }>;
   user: {
     id: string;
@@ -61,6 +63,8 @@ export interface LoginResponse {
       cnpj: string;
       role: CompanyRole;
       taxRegime: string;
+      active: boolean;
+      planLevel: string;
     }>;
   };
 }
@@ -128,6 +132,7 @@ interface LoginCompanyMembership {
     cnpj: string;
     active?: boolean;
     taxRegime: TaxRegime;
+    planLevel?: string;
   };
 }
 
@@ -471,6 +476,8 @@ export class AuthService {
       cnpj: cu.company.cnpj,
       role: cu.role,
       taxRegime: cu.company.taxRegime,
+      active: cu.company.active ?? true,
+      planLevel: cu.company.planLevel ?? 'FREE',
     }));
 
     return {
@@ -609,6 +616,8 @@ export class AuthService {
       cnpj: cu.company.cnpj,
       role: cu.role,
       taxRegime: cu.company.taxRegime,
+      active: cu.company.active ?? true,
+      planLevel: cu.company.planLevel ?? 'FREE',
     }));
 
     this.logger.log(
