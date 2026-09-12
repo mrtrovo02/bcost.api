@@ -5,6 +5,8 @@ import { UpdateBusinessRuleDto } from './dto/update-business-rule.dto.js';
 
 @Injectable()
 export class BusinessRulesService {
+  private static readonly BUSINESS_RULE_LIST_LIMIT = 100;
+
   constructor(private prisma: PrismaService) {}
 
   async create(createDto: CreateBusinessRuleDto) {
@@ -17,6 +19,7 @@ export class BusinessRulesService {
     return this.prisma.businessRule.findMany({
       where: { companyId },
       orderBy: { createdAt: 'desc' },
+      take: BusinessRulesService.BUSINESS_RULE_LIST_LIMIT,
     });
   }
 
