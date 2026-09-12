@@ -29,6 +29,13 @@ const RLS_RUNTIME_GRANTS_MIGRATION_PATH = join(
   '20260903001000_grant_bcost_app_runtime_privileges',
   'migration.sql',
 );
+const RLS_TOKEN_BLACKLIST_DELETE_GRANT_MIGRATION_PATH = join(
+  process.cwd(),
+  'prisma',
+  'migrations',
+  '20260912000000_grant_token_blacklist_runtime_delete',
+  'migration.sql',
+);
 const RLS_USER_CONTEXT_MIGRATION_PATH = join(
   process.cwd(),
   'prisma',
@@ -106,6 +113,10 @@ describe('PostgreSQL RLS policies', () => {
   const hardeningSql = readFileSync(RLS_HARDENING_MIGRATION_PATH, 'utf8');
   const runtimeGrantsSql = readFileSync(
     RLS_RUNTIME_GRANTS_MIGRATION_PATH,
+    'utf8',
+  );
+  const tokenBlacklistDeleteGrantSql = readFileSync(
+    RLS_TOKEN_BLACKLIST_DELETE_GRANT_MIGRATION_PATH,
     'utf8',
   );
   const userContextSql = readFileSync(RLS_USER_CONTEXT_MIGRATION_PATH, 'utf8');
@@ -278,7 +289,7 @@ describe('PostgreSQL RLS policies', () => {
     }
   });
 
-  it('deve conceder privilegios minimos para a role de runtime sem DELETE fisico', () => {
+  it('deve conceder privilegios minimos para a role de runtime sem DELETE amplo', () => {
     expect(runtimeGrantsSql).toContain(
       'GRANT USAGE ON SCHEMA public TO bcost_app;',
     );
@@ -289,6 +300,12 @@ describe('PostgreSQL RLS policies', () => {
       'GRANT SELECT, INSERT, UPDATE ON TABLE',
     );
     expect(runtimeGrantsSql).not.toMatch(/GRANT\s+.*DELETE/i);
+    expect(tokenBlacklistDeleteGrantSql).toContain(
+      'GRANT DELETE ON TABLE "token_blacklist" TO bcost_app;',
+    );
+    expect(tokenBlacklistDeleteGrantSql).not.toMatch(
+      /GRANT\s+DELETE\s+ON\s+TABLE(?!\s+"token_blacklist")/i,
+    );
   });
 });
 
