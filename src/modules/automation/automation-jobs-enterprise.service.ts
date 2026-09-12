@@ -50,6 +50,9 @@ type AutomationExecutionResult = {
 
 @Injectable()
 export class AutomationJobsEnterpriseService {
+  private static readonly PAGE_LIMIT_DEFAULT = 100;
+  private static readonly PAGE_LIMIT_MAX = 500;
+
   private readonly logger = new Logger(AutomationJobsEnterpriseService.name);
 
   constructor(
@@ -587,7 +590,15 @@ export class AutomationJobsEnterpriseService {
     this.validateCompanyAccess(companyId, user);
 
     const model = this.automationJobModel;
-    const limit = Math.min(Math.max(Number(query.limit || 100), 1), 500);
+    const limit = Math.min(
+      Math.max(
+        Number(
+          query.limit || AutomationJobsEnterpriseService.PAGE_LIMIT_DEFAULT,
+        ),
+        1,
+      ),
+      AutomationJobsEnterpriseService.PAGE_LIMIT_MAX,
+    );
     const offset = Math.max(Number(query.offset || 0), 0);
     const where = this.buildWhere(companyId, query);
 

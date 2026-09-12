@@ -71,7 +71,7 @@ jobs:
         run: npm run release:check
 
       - name: Run release gate tests
-        run: npm test -- --runInBand src/release/validate-production-env.spec.ts src/release/provision-production-company.spec.ts src/release/payroll-enterprise-query-limits.spec.ts src/release/notifications-enterprise-query-limits.spec.ts src/release/banking-enterprise-query-limits.spec.ts src/release/audit-intelligence-enterprise-query-limits.spec.ts
+        run: npm test -- --runInBand src/release/validate-production-env.spec.ts src/release/provision-production-company.spec.ts src/release/payroll-enterprise-query-limits.spec.ts src/release/notifications-enterprise-query-limits.spec.ts src/release/banking-enterprise-query-limits.spec.ts src/release/audit-intelligence-enterprise-query-limits.spec.ts src/release/automation-jobs-enterprise-query-limits.spec.ts
 
       - name: Run auth/session tests
         run: npm test -- --runInBand src/auth/guards/jwt-auth.guard.spec.ts src/auth/guards/tenant-context.guard.spec.ts src/auth/auth.controller.security.spec.ts
