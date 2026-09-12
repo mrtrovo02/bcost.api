@@ -5,6 +5,5 @@ export const BCOST_ALLOWED_CORS_HEADERS = [
   'Authorization',
   'x-bcost-trace-id',
   'x-company-id',
-  'x-demo-session',
   'companyid',
 ] as const;

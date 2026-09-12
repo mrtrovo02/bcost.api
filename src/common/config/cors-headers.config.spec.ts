@@ -3,16 +3,16 @@
 import { BCOST_ALLOWED_CORS_HEADERS } from './cors-headers.config.js';
 
 describe('BCOST_ALLOWED_CORS_HEADERS', () => {
-  it('allows tenant, trace and controlled demo session headers used by the frontend', () => {
+  it('allows only auth, tenant and trace headers used by the frontend', () => {
     expect(BCOST_ALLOWED_CORS_HEADERS).toEqual(
       expect.arrayContaining([
         'Authorization',
         'Content-Type',
         'x-bcost-trace-id',
         'x-company-id',
-        'x-demo-session',
       ]),
     );
+    expect(BCOST_ALLOWED_CORS_HEADERS).not.toContain('x-demo-session');
   });
 
   it('does not contain duplicate header names ignoring casing', () => {
