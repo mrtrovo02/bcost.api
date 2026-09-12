@@ -24,6 +24,13 @@ function requireNonEmpty(name, message) {
   }
 }
 
+function requireMinLength(name, minLength, message) {
+  const value = valueOf(name);
+  if (value && value.length < minLength) {
+    errors.push(`${name}: ${message}`);
+  }
+}
+
 function requireHttpsUrl(name) {
   const value = valueOf(name);
   if (!value) {
@@ -243,6 +250,11 @@ function validateProductionEnvironment() {
   requireNonEmpty(
     'METRICS_API_KEY',
     'obrigatório para proteger /metrics e sustentar observabilidade/SLA em produção.',
+  );
+  requireMinLength(
+    'METRICS_API_KEY',
+    32,
+    'use chave forte com pelo menos 32 caracteres para proteger métricas produtivas.',
   );
 }
 

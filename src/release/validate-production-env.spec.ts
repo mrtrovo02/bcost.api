@@ -34,7 +34,7 @@ const baseEnv: NodeJS.ProcessEnv = {
   STRIPE_WEBHOOK_SECRET: 'whsec_release_check',
   STRIPE_PRICE_PRO: 'price_release_check_pro',
   STRIPE_PRICE_ENTERPRISE: 'price_release_check_enterprise',
-  METRICS_API_KEY: 'release-check-metrics-key',
+  METRICS_API_KEY: 'release-check-metrics-key-with-32-chars',
 };
 
 function runReleaseCheck(overrides: Partial<NodeJS.ProcessEnv> = {}): ReleaseCheckResult {
@@ -82,6 +82,14 @@ describe('validate-production-env release gate', () => {
 
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('ENABLE_SWAGGER');
+  });
+
+  it('bloqueia chave fraca de métricas em produção', () => {
+    const result = runReleaseCheck({ METRICS_API_KEY: 'short-key' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('METRICS_API_KEY');
+    expect(result.stderr).toContain('pelo menos 32 caracteres');
   });
 
   it('aceita o usuário bcost_app com sufixo de projeto do pooler Supabase', () => {
