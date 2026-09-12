@@ -76,6 +76,12 @@ jobs:
       - name: Run auth/session tests
         run: npm test -- --runInBand src/auth/guards/jwt-auth.guard.spec.ts src/auth/guards/tenant-context.guard.spec.ts src/auth/auth.controller.security.spec.ts
 
+      - name: Run tenant and business security tests
+        run: npm run test:security
+
+      - name: Run tax scenario calculation tests
+        run: npm run test:tax-scenarios
+
       - name: Run observability tests
         run: npm run test:observability
 
