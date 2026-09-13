@@ -1,0 +1,33 @@
+name: Backend security hardening
+description: Track backend security, RLS, CI, observability, or supply-chain improvements.
+title: "security(api): "
+labels:
+  - security
+  - backend
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Auth/session
+        - Tenant/RLS
+        - Billing/payments
+        - Fiscal/XML
+        - CI/CD
+        - Supply chain
+        - Observability
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk being reduced
+      description: Describe the abuse case, failure mode, or compliance risk.
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Required validation
+      description: List tests, build, release checks, smoke checks, or EC2 commands.

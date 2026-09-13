@@ -1,0 +1,156 @@
+import { BadRequestException } from '@nestjs/common';
+import { WebhookDeliveryStatus } from '@prisma/client';
+import type { AuthenticatedRequest } from '../../common/http/authenticated-request.js';
+import { PaymentsController } from './payments.controller.js';
+import { PaymentsService } from './payments.service.js';
+
+type PaymentsServiceMock = {
+  createCheckoutSession: jest.Mock;
+  createBillingPortalSession: jest.Mock;
+  getSubscription: jest.Mock;
+  listWebhookEvents: jest.Mock;
+  processStripeWebhook: jest.Mock;
+};
+
+function createRequest(
+  overrides: Partial<AuthenticatedRequest> = {},
+): AuthenticatedRequest {
+  return {
+    user: {
+      id: 'user-001',
+      sub: 'user-001',
+      email: 'amandacontabil@bcost.com.br',
+      companyId: 'company-001',
+      role: 'OWNER',
+    },
+    ...overrides,
+  } as AuthenticatedRequest;
+}
+
+describe('PaymentsController', () => {
+  let controller: PaymentsController;
+  let paymentsMock: PaymentsServiceMock;
+
+  beforeEach(() => {
+    paymentsMock = {
+      createCheckoutSession: jest.fn(),
+      createBillingPortalSession: jest.fn(),
+      getSubscription: jest.fn(),
+      listWebhookEvents: jest.fn(),
+      processStripeWebhook: jest.fn(),
+    };
+
+    controller = new PaymentsController(
+      paymentsMock as unknown as PaymentsService,
+    );
+  });
+
+  it('encaminha portal de cobranca com empresa e returnUrl validado pelo service', async () => {
+    const dto = {
+      returnUrl: 'https://app.bcost.com.br/dashboard/settings?billing=portal',
+    };
+    paymentsMock.createBillingPortalSession.mockResolvedValueOnce({
+      status: 'OK',
+      companyId: 'company-001',
+      portalSession: {
+        providerPortalSessionId: 'bps_123',
+        portalUrl: 'https://billing.stripe.com/p/session/bps_123',
+      },
+    });
+
+    await expect(controller.createPortal('company-001', dto)).resolves.toEqual({
+      status: 'OK',
+      companyId: 'company-001',
+      portalSession: {
+        providerPortalSessionId: 'bps_123',
+        portalUrl: 'https://billing.stripe.com/p/session/bps_123',
+      },
+    });
+
+    expect(paymentsMock.createBillingPortalSession).toHaveBeenCalledWith(
+      'company-001',
+      dto,
+    );
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('encaminha checkout com empresa, dto e usuario autenticado', async () => {
+    const dto = {
+      planLevel: 'PRO' as const,
+      successUrl: 'https://app.bcost.com.br/dashboard/settings?billing=success',
+      cancelUrl: 'https://app.bcost.com.br/dashboard/settings?billing=cancel',
+    };
+    const request = createRequest();
+    paymentsMock.createCheckoutSession.mockResolvedValueOnce({ status: 'OK' });
+
+    await expect(
+      controller.createCheckout('company-001', dto, request),
+    ).resolves.toEqual({ status: 'OK' });
+
+    expect(paymentsMock.createCheckoutSession).toHaveBeenCalledWith(
+      'company-001',
+      dto,
+      request.user,
+    );
+  });
+
+  it('lista eventos de webhook por empresa repassando filtros operacionais', async () => {
+    const query = {
+      status: WebhookDeliveryStatus.FAILED,
+      limit: 10,
+    };
+    paymentsMock.listWebhookEvents.mockResolvedValueOnce({
+      status: 'OK',
+      companyId: 'company-001',
+      filters: query,
+      events: [],
+    });
+
+    await expect(controller.webhookEvents('company-001', query)).resolves.toEqual({
+      status: 'OK',
+      companyId: 'company-001',
+      filters: query,
+      events: [],
+    });
+
+    expect(paymentsMock.listWebhookEvents).toHaveBeenCalledWith(
+      'company-001',
+      query,
+    );
+  });
+
+  it('rejeita webhook Stripe sem rawBody para preservar validacao criptografica', () => {
+    expect(() =>
+      controller.stripeWebhook(createRequest(), 't=123,v1=signature'),
+    ).toThrow(BadRequestException);
+
+    expect(paymentsMock.processStripeWebhook).not.toHaveBeenCalled();
+  });
+
+  it('processa webhook Stripe somente com rawBody original', async () => {
+    const rawBody = Buffer.from('{"id":"evt_123"}');
+    const request = {
+      ...createRequest(),
+      rawBody,
+    };
+    paymentsMock.processStripeWebhook.mockResolvedValueOnce({
+      status: 'OK',
+      providerEventId: 'evt_123',
+    });
+
+    await expect(
+      controller.stripeWebhook(request, 't=123,v1=signature'),
+    ).resolves.toEqual({
+      status: 'OK',
+      providerEventId: 'evt_123',
+    });
+
+    expect(paymentsMock.processStripeWebhook).toHaveBeenCalledWith(
+      rawBody,
+      't=123,v1=signature',
+    );
+  });
+});
