@@ -42,6 +42,10 @@ import {
 import { ZodValidationPipe } from 'nestjs-zod';
 import { redactSensitiveHeaders } from './common/security/redact-headers.util.js';
 import { TenantContext } from './common/tenant/tenant.context.js';
+import {
+  LOGGER_REDACTION_CENSOR,
+  LOGGER_REDACTION_PATHS,
+} from './common/logger/logger-redaction.config.js';
 
 // Previne duplicação de métricas em ambientes com hot-reload ou execuções repetidas
 register.clear();
@@ -198,17 +202,8 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
       logger: {
         level: process.env.LOG_LEVEL || 'info',
         redact: {
-          paths: [
-            'req.headers.authorization',
-            'req.headers.cookie',
-            'req.headers.set-cookie',
-            'req.headers["set-cookie"]',
-            'req.headers["x-api-key"]',
-            'req.headers["x-auth-token"]',
-            'req.headers["x-access-token"]',
-            'req.headers["proxy-authorization"]',
-          ],
-          censor: '[REDACTED]',
+          paths: [...LOGGER_REDACTION_PATHS],
+          censor: LOGGER_REDACTION_CENSOR,
         },
       },
     });
