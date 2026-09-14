@@ -54,12 +54,15 @@ P4 — Escalabilidade:
 - Paginar listagens, eliminar N+1, usar cache em catalogos estaveis e evitar duplicidade entre modulos basicos e enterprise.
 
 P5 — Pre-producao comercial rapida:
+- Migrar runtime produtivo, Docker e CI para Node 24 LTS. Node 20 nao e baseline aceitavel para venda enterprise ampla.
 - Antes de novos modulos comerciais, priorizar deploy repetivel, smoke test pos-deploy, rollback documentado, CI completo com cobertura medida e higiene operacional.
 - Concluir migracao para sessao baseada em cookie HttpOnly/Secure/SameSite=Strict; token real nao deve depender de `localStorage`.
 - Endurecer CSP gradualmente e manter Swagger, demo publica e metricas protegidas/desabilitadas conforme ambiente produtivo.
 - Definir estrategia de LICENSE/visibilidade dos repositorios antes de venda publica ampla.
 - Documentar runbooks de incidente, LGPD basica, SLO beta, backup/restore e contatos de escalacao.
 - Trilha enterprise pos-beta: IaC, pinagem SHA de GitHub Actions, assinatura/attestation de imagem, cliente OpenAPI gerado e refatoracao gradual de services grandes.
+- Trilha de upgrade deve ser controlada: Nest 11/Fastify 5/Swagger 8 e Prisma 6 -> 7 em PRs separados, com RLS, smoke autenticado, contrato HTTP e build como gates.
+- Regra fiscal deve caminhar para dominio puro versionado por vigencia legal, sem Prisma, com `decimal.js` e golden tests; services Nest devem orquestrar, nao concentrar calculo, persistencia e apresentacao.
 
 ## Gates De Lancamento
 
@@ -73,6 +76,7 @@ Beta pago/controlado exige:
 
 Venda enterprise ampla exige adicionalmente:
 
+- Node 24 LTS em CI, Docker e EC2.
 - CI/CD com rollback automatizado ou procedimento reversivel testado.
 - Cobertura medida com threshold inicial e suite completa em agenda noturna.
 - CSP endurecida, sem `unsafe-eval` e com plano de nonce/hash para reduzir `unsafe-inline`.
@@ -109,7 +113,7 @@ Venda enterprise ampla exige adicionalmente:
 ```bash
 cd ~/bcost.api
 git pull origin main
-npm ci --include=dev
+npm ci --engine-strict --include=dev
 npx prisma migrate deploy
 npx prisma generate
 RELEASE_STAGE=beta npm run predeploy:full

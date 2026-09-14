@@ -148,6 +148,19 @@ function requireReleaseStage() {
   }
 }
 
+function runtimeNodeMajor() {
+  const version = valueOf('BCOST_NODE_VERSION_OVERRIDE') || process.versions.node;
+  const major = Number.parseInt(version.split('.')[0] ?? '', 10);
+  return Number.isFinite(major) ? major : null;
+}
+
+function requireSupportedNodeRuntime() {
+  const major = runtimeNodeMajor();
+  if (major === null || major < 24) {
+    errors.push('NODE_RUNTIME: use Node.js 24 LTS ou superior para deploy produtivo.');
+  }
+}
+
 function requireOfficialStripeConfiguration() {
   if (isBetaReleaseStage()) {
     warnings.push(
@@ -220,6 +233,7 @@ function requireMaxDuration(name, maxSeconds, message) {
 
 function validateProductionEnvironment() {
   requireReleaseStage();
+  requireSupportedNodeRuntime();
   requireEquals('NODE_ENV', 'production', 'deve ser production no ambiente oficial.');
   requireNonEmpty('DATABASE_URL', 'conexão PostgreSQL obrigatória.');
   requireNonEmpty('DIRECT_URL', 'conexão direta obrigatória para Prisma/migrations.');

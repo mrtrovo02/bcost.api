@@ -48,11 +48,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --engine-strict
 
       - name: Audit npm dependencies report
         run: npm audit --audit-level=high
@@ -105,11 +105,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --engine-strict
 
       - name: Generate Prisma Client
         run: npm run prisma:generate

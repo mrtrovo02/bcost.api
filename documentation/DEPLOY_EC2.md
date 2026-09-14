@@ -18,6 +18,24 @@ Os logs indicaram:
 ssh -i ./ssh-nestjs-prod.pem ec2-user@18.118.161.27
 ```
 
+Pré-checagem obrigatória de runtime:
+
+```bash
+node -v
+npm -v
+```
+
+Para venda enterprise ampla, a EC2 deve rodar Node 24 LTS. Se `node -v` retornar `v20.*`, atualize o runtime via NVM antes do deploy:
+
+```bash
+nvm install 24
+nvm alias default 24
+nvm use 24
+node -v
+npm -v
+pm2 update
+```
+
 Backend:
 
 ```bash
@@ -26,7 +44,7 @@ git status --short
 git fetch --all --prune
 git checkout main
 git pull origin main
-npm ci --include=dev
+npm ci --engine-strict --include=dev
 npx prisma generate
 npx prisma migrate deploy
 RELEASE_STAGE=beta npm run predeploy:full
@@ -69,7 +87,9 @@ git status --short
 git fetch --all --prune
 git checkout main
 git pull origin main
-npm ci --include=dev
+npm ci --engine-strict --include=dev
+export BUILD_VERSION="$(git rev-parse --short HEAD)"
+export NEXT_PUBLIC_BUILD_VERSION="$BUILD_VERSION"
 pm2 stop bcost-web || true
 rm -rf .next
 npm run predeploy:full
@@ -109,9 +129,9 @@ scp -i ./ssh-nestjs-prod.pem deploy-YYYYMMDDHHMMSS.zip ec2-user@18.118.161.27:/h
 ssh -i ./ssh-nestjs-prod.pem ec2-user@18.118.161.27
 cd /home/ec2-user/bcost
 unzip -o deploy-YYYYMMDDHHMMSS.zip
-cd bcost.api && npm ci --include=dev && npx prisma generate && npx prisma migrate deploy && RELEASE_STAGE=beta npm run release:check && npm run test:tax-scenarios && npm run build
+cd bcost.api && npm ci --engine-strict --include=dev && npx prisma generate && npx prisma migrate deploy && RELEASE_STAGE=beta npm run release:check && npm run test:tax-scenarios && npm run build
 cd ../bcost-web
-npm ci
+npm ci --engine-strict
 pm2 stop bcost-web || true
 rm -rf .next
 npm run test:tax-scenarios

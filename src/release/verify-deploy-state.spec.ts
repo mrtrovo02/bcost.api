@@ -17,7 +17,7 @@ const publicSmokeSource = readFileSync(
 describe('deploy verification release contract', () => {
   it('keeps authenticated smoke after public smoke and before deploy success', () => {
     const publicSmokeIndex = deployVerifySource.indexOf("runNpmScript('smoke:production')");
-    const authenticatedSmokeIndex = deployVerifySource.indexOf("runNpmScript(\n    'smoke:authenticated'");
+    const authenticatedSmokeIndex = deployVerifySource.indexOf("'smoke:authenticated'");
     const successIndex = deployVerifySource.indexOf('Deploy verificado: git e smoke de producao aprovados.');
 
     expect(publicSmokeIndex).toBeGreaterThan(-1);

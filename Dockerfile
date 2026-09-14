@@ -1,5 +1,5 @@
 # --- ESTÁGIO 1: Builder ---
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 
 # Instala dependências nativas necessárias para compilação e suporte ao Prisma Engine no Alpine (musl)
 RUN apk add --no-cache libc6-compat openssl
@@ -25,7 +25,7 @@ RUN npm prune --production --legacy-peer-deps && npm cache clean --force
 
 
 # --- ESTÁGIO 2: Runner (Produção) ---
-FROM node:20-alpine AS runner
+FROM node:24-alpine AS runner
 
 ENV NODE_ENV=production \
     PORT=5000

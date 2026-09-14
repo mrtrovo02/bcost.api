@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "description": "Bcost API",
   "main": "dist/main.js",
+  "packageManager": "npm@11.17.0",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "build": "rimraf dist && nest build",
@@ -23,6 +24,7 @@
     "prisma:validate": "prisma validate",
     "prisma:seed": "node scripts/run-prisma-seed.cjs",
     "provision:company": "node scripts/provision-production-company.cjs",
+    "runtime:check": "node scripts/check-node-runtime.cjs",
     "release:check": "node scripts/validate-production-env.cjs",
     "security:scan": "node scripts/check-versioned-secrets.cjs",
     "smoke:production": "node scripts/smoke-production.cjs",
@@ -39,7 +41,7 @@
     "test:observability": "jest --runInBand src/common/interceptors/logging.interceptor.spec.ts src/common/filters/global-exception.filter.spec.ts src/modules/health/metrics-access.util.spec.ts src/modules/health/metrics.controller.spec.ts",
     "test:security": "jest --runInBand src/modules/finance/finance.controller.security.spec.ts src/modules/enterprise/enterprise-tenant-guards.spec.ts src/modules/banking/banking.service.security.spec.ts src/auth/auth.controller.security.spec.ts src/auth/guards/tenant-context.guard.spec.ts",
     "test:tax-scenarios": "jest --runInBand src/modules/tax-scenarios/tax-scenarios.service.spec.ts",
-    "test:release-gates": "jest --runInBand src/release/validate-production-env.spec.ts src/release/verify-deploy-state.spec.ts src/release/provision-production-company.spec.ts src/release/*query-limits.spec.ts",
+    "test:release-gates": "jest --runInBand src/release/check-node-runtime.spec.ts src/release/validate-production-env.spec.ts src/release/verify-deploy-state.spec.ts src/release/provision-production-company.spec.ts src/release/*query-limits.spec.ts",
     "test:rls": "jest --runInBand src/database/prisma.rls.integration.spec.ts",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
@@ -121,7 +123,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/decimal.js": "^0.0.32",
     "@types/jest": "^30.0.0",
-    "@types/node": "^20.12.7",
+    "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/pg": "^8.11.5",
     "@types/qrcode": "^1.5.6",

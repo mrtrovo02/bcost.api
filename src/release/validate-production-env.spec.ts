@@ -19,6 +19,7 @@ const stripeRestrictedFixture = [
 const baseEnv: NodeJS.ProcessEnv = {
   ...process.env,
   NODE_ENV: 'production',
+  BCOST_NODE_VERSION_OVERRIDE: '24.0.0',
   RELEASE_STAGE: 'official',
   DATABASE_URL: 'postgresql://bcost_app:bcost@localhost:5432/bcost',
   DIRECT_URL: 'postgresql://bcost:bcost@localhost:5432/bcost',
@@ -91,6 +92,14 @@ describe('validate-production-env release gate', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('METRICS_API_KEY');
     expect(result.stderr).toContain('pelo menos 32 caracteres');
+  });
+
+  it('bloqueia runtime Node abaixo da linha LTS alvo', () => {
+    const result = runReleaseCheck({ BCOST_NODE_VERSION_OVERRIDE: '20.20.2' });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('NODE_RUNTIME');
+    expect(result.stderr).toContain('Node.js 24 LTS');
   });
 
   it('aceita o usuário bcost_app com sufixo de projeto do pooler Supabase', () => {

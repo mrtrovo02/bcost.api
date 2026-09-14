@@ -1,7 +1,7 @@
 'use strict';
 
 const { spawnSync } = require('node:child_process');
-const { readFileSync } = require('node:fs');
+const { existsSync, readFileSync } = require('node:fs');
 
 const git = spawnSync('git', ['ls-files'], {
   encoding: 'utf8',
@@ -32,6 +32,19 @@ const stripeSecretPattern = new RegExp(
 const unsafeSetupAdminPattern = new RegExp(
   String.raw`\b${setupAdminFlagName}\s*=\s*${enabledLiteral}\b`,
 );
+const forbiddenRootArtifacts = new Set([
+  'SWC',
+  'nest',
+  'bcost-api@0.1.0',
+  'fix_drift.sql',
+  'fix_finance_scope.ts',
+  'patch_dashboard_cache.ts',
+  'patch_revenue_fix.ts',
+  'fix-bootstrap.ps1',
+  'smoke-readonly.sh',
+  'audit_plan.sh',
+  'test-engine.ts',
+]);
 
 const findings = [];
 
@@ -76,6 +89,12 @@ function inspectFile(filePath) {
 }
 
 for (const filePath of git.stdout.split(/\r?\n/).filter(Boolean)) {
+  const normalizedPath = normalizePath(filePath);
+  if (forbiddenRootArtifacts.has(normalizedPath) && existsSync(filePath)) {
+    findings.push(`${filePath}: artefato operacional temporario nao deve ser versionado na raiz`);
+    continue;
+  }
+
   inspectFile(filePath);
 }
 
