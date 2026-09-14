@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class ForecastingService {
+  private static readonly ACTIVE_CONTRACTS_FORECAST_LIMIT = 500;
   private readonly logger = new Logger('bCost-Forecasting-Engine');
 
   constructor(private readonly prisma: PrismaService) {}
@@ -22,6 +23,8 @@ export class ForecastingService {
     // 1. Busca Contratos Ativos (Receita Garantida)
     const contracts = await this.prisma.contract.findMany({
       where: { companyId, status: 'ACTIVE', deletedAt: null },
+      orderBy: { updatedAt: 'desc' },
+      take: ForecastingService.ACTIVE_CONTRACTS_FORECAST_LIMIT,
     });
 
     // 2. Busca Média de Faturamento (Últimos 6 meses)

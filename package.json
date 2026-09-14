@@ -41,7 +41,7 @@
     "test:observability": "jest --runInBand src/common/interceptors/logging.interceptor.spec.ts src/common/logger/logger-redaction.config.spec.ts src/common/filters/global-exception.filter.spec.ts src/modules/health/metrics-access.util.spec.ts src/modules/health/metrics.controller.spec.ts",
     "test:security": "jest --runInBand src/modules/finance/finance.controller.security.spec.ts src/modules/enterprise/enterprise-tenant-guards.spec.ts src/modules/banking/banking.service.security.spec.ts src/auth/auth.controller.security.spec.ts src/auth/guards/tenant-context.guard.spec.ts",
     "test:tax-scenarios": "jest --runInBand src/modules/tax-scenarios/tax-scenarios.service.spec.ts",
-    "test:release-gates": "jest --runInBand src/release/check-node-runtime.spec.ts src/release/validate-production-env.spec.ts src/release/verify-deploy-state.spec.ts src/release/provision-production-company.spec.ts src/release/*query-limits.spec.ts",
+    "test:release-gates": "jest --runInBand src/release",
     "test:rls": "jest --runInBand src/database/prisma.rls.integration.spec.ts",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

@@ -106,6 +106,24 @@ function requiredEnv(name) {
   return value;
 }
 
+function normalizeProvisioningError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (
+    message.includes('violates row-level security policy') ||
+    message.includes('code: "42501"') ||
+    message.includes("code: '42501'")
+  ) {
+    return [
+      'Provisionamento bloqueado por RLS no PostgreSQL.',
+      'Use BCOST_PROVISION_DATABASE_URL com uma role administrativa de provisionamento para esta rotina operacional.',
+      'Mantenha DATABASE_URL da aplicação com bcost_app sem BYPASSRLS em runtime.',
+    ].join(' ');
+  }
+
+  return message;
+}
+
 async function main() {
   const userEmail = requiredEnv('BCOST_PROVISION_USER_EMAIL').toLowerCase();
   const companyName = requiredEnv('BCOST_PROVISION_COMPANY_NAME');
@@ -258,6 +276,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(normalizeProvisioningError(error));
   process.exit(1);
 });
