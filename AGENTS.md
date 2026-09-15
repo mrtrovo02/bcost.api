@@ -64,6 +64,14 @@ P5 — Pre-producao comercial rapida:
 - Trilha enterprise pos-beta: IaC, pinagem SHA de GitHub Actions, assinatura/attestation de imagem, cliente OpenAPI gerado e refatoracao gradual de services grandes.
 - Trilha de upgrade deve ser controlada: Nest 11/Fastify 5/Swagger 8 e Prisma 6 -> 7 em PRs separados, com RLS, smoke autenticado, contrato HTTP e build como gates.
 - Regra fiscal deve caminhar para dominio puro versionado por vigencia legal, sem Prisma, com `decimal.js` e golden tests; services Nest devem orquestrar, nao concentrar calculo, persistencia e apresentacao.
+- Diretriz v6 de runtime: manter Node 24 LTS como baseline ate a proxima janela LTS planejada; registrar janela de manutencao Node e evitar upgrades reativos.
+- Diretriz v6 de framework: planejar Nest 11 + Fastify 5 + Helmet 12 em trilha casada, com remocao de `--legacy-peer-deps`, sem misturar com feature fiscal.
+- Diretriz v6 de dados: planejar Prisma 7 em PR proprio, aproveitando adapter PG e validando RLS, migrations, smoke autenticado e imagem Docker.
+- Diretriz v6 de tipagem: avaliar `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitReturns` e remocao de `allowJs` por etapas, somente com suite completa verde.
+- Diretriz v6 de supply chain: Actions pinadas por SHA, `npm audit` sem `continue-on-error` para risco produtivo fora do baseline, SBOM e trilha Cosign/SLSA quando houver imagem.
+- Diretriz v6 de dominio: services acima de 40 KB devem ser quebrados gradualmente; regras fiscais devem migrar para `src/domain/tax/` em funcoes puras testadas por tabela.
+- Diretriz v6 operacional: `app.enableShutdownHooks()` e encerramento gracioso sao contrato de release; PM2/Docker devem drenar conexoes sem corromper Prisma, filas ou jobs.
+- Diretriz v6 comercial: LGPD, registro de tratamento, retencao/exclusao, DR e plano de continuidade entram como requisitos antes de venda enterprise ampla.
 
 ## Gates De Lancamento
 
