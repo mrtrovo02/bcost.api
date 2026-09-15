@@ -40,6 +40,9 @@ type FinancialHealthFactors = FinancialHealth['factors'];
 
 @Injectable()
 export class InsightsService {
+  private static readonly ACTIVE_COMPANIES_BATCH_LIMIT = 250;
+  private static readonly PENDING_TAX_ALERT_LIMIT = 50;
+
   private readonly logger = new Logger(InsightsService.name);
 
   constructor(
@@ -157,6 +160,8 @@ export class InsightsService {
     this.logger.log('🚀 Iniciando atualização massiva de snapshots mensais...');
     const companies = await this.prisma.company.findMany({
       where: { active: true },
+      orderBy: { updatedAt: 'desc' },
+      take: InsightsService.ACTIVE_COMPANIES_BATCH_LIMIT,
     });
 
     let processed = 0;
@@ -276,6 +281,7 @@ export class InsightsService {
     const pendingTaxes = await this.prisma.taxObligation.findMany({
       where: { companyId, status: 'PENDING' },
       orderBy: { dueDate: 'asc' },
+      take: InsightsService.PENDING_TAX_ALERT_LIMIT,
     });
 
     return {

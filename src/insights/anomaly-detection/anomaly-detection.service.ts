@@ -32,6 +32,9 @@ export type EnrichedAnomaly = TransactionWithAuditRelations & {
 
 @Injectable()
 export class AnomalyDetectionService {
+  private static readonly TRANSACTION_ANOMALY_SAMPLE_LIMIT = 1500;
+  private static readonly INVOICE_INTEGRITY_AUDIT_LIMIT = 500;
+
   private readonly logger = new Logger(AnomalyDetectionService.name);
 
   constructor(private prisma: PrismaService) {}
@@ -59,6 +62,8 @@ export class AnomalyDetectionService {
         invoice: true,
         taxObligation: true,
       },
+      orderBy: { occurredAt: 'desc' },
+      take: AnomalyDetectionService.TRANSACTION_ANOMALY_SAMPLE_LIMIT,
     });
 
     if (transactions.length < 5) {
@@ -159,6 +164,8 @@ export class AnomalyDetectionService {
       include: {
         bankTransaction: true,
       },
+      orderBy: { issuedAt: 'desc' },
+      take: AnomalyDetectionService.INVOICE_INTEGRITY_AUDIT_LIMIT,
     });
 
     return invoices

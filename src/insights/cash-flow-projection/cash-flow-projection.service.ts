@@ -36,6 +36,11 @@ type TaxObligationProjectionRow = {
 
 @Injectable()
 export class CashFlowProjectionService {
+  private static readonly BANK_ACCOUNT_BALANCE_LIMIT = 100;
+  private static readonly HISTORICAL_TRANSACTION_LIMIT = 2000;
+  private static readonly PENDING_INVOICE_PROJECTION_LIMIT = 500;
+  private static readonly TAX_OBLIGATION_PROJECTION_LIMIT = 500;
+
   private readonly logger = new Logger(CashFlowProjectionService.name);
 
   constructor(private prisma: PrismaService) {}
@@ -52,6 +57,8 @@ export class CashFlowProjectionService {
     const accounts = await this.prisma.bankAccount.findMany({
       where: { companyId },
       select: { balanceCache: true },
+      orderBy: { updatedAt: 'desc' },
+      take: CashFlowProjectionService.BANK_ACCOUNT_BALANCE_LIMIT,
     });
     const currentBalance = accounts.reduce(
       (sum, acc) => sum + Number(acc.balanceCache || 0),
@@ -65,6 +72,7 @@ export class CashFlowProjectionService {
       this.prisma.bankTransaction.findMany({
         where: { companyId, occurredAt: { gte: startHistorical } },
         orderBy: { occurredAt: 'asc' },
+        take: CashFlowProjectionService.HISTORICAL_TRANSACTION_LIMIT,
       }),
       this.prisma.invoice.findMany({
         where: {
@@ -73,6 +81,8 @@ export class CashFlowProjectionService {
           issuedAt: { lte: horizonDate },
         },
         select: { amount: true, issuedAt: true },
+        orderBy: { issuedAt: 'asc' },
+        take: CashFlowProjectionService.PENDING_INVOICE_PROJECTION_LIMIT,
       }),
       this.prisma.taxObligation.findMany({
         where: {
@@ -81,6 +91,8 @@ export class CashFlowProjectionService {
           dueDate: { lte: horizonDate },
         },
         select: { amount: true, dueDate: true },
+        orderBy: { dueDate: 'asc' },
+        take: CashFlowProjectionService.TAX_OBLIGATION_PROJECTION_LIMIT,
       }),
     ]);
 
