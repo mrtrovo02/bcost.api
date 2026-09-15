@@ -48,6 +48,11 @@ describe('deploy verification release contract', () => {
     expect(publicSmokeSource).toContain('x-bcost-trace-id ausente');
   });
 
+  it('validates API build version drift when deploy exports BUILD_VERSION', () => {
+    expect(publicSmokeSource).toContain("expectBuildVersion: process.env.BUILD_VERSION || ''");
+    expect(publicSmokeSource).toContain('buildVersion esperado');
+  });
+
   it('validates production CORS preflight without legacy demo headers', () => {
     expect(publicSmokeSource).toContain("name: 'api-cors-preflight'");
     expect(publicSmokeSource).toContain("method: 'OPTIONS'");

@@ -58,6 +58,8 @@ describe('bCost API - Production Ready E2E Suite (Fastify)', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.payload);
     expect(body.status).toBe('UP');
+    expect(body.service).toBe('bcost-api');
+    expect(body).toHaveProperty('buildVersion');
     expect(body).toHaveProperty('timestamp');
   });
 

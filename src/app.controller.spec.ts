@@ -38,5 +38,17 @@ describe('AppController', () => {
         ['User-agent: *', 'Disallow: /', ''].join('\n'),
       );
     });
+
+    it('exposes build version on public health for deployment drift checks', () => {
+      process.env.BUILD_VERSION = 'test-build-version';
+
+      expect(appController.getHealth()).toMatchObject({
+        status: 'UP',
+        service: 'bcost-api',
+        buildVersion: 'test-build-version',
+      });
+
+      delete process.env.BUILD_VERSION;
+    });
   });
 });

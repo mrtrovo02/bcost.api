@@ -391,10 +391,15 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     }
 
     // Rotas Nativas do Fastify para Health/Liveness/Readiness/Metrics
+    const buildVersion =
+      process.env.BUILD_VERSION || process.env.npm_package_version || 'local';
+
     const buildHealthPayload = async () => {
       const dbStatus = await prismaService.isHealthy().catch(() => false);
       return {
         status: dbStatus ? 'UP' : 'DOWN',
+        service: 'bcost-api',
+        buildVersion,
         timestamp: new Date().toISOString(),
       };
     };

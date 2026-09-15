@@ -10,6 +10,7 @@ const checks = [
     url: process.env.BCOST_SMOKE_API_HEALTH_URL || 'https://api.bcost.com.br/api/v1/health',
     expectJsonStatus: 'UP',
     expectTraceId: true,
+    expectBuildVersion: process.env.BUILD_VERSION || '',
   },
   {
     name: 'api-cors-preflight',
@@ -106,6 +107,20 @@ async function runCheck(check) {
           status: response.status,
           durationMs,
           reason: `status esperado ${check.expectJsonStatus}, recebido ${String(status)}`,
+        };
+      }
+    }
+
+    if (check.expectBuildVersion) {
+      const buildVersion = body && typeof body === 'object' ? body.buildVersion : undefined;
+
+      if (buildVersion !== check.expectBuildVersion) {
+        return {
+          name: check.name,
+          ok: false,
+          status: response.status,
+          durationMs,
+          reason: `buildVersion esperado ${check.expectBuildVersion}, recebido ${String(buildVersion)}`,
         };
       }
     }

@@ -86,10 +86,13 @@ export class AppController {
   })
   getHealth() {
     const memory = process.memoryUsage();
+    const buildVersion =
+      process.env.BUILD_VERSION || process.env.npm_package_version || 'local';
 
     return {
       status: 'UP',
       service: 'bcost-api',
+      buildVersion,
       uptime_seconds: Math.floor(process.uptime()),
       resources: {
         heapUsedMB: Number((memory.heapUsed / 1024 / 1024).toFixed(2)),
