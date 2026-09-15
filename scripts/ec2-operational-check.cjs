@@ -76,7 +76,7 @@ function checkNpmCache(results) {
 
 function checkPm2(results) {
   const result = runShell(
-    'pm2 jlist | node -e "let s=\\"\\";process.stdin.on(\\"data\\",d=>s+=d);process.stdin.on(\\"end\\",()=>{const apps=JSON.parse(s); for (const name of [\\"bcost-api\\",\\"bcost-web\\"]) { const app=apps.find(a=>a.name===name); console.log(`${name}:${app?.pm2_env?.status || \\"missing\\"}`); }})"',
+    'pm2 jlist | node -e "let s=\\"\\";process.stdin.on(\\"data\\",d=>s+=d);process.stdin.on(\\"end\\",()=>{const apps=JSON.parse(s); for (const name of [\\"bcost-api\\",\\"bcost-web\\"]) { const app=apps.find(a=>a.name===name); const status=app && app.pm2_env ? app.pm2_env.status : \\"missing\\"; console.log(name + \\":\\" + status); }})"',
   );
 
   if (result.status !== 0) {
