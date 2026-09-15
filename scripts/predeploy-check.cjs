@@ -10,6 +10,10 @@ const codeOnly = process.argv.includes('--code-only');
 const steps = [
   ['runtime:check', 'Garante Node.js 24 LTS antes de instalar, testar ou publicar.'],
   ['security:scan', 'Bloqueia segredos versionados e credenciais realisticas.'],
+  [
+    'audit:production-risk',
+    'Bloqueia novas vulnerabilidades produtivas fora do baseline controlado.',
+  ],
   ['prisma:generate', 'Garante Prisma Client alinhado ao schema atual.'],
   ['prisma:validate', 'Valida o schema Prisma antes do build/deploy.'],
 ];

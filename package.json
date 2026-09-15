@@ -27,6 +27,7 @@
     "runtime:check": "node scripts/check-node-runtime.cjs",
     "release:check": "node scripts/validate-production-env.cjs",
     "security:scan": "node scripts/check-versioned-secrets.cjs",
+    "audit:production-risk": "node scripts/check-production-audit-baseline.cjs",
     "smoke:production": "node scripts/smoke-production.cjs",
     "smoke:authenticated": "node scripts/smoke-authenticated.cjs",
     "deploy:verify": "node scripts/verify-deploy-state.cjs",
@@ -54,9 +55,14 @@
     "tar": "^7.5.22",
     "lodash": "^4.17.21",
     "fastify": "^4.29.1",
+    "fast-xml-parser": "^5.11.1",
+    "body-parser": "^1.20.6",
     "picomatch": "^3.0.1",
+    "js-yaml": "^4.3.2",
     "multer": "1.4.5-lts.1",
-    "uuid": "^9.0.1"
+    "qs": "^6.16.0",
+    "tmp": "^0.2.6",
+    "uuid": "^11.1.1"
   },
   "dependencies": {
     "@fastify/compress": "^7.0.0",
@@ -92,7 +98,7 @@
     "date-fns": "^3.6.0",
     "decimal.js": "^10.6.0",
     "dotenv": "^16.4.5",
-    "fast-xml-parser": "^4.3.6",
+    "fast-xml-parser": "^5.11.1",
     "fastify": "^4.29.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.10.1",
@@ -111,7 +117,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "speakeasy": "^2.0.0",
-    "uuid": "^9.0.1",
+    "uuid": "^11.1.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
