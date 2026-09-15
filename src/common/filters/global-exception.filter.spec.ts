@@ -10,6 +10,10 @@ describe('GlobalExceptionFilter observability', () => {
   const uuidV4Pattern =
     /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+  const parseReplyBody = <T extends Record<string, unknown>>(
+    reply: jest.Mock,
+  ): T => JSON.parse(String(reply.mock.calls[0]?.[1])) as T;
+
   beforeEach(() => {
     register.clear();
   });
@@ -47,6 +51,10 @@ describe('GlobalExceptionFilter observability', () => {
 
     expect(reply).toHaveBeenCalledWith(
       expect.objectContaining({ header }),
+      expect.any(String),
+      500,
+    );
+    expect(parseReplyBody(reply)).toEqual(
       expect.objectContaining({
         type: 'https://docs.bcost.com.br/problems/internal-server-error',
         title: 'Internal Server Error',
@@ -55,7 +63,6 @@ describe('GlobalExceptionFilter observability', () => {
         traceId: 'client-trace-filter-001',
         requestId: 'client-trace-filter-001',
       }),
-      500,
     );
     expect(header).toHaveBeenCalledWith(
       'content-type',
@@ -101,9 +108,10 @@ describe('GlobalExceptionFilter observability', () => {
 
     await filter.catch(new Error('orphan failure'), host as never);
 
-    const responseBody = reply.mock.calls[0]?.[1] as
-      | { traceId?: string; requestId?: string }
-      | undefined;
+    const responseBody = parseReplyBody<{
+      traceId?: string;
+      requestId?: string;
+    }>(reply);
 
     expect(responseBody?.traceId).toEqual(expect.stringMatching(uuidV4Pattern));
     expect(responseBody?.requestId).toBe(responseBody?.traceId);
@@ -149,6 +157,10 @@ describe('GlobalExceptionFilter observability', () => {
 
     expect(reply).toHaveBeenCalledWith(
       expect.objectContaining({ header }),
+      expect.any(String),
+      400,
+    );
+    expect(parseReplyBody(reply)).toEqual(
       expect.objectContaining({
         type: 'https://docs.bcost.com.br/problems/bad-request',
         title: 'Bad Request',
@@ -158,7 +170,6 @@ describe('GlobalExceptionFilter observability', () => {
         requestId: 'client-trace-filter-400',
         message: 'CNPJ informado e invalido.',
       }),
-      400,
     );
     expect(await register.metrics()).not.toContain(
       'bcost_http_5xx_total{method="POST",status="400"}',
@@ -198,12 +209,15 @@ describe('GlobalExceptionFilter observability', () => {
 
     expect(reply).toHaveBeenCalledWith(
       expect.objectContaining({ header }),
+      expect.any(String),
+      404,
+    );
+    expect(parseReplyBody(reply)).toEqual(
       expect.objectContaining({
         type: 'https://docs.bcost.com.br/problems/not-found',
         status: 404,
         traceId: 'client-trace-filter-robots',
       }),
-      404,
     );
     expect(prisma.auditLog.create).not.toHaveBeenCalled();
     expect(await register.metrics()).not.toContain(

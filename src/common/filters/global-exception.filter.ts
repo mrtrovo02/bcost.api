@@ -168,7 +168,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       message: detail,
     };
 
-    httpAdapter.reply(response, responseBody, status);
+    httpAdapter.reply(response, JSON.stringify(responseBody), status);
   }
 
   private isScannerNotFound(
