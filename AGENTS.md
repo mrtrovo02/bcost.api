@@ -38,6 +38,7 @@ P0 — Bloqueadores de vendabilidade:
 - Testes e2e de isolamento tenant: provar que empresa A nao le nem escreve dados da empresa B via API e RLS.
 - Smoke autenticado em producao deve ser obrigatorio antes de venda beta paga: validar usuario real, empresa esperada e ausencia de vazamento demo.
 - Contratos de release em `src/release` devem rodar por pasta no `test:release-gates`; nao use glob frágil que deixe specs de query limit fora da suíte.
+- CI deve chamar `npm run test:release-gates`, nunca uma allowlist manual de specs de `src/release`, para que novos gates de producao entrem automaticamente na esteira.
 
 P1 — Fechamento mensal:
 - Checklist de fechamento por competencia, periodo travavel, memoria de calculo imutavel, snapshot com hash, aprovacao CRC e dossie de evidencias exportavel.

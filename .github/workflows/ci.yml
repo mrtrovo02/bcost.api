@@ -62,7 +62,7 @@ jobs:
         run: npm run predeploy:full
 
       - name: Run release gate tests
-        run: npm test -- --runInBand src/release/validate-production-env.spec.ts src/release/provision-production-company.spec.ts src/release/payroll-enterprise-query-limits.spec.ts src/release/notifications-enterprise-query-limits.spec.ts src/release/banking-enterprise-query-limits.spec.ts src/release/audit-intelligence-enterprise-query-limits.spec.ts src/release/automation-jobs-enterprise-query-limits.spec.ts
+        run: npm run test:release-gates
 
       - name: Run tenant and business security tests
         run: npm run test:security
