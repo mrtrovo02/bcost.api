@@ -80,6 +80,7 @@ Beta pago/controlado exige:
 
 - `predeploy:full` e `deploy:verify` aprovados no backend publicado.
 - Smoke publico e smoke autenticado contra EC2, com empresa real esperada e demo leak bloqueado.
+- `npm run ops:ec2-check` deve passar na EC2 apos deploy relevante: valida disco, PM2, health local, Certbot e systemd failed units.
 - RLS real validado em PostgreSQL com role de aplicacao sem `BYPASSRLS`.
 - Stripe/billing em modo coerente com o stage: beta pode operar com restricao explicita; venda oficial exige chaves live, webhooks idempotentes e entitlements server-side.
 - Runbook minimo de incidente, backup/restore e rollback PM2 documentado.

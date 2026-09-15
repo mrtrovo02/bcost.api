@@ -31,6 +31,7 @@
     "smoke:production": "node scripts/smoke-production.cjs",
     "smoke:authenticated": "node scripts/smoke-authenticated.cjs",
     "deploy:verify": "node scripts/verify-deploy-state.cjs",
+    "ops:ec2-check": "node scripts/ec2-operational-check.cjs",
     "predeploy:code": "node scripts/predeploy-check.cjs --code-only",
     "predeploy:check": "node scripts/predeploy-check.cjs",
     "predeploy:full": "node scripts/predeploy-check.cjs --with-build",
