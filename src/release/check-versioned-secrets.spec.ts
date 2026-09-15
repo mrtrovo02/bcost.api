@@ -31,6 +31,14 @@ describe('check-versioned-secrets', () => {
     expect(scriptSource).toContain("fileName.endsWith('.example')");
   });
 
+  it('mantem bloqueio para chaves e certificados versionados', () => {
+    expect(scriptSource).toContain('isForbiddenTrackedSecretArtifact');
+    expect(scriptSource).toContain("'.pem'");
+    expect(scriptSource).toContain("'.p12'");
+    expect(scriptSource).toContain("'id_rsa'");
+    expect(scriptSource).toContain('artefato criptografico nao deve ser versionado');
+  });
+
   it('aprova o estado atual do repositorio sem segredos versionados', () => {
     const result = runSecurityScan();
 
