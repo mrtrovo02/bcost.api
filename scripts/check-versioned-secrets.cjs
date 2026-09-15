@@ -52,6 +52,16 @@ function normalizePath(filePath) {
   return filePath.replace(/\\/g, '/');
 }
 
+function isForbiddenTrackedEnvFile(filePath) {
+  const normalized = normalizePath(filePath);
+  const fileName = normalized.split('/').pop() || '';
+
+  if (!fileName.startsWith('.env')) return false;
+  if (fileName.endsWith('.example') || fileName.endsWith('.template')) return false;
+
+  return true;
+}
+
 function shouldSkip(filePath) {
   const normalized = `/${normalizePath(filePath)}`;
   return ignoredPathFragments.some((fragment) => normalized.includes(fragment));
@@ -90,6 +100,11 @@ function inspectFile(filePath) {
 
 for (const filePath of git.stdout.split(/\r?\n/).filter(Boolean)) {
   const normalizedPath = normalizePath(filePath);
+  if (isForbiddenTrackedEnvFile(normalizedPath)) {
+    findings.push(`${filePath}: arquivo de ambiente real nao deve ser versionado`);
+    continue;
+  }
+
   if (forbiddenRootArtifacts.has(normalizedPath) && existsSync(filePath)) {
     findings.push(`${filePath}: artefato operacional temporario nao deve ser versionado na raiz`);
     continue;
