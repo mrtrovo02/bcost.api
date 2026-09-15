@@ -187,6 +187,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
     const adapter = new FastifyAdapter({
       bodyLimit: 52_428_800, // 50MB
       trustProxy: true,
+      disableRequestLogging: true,
       requestIdHeader: 'x-bcost-trace-id',
       genReqId: () => randomUUID(),
       // Compatibilidade com proxies (Nginx/ALB) que removem o prefixo `/api`
