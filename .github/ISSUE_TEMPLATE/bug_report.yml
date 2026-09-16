@@ -1,0 +1,35 @@
+name: Backend bug report
+description: Report a backend defect with tenant, auth, fiscal, billing, or deployment impact.
+title: "fix(api): "
+labels:
+  - bug
+  - backend
+body:
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Describe the production, customer, tenant, fiscal, or billing risk.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide steps, route, payload shape, and expected vs actual result. Do not include secrets or customer data.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add sanitized trace IDs, logs, stack traces, or screenshots.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: No secrets, fiscal XMLs, credentials, or customer data are included.
+          required: true
+        - label: Tenant/company isolation impact was considered.
+          required: true

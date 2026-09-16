@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    /* 1. Infraestrutura de Módulos (ESM / NodeNext) */
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "rootDir": "src",
+    "outDir": "./dist",
+    "types": ["jest", "node"],
+
+    /* 2. Suporte a DTOs e Classes */
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+
+    /* 3. Arquitetura de Caminhos (Aliases) */
+    "paths": {
+      "#common/*": ["./src/common/*"],
+      "#database/*": ["./src/database/*"],
+      "#auth/*": ["./src/auth/*"],
+      "#modules/*": ["./src/modules/*"],
+      "#shared/*": ["./src/shared/*"],
+      "#/*": ["./src/*"]
+    },
+
+    /* 4. Funcionalidades NestJS & Decorators (Obrigatório) */
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
+    /* 5. Performance e Compilação */
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "incremental": true,
+    "isolatedModules": true,
+    "resolvePackageJsonExports": true,
+
+    /* 6. Robustez de Código */
+    "forceConsistentCasingInFileNames": true,
+    "removeComments": true,
+    "declaration": false,
+    "pretty": true,
+
+    /* 7. Compatibilidade e Verificação */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "allowJs": true,
+    "verbatimModuleSyntax": false
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
+}

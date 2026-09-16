@@ -1,0 +1,107 @@
+'use strict';
+
+import {
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { CompanyAccessGuard } from '../../common/guards/company-access.guard.js';
+import { TenantContextGuard } from '../../common/guards/tenant-context.guard.js';
+
+export interface RevenueMetrics {
+  totalRevenue: number;
+  monthlyAverage: number;
+  growthRate: number;
+}
+
+export interface RevenueStatsResponse {
+  success: boolean;
+  companyId: string;
+  metrics: RevenueMetrics;
+  updatedAt: string;
+}
+
+export interface BillingEntitlementsFeatures {
+  fatorR: boolean;
+  cbsIbsSimulation: boolean;
+  multiCnpj: boolean;
+  exportPdf: boolean;
+}
+
+export interface BillingEntitlementsResponse {
+  success: boolean;
+  companyId: string;
+  plan: string;
+  features: BillingEntitlementsFeatures;
+}
+
+export interface TaxDataResponse {
+  success: boolean;
+  companyId: string | undefined;
+  cbsRate: number;
+  ibsRate: number;
+  transitionalTaxActive: boolean;
+  effectiveDate: string;
+  collectionDispensedIn2026: boolean;
+}
+
+export class TaxDataQueryDto {
+  company_id?: string;
+  companyId?: string;
+}
+
+@Controller()
+@UseGuards(JwtAuthGuard, TenantContextGuard, CompanyAccessGuard)
+export class RevenueCompatibilityController {
+  @Get('revenue/compatibility/stats/:companyId')
+  async getRevenueStats(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+  ): Promise<RevenueStatsResponse> {
+    return {
+      success: true,
+      companyId,
+      metrics: {
+        totalRevenue: 0,
+        monthlyAverage: 0,
+        growthRate: 0,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  @Get('revenue/compatibility/billing-entitlements/:companyId')
+  async getBillingEntitlements(
+    @Param('companyId', new ParseUUIDPipe()) companyId: string,
+  ): Promise<BillingEntitlementsResponse> {
+    return {
+      success: true,
+      companyId,
+      plan: 'ENTERPRISE',
+      features: {
+        fatorR: true,
+        cbsIbsSimulation: true,
+        multiCnpj: true,
+        exportPdf: true,
+      },
+    };
+  }
+
+  @Get('revenue/compatibility/tax-data')
+  async getTaxData(@Query() query: TaxDataQueryDto): Promise<TaxDataResponse> {
+    const activeCompanyId: string | undefined =
+      query.company_id || query.companyId;
+    return {
+      success: true,
+      companyId: activeCompanyId,
+      cbsRate: 0.009,
+      ibsRate: 0.001,
+      transitionalTaxActive: true,
+      effectiveDate: '2026-01-01',
+      collectionDispensedIn2026: true,
+    };
+  }
+}

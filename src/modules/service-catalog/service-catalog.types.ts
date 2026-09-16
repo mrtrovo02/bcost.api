@@ -1,0 +1,129 @@
+'use strict';
+
+export type BcostPlan =
+  | 'BASIC'
+  | 'STANDARD'
+  | 'EXPERTS'
+  | 'MULTIBENEFITS'
+  | 'FREE'
+  | 'PRO'
+  | 'ENTERPRISE'
+  | 'UNKNOWN';
+
+export type ServiceConditionCode =
+  | 'GOVERNMENT_FEES_NOT_INCLUDED'
+  | 'ADDON_NOT_IN_BASE_MONTHLY_FEE'
+  | 'ACTIVE_CUSTOMERS_ONLY'
+  | 'RETROACTIVE_PERIOD_NOT_INCLUDED'
+  | 'EXPERTS_HONORARIUM_WAIVER'
+  | 'EXPERTS_NO_RETROACTIVE_WAIVER'
+  | 'MUNICIPAL_DIGITAL_DEPENDENCY'
+  | 'PHYSICAL_PROTOCOL_CUSTOMER_ACTION'
+  | 'OFFICIAL_RULE_REVIEW_REQUIRED';
+
+export type ServiceConditionSeverity = 'INFO' | 'WARNING' | 'BLOCKER';
+
+export type ServiceExecutionEngine =
+  | 'SOFTWARE_WORKFLOW'
+  | 'OFFICIAL_API'
+  | 'GOVERNMENT_PORTAL_RPA'
+  | 'MUNICIPAL_RPA'
+  | 'CERTIFICATE_AUTH'
+  | 'BANKING_AS_A_SERVICE'
+  | 'OPEN_FINANCE'
+  | 'HUMAN_CRC_REVIEW'
+  | 'MANUAL_PROTOCOL';
+
+export type ServiceAutomationLevel =
+  | 'FULL_AUTOMATION_CANDIDATE'
+  | 'ASSISTED_AUTOMATION'
+  | 'HUMAN_VALIDATED'
+  | 'HUMAN_LED';
+
+export type ServiceProductionReadiness =
+  | 'READY_FOR_INTERNAL_WORKFLOW'
+  | 'INTEGRATION_REQUIRED'
+  | 'BACKOFFICE_REQUIRED'
+  | 'PLANNED';
+
+export type ServiceOperationalRisk = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+export type ServiceCondition = {
+  code: ServiceConditionCode;
+  severity: ServiceConditionSeverity;
+  message: string;
+  serviceId?: string;
+};
+
+export type MicroServiceDefinition = {
+  id: string;
+  name: string;
+  notes?: string[];
+  officialSources?: Array<{
+    label: string;
+    url: string;
+  }>;
+  complianceTags?: string[];
+  governmentFeesMayApply?: boolean;
+  addOnService?: boolean;
+  expertsHonorariumWaivable?: boolean;
+  retroactiveSensitive?: boolean;
+  municipalDependency?: boolean;
+  physicalProtocolMayApply?: boolean;
+  activeCustomersOnly?: boolean;
+};
+
+export type ServiceExecutionProfile = {
+  automationLevel: ServiceAutomationLevel;
+  productionReadiness: ServiceProductionReadiness;
+  operationalRisk: ServiceOperationalRisk;
+  executionEngines: ServiceExecutionEngine[];
+  integrationTargets: string[];
+  evidenceArtifacts: string[];
+  requiresCrcValidation: boolean;
+  requiresOfficialCredential: boolean;
+  requiresCustomerAction: boolean;
+};
+
+export type MacroServiceDefinition = {
+  id: number;
+  name: string;
+  description: string;
+  microServices: MicroServiceDefinition[];
+};
+
+export type ServiceEvaluationInput = {
+  macroServiceIds?: number[];
+  serviceIds?: string[];
+  plan?: string;
+  activeCustomer?: boolean;
+  contractedAt?: string;
+  eventDate?: string;
+  periodStart?: string;
+  municipalityDigital?: boolean;
+  physicalProtocolRequired?: boolean;
+};
+
+export type EvaluatedMicroService = MicroServiceDefinition & {
+  macroServiceId: number;
+  macroServiceName: string;
+  executionProfile: ServiceExecutionProfile;
+};
+
+export type ServiceEvaluationResult = {
+  status: 'OK';
+  plan: BcostPlan;
+  selectedServices: EvaluatedMicroService[];
+  conditions: ServiceCondition[];
+  summary: {
+    totalServices: number;
+    blockers: number;
+    warnings: number;
+    infos: number;
+    requiresHumanReview: boolean;
+    crcValidationServices: number;
+    customerActionServices: number;
+    officialCredentialServices: number;
+  };
+  generatedAt: string;
+};

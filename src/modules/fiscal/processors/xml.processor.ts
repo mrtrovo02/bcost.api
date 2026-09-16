@@ -1,0 +1,109 @@
+'use strict';
+
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
+import { Logger } from '@nestjs/common';
+import { XmlService, NormalizedInvoiceData } from '../xml/xml.service.js';
+import { InvoiceService } from '../invoices/invoice.service.js';
+import { XmlDocumentType } from '../dto/upload-xml.dto.js';
+import { InvoiceType, InvoiceStatus } from '@prisma/client'; // Importação do InvoiceStatus necessária
+
+/**
+ * Interface de dados recebidos pela fila BullMQ
+ */
+interface XmlJobData {
+  xmlContent: string;
+  companyId: string;
+  type: XmlDocumentType;
+  originalName: string;
+}
+
+interface XmlProcessorResult {
+  success: true;
+  invoiceId: string;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+@Processor('xml-extraction')
+export class XmlProcessor extends WorkerHost {
+  private readonly logger = new Logger(XmlProcessor.name);
+
+  constructor(
+    private readonly xmlService: XmlService,
+    private readonly invoiceService: InvoiceService,
+  ) {
+    super();
+  }
+
+  /**
+   * Processamento assíncrono do job de extração de XML.
+   * CORREÇÃO: Uso de Enums do Prisma (InvoiceStatus) para evitar erro de atribuição.
+   */
+  async process(
+    job: Job<XmlJobData, XmlProcessorResult, string>,
+  ): Promise<XmlProcessorResult> {
+    const { xmlContent, companyId, originalName } = job.data;
+
+    this.logger.log(
+      `[Job ${job.id}] 🚀 Iniciando processamento técnico: ${originalName}`,
+    );
+
+    try {
+      const buffer = Buffer.from(xmlContent, 'utf-8');
+      const extractedData: NormalizedInvoiceData =
+        this.xmlService.parseInvoiceXml(buffer);
+
+      // 3. Montagem do objeto de persistência seguindo RIGOROSAMENTE o CreateInvoiceDto
+      const invoiceData = {
+        companyId,
+        number: extractedData.number,
+        accessKey: extractedData.accessKey,
+        issueDate: extractedData.issuedAt.toISOString(),
+        totalValue: Number(extractedData.amount),
+        taxableValue: Number(extractedData.amount),
+        type:
+          extractedData.type === 'PRODUCT'
+            ? InvoiceType.PRODUCT
+            : InvoiceType.SERVICE,
+        status: InvoiceStatus.NORMAL,
+        finNFe: extractedData.finNFe,
+        issuePurpose: extractedData.issuePurpose,
+        cstCode: extractedData.cstCode,
+        cClassTribCode: extractedData.cClassTribCode,
+        destinationStateIbge: extractedData.destinationStateIbge,
+        destinationMunicipalityIbge: extractedData.destinationMunicipalityIbge,
+        hasLegacyTaxes: extractedData.hasLegacyTaxes,
+        taxReformPayload: extractedData.taxReformPayload,
+        customerDocument: extractedData.customerDocument,
+        customerName: extractedData.customerName,
+        reconciled: false,
+        rawJson: {
+          retentions: extractedData.retentions,
+          taxReformPayload: extractedData.taxReformPayload,
+          rawJson: extractedData.rawJson || {},
+        },
+      };
+
+      // 4. Persistência via Service
+      const invoice = await this.invoiceService.create(invoiceData);
+
+      this.logger.log(
+        `[Job ${job.id}] ✅ Sucesso: Nota integrada com ID ${invoice.id}.`,
+      );
+
+      return {
+        success: true,
+        invoiceId: invoice.id,
+      };
+    } catch (error: unknown) {
+      const message = getErrorMessage(error);
+      this.logger.error(`[Job ${job.id}] ❌ Falha Crítica: ${message}`);
+      throw new Error(
+        `Falha no processamento do XML ${originalName}: ${message}`,
+      );
+    }
+  }
+}

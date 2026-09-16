@@ -1,0 +1,90 @@
+'use strict';
+
+import {
+  Controller,
+  Get,
+  UseInterceptors,
+  Param,
+  ParseUUIDPipe,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  HealthCheckService,
+  HealthCheck,
+  PrismaHealthIndicator,
+} from '@nestjs/terminus';
+import { PrismaService } from '../../database/prisma.service.js';
+import { HealthService } from './health.service.js';
+import { ApiKeyGuard } from '../../common/guards/api-key.guard.js';
+import { CompanyCacheInterceptor } from '../../common/interceptors/company-cache.interceptor.js';
+
+/**
+ * HealthController
+ * -----------------------------------------------------------------------
+ * Gerencia o monitoramento vital da bCost Engine.
+ * Este é o diferencial tecnológico: enquanto as consultorias tradicionais
+ * são caixas-pretas, sua API oferece transparência total de performance.
+ */
+@Controller('internal/health')
+export class HealthController {
+  constructor(
+    private health: HealthCheckService,
+    private db: PrismaHealthIndicator,
+    private prisma: PrismaService,
+    private performance: HealthService,
+  ) {}
+
+  /**
+   * Endpoint de Liveness (Infraestrutura)
+   * Essencial para Kubernetes/Docker verificarem se a API está respondendo.
+   * Não utilizamos cache aqui para garantir um diagnóstico de "tempo real".
+   */
+  @Get()
+  @HealthCheck()
+  async check() {
+    return this.health.check([
+      () => this.db.pingCheck('database', this.prisma),
+    ]);
+  }
+
+  @Get('live')
+  async live() {
+    return {
+      status: 'alive',
+      service: 'bcost-api',
+      uptimeSeconds: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('ready')
+  async ready() {
+    return await this.performance.getReadiness();
+  }
+
+  @Get('runtime')
+  async runtime() {
+    return await this.performance.getRuntimeDiagnostics();
+  }
+
+  /**
+   * Endpoint de Performance do Dashboard
+   * Retorna métricas avançadas da saúde do banco de dados (Eficiência de índices).
+   * * 🚀 DIFERENCIAL 2026:
+   * Utilizamos o CompanyCacheInterceptor para que consultas repetitivas
+   * de um mesmo contador não toquem no banco de dados desnecessariamente.
+   */
+  @Get('db-performance/:companyId?')
+  @UseGuards(ApiKeyGuard)
+  @UseInterceptors(CompanyCacheInterceptor)
+  async getDbPerformance(
+    @Param('companyId', new ParseUUIDPipe({ optional: true }))
+    companyId?: string,
+  ) {
+    /**
+     * O erro 'Expected 0 arguments, but got 1' foi resolvido
+     * ao atualizarmos a assinatura no HealthService.
+     */
+    return await this.performance.getDatabaseMetrics(companyId);
+  }
+}

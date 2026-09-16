@@ -1,0 +1,16 @@
+{
+  "jsc": {
+    "parser": {
+      "syntax": "typescript",
+      "decorators": true
+    },
+    "transform": {
+      "decoratorMetadata": true
+    },
+    "baseUrl": ".",
+    "target": "es2021"
+  },
+  "module": {
+    "type": "commonjs"
+  }
+}
